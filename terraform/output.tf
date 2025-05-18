@@ -7,7 +7,11 @@ output "server_ip" {
 }
 
 
-output "private_key" {
-  value     = tls_private_key.server.private_key_pem
+output "root_private_key" {
+  value     = tls_private_key.root.private_key_pem
+  sensitive = true
+}
+output "admin_private_key" {
+  value     = tls_private_key.admin.private_key_openssh
   sensitive = true
 }

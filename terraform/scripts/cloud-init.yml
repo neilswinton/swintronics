@@ -1,4 +1,3 @@
-
 #cloud-config
 # This example assumes a default Ubuntu cloud image, which should contain
 # the required software to be managed remotely by Ansible.
@@ -14,6 +13,7 @@ packages:
   - apt-transport-https
   - ca-certificates
   - curl
+  - git
   - gnupg
   - gnupg-agent
   - jq
@@ -28,6 +28,15 @@ write_files:
 # create the docker group
 groups:
   - docker
+
+users:
+  - name: admin
+    sudo: All=(ALL) NOPASSWD:ALL
+    gcos: "Admin User"
+    groups: [sudo, adm, docker]
+    shell: /bin/bash
+    ssh-authorized-keys:
+    - "${admin_public_key}"
 
 # Install Docker, for production, consider pinning to stable versions
 runcmd:
