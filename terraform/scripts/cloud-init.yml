@@ -30,7 +30,7 @@ groups:
   - docker
 
 users:
-  - name: admin
+  - name: "${admin_user}"
     sudo: ALL=(ALL) NOPASSWD:ALL
     gcos: "Admin User"
     groups: [sudo, adm, docker]
