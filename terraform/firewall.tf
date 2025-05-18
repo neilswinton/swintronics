@@ -1,5 +1,26 @@
 resource "hcloud_firewall" "cluster" {
-  count = var.public_access ? 0 : 1
-
   name = var.name
+
+  rule {
+    direction = "in"
+    protocol  = "tcp"
+    port      = "22"
+    source_ips = ["0.0.0.0/0",
+    "::/0"]
+  }
+  rule {
+    direction = "in"
+    protocol  = "tcp"
+    port      = "80"
+    source_ips = ["0.0.0.0/0",
+    "::/0"]
+  }
+  rule {
+    direction = "in"
+    protocol  = "tcp"
+    port      = "443"
+    source_ips = ["0.0.0.0/0",
+    "::/0"]
+  }
+
 }

@@ -17,7 +17,7 @@ variable "image" {
 }
 
 variable "server_type" {
-  default     = "CPX31"
+  default     = "CPX11"
   type        = string
   description = "The server type this server should be created with."
 }
