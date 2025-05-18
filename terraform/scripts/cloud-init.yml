@@ -31,7 +31,7 @@ groups:
 
 users:
   - name: admin
-    sudo: All=(ALL) NOPASSWD:ALL
+    sudo: ALL=(ALL) NOPASSWD:ALL
     gcos: "Admin User"
     groups: [sudo, adm, docker]
     shell: /bin/bash
