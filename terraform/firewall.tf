@@ -18,10 +18,13 @@ resource "hcloud_firewall" "cluster" {
     source_ips = ["${chomp(data.http.myip.response_body)}/32"]
   }
   rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "80"
-    source_ips = ["${chomp(data.http.myip.response_body)}/32"]
+    direction = "in"
+    protocol  = "tcp"
+    port      = "80"
+    source_ips = concat(
+      ["${chomp(data.http.myip.response_body)}/32"],
+      data.cloudflare_ip_ranges.whitelist.ipv4_cidrs
+    )
   }
   rule {
     direction = "in"

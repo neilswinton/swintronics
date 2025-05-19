@@ -1,5 +1,7 @@
 
+data "cloudflare_ip_ranges" "whitelist" {
 
+}
 
 resource "cloudflare_dns_record" "www" {
   name = "www"
