@@ -39,3 +39,4 @@ terraform.rc
 
 # Build artifacts
 **/artifacts/
+selfhosted-migrate/

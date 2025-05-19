@@ -30,16 +30,23 @@ resource "hcloud_server" "server" {
   firewall_ids = [hcloud_firewall.cluster.id]
   ssh_keys     = [hcloud_ssh_key.server_public_key.name]
 
-  user_data = templatefile("${path.module}/scripts/cloud-init.yml", { timezone = var.timezone })
+  user_data = templatefile("${path.module}/scripts/cloud-init.yml", {
+    admin_public_key = tls_private_key.admin.public_key_openssh
+    admin_user       = var.admin_user
+    timezone         = var.timezone
+  })
 
   lifecycle {
     replace_triggered_by = [
       hcloud_volume.server_disk.size
     ]
-    ignore_changes = [ssh_keys]
+    ignore_changes = [network, ssh_keys]
   }
 
-  depends_on = [hcloud_network_subnet.network-subnet]
+  depends_on = [
+    hcloud_network_subnet.network-subnet,
+    hcloud_network.network
+  ]
 
   network {
     network_id = hcloud_network.network.id

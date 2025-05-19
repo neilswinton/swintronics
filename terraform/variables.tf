@@ -4,6 +4,17 @@ variable "name" {
   description = "The name of your server"
 }
 
+variable "domain" {
+  type        = string
+  description = "The DNS domain in which to register names"
+}
+
+variable "admin_user" {
+  default     = "admin"
+  type        = string
+  description = "The username for the non-root user who will administer the servers"
+}
+
 variable "region" {
   default     = "ash"
   type        = string
@@ -72,3 +83,4 @@ variable "infisical_api_url" {
   default     = "https://app.infisical.com"
   description = "The infisical api URL. This value will be exported to INFISICAL_API_URL if set"
 }
+
