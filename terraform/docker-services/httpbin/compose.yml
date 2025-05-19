@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  httpbin:
+    image: "kennethreitz/httpbin"
+    container_name: "httpbin"
+    restart: "no"
+    ports:
+      - 80:80
