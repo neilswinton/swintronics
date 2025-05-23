@@ -84,3 +84,12 @@ variable "infisical_api_url" {
   description = "The infisical api URL. This value will be exported to INFISICAL_API_URL if set"
 }
 
+variable "services" {
+  type        = list(string)
+  default     = []
+  description = "A list DNS names to create in the specified domain for accessing those services over the internet"
+  validation {
+    condition     = length(var.services) > 0 && alltrue([for svc in var.services : contains(["whoami", "httpbin"], svc)])
+    error_message = "Valid values for availability_zone_names are: tester."
+  }
+}

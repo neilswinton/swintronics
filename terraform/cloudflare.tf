@@ -3,8 +3,10 @@ data "cloudflare_ip_ranges" "whitelist" {
 
 }
 
-resource "cloudflare_dns_record" "www" {
-  name = "www"
+resource "cloudflare_dns_record" "service_dns" {
+
+  for_each = toset(var.services)
+  name     = each.key
 
   content = hcloud_server.server.ipv4_address
   proxied = true
