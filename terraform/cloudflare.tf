@@ -6,7 +6,7 @@ data "cloudflare_ip_ranges" "whitelist" {
 resource "cloudflare_dns_record" "service_dns" {
 
   for_each = toset(var.services)
-  name     = each.key
+  name     = "${each.key}.${var.domain}"
 
   content = hcloud_server.server.ipv4_address
   proxied = true
@@ -16,7 +16,7 @@ resource "cloudflare_dns_record" "service_dns" {
 }
 
 resource "cloudflare_dns_record" "ssh" {
-  name = "ssh"
+  name = "ssh.${var.domain}"
 
   content = hcloud_server.server.ipv4_address
   proxied = false
