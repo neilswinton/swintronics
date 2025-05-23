@@ -26,13 +26,17 @@ resource "hcloud_network_subnet" "cluster-subnet" {
 }
 
 resource "hcloud_server_network" "cluster-network" {
-  server_id = hcloud_server.server.id
+  count = var.cluster_size
+
+  server_id = hcloud_server.server[count.index].id
   subnet_id = hcloud_network_subnet.cluster-subnet.id
 }
 
 resource "hcloud_server" "server" {
 
-  name         = var.name
+  count = var.cluster_size
+
+  name         = "${var.name}-${count.index}"
   image        = var.image
   server_type  = lower(var.server_type)
   location     = var.region
@@ -46,9 +50,6 @@ resource "hcloud_server" "server" {
   })
 
   lifecycle {
-    replace_triggered_by = [
-      hcloud_volume.server_disk.size
-    ]
     ignore_changes = [ssh_keys]
   }
 
@@ -60,7 +61,8 @@ resource "hcloud_server" "server" {
 }
 
 resource "hcloud_volume" "server_disk" {
-  name              = "${var.name}-data"
+  count             = var.cluster_size
+  name              = "${var.name}-${count.index}-data"
   size              = var.volume_size
   location          = var.region
   automount         = false
@@ -69,8 +71,10 @@ resource "hcloud_volume" "server_disk" {
 }
 
 resource "hcloud_volume_attachment" "server" {
-  volume_id = hcloud_volume.server_disk.id
-  server_id = hcloud_server.server.id
+  count = var.cluster_size
+
+  volume_id = hcloud_volume.server_disk[count.index].id
+  server_id = hcloud_server.server[count.index].id
   automount = false
 }
 

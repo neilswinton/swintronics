@@ -9,6 +9,12 @@ variable "domain" {
   description = "The DNS domain in which to register names"
 }
 
+variable "cluster_size" {
+  type        = number
+  default     = 1
+  description = "Number of machines in this cluster"
+}
+
 variable "admin_user" {
   default     = "admin"
   type        = string

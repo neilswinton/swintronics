@@ -8,7 +8,7 @@ resource "cloudflare_dns_record" "service_dns" {
   for_each = toset(var.services)
   name     = "${each.key}.${var.domain}"
 
-  content = hcloud_server.server.ipv4_address
+  content = hcloud_server.server[0].ipv4_address
   proxied = true
   ttl     = 1
   type    = "A"
@@ -18,7 +18,7 @@ resource "cloudflare_dns_record" "service_dns" {
 resource "cloudflare_dns_record" "ssh" {
   name = "ssh.${var.domain}"
 
-  content = hcloud_server.server.ipv4_address
+  content = hcloud_server.server[0].ipv4_address
   proxied = false
   ttl     = 1
   type    = "A"

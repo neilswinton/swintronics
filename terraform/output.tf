@@ -1,9 +1,9 @@
-output "server_id" {
-  value = hcloud_server.server.id
+output "server_ids" {
+  value = hcloud_server.server[*].id
 }
 
 output "server_ip" {
-  value = hcloud_server.server.ipv4_address
+  value = hcloud_server.server[*].ipv4_address
 }
 
 
