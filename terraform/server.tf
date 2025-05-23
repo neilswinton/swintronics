@@ -1,24 +1,33 @@
 
 locals {
   deployr_version      = "0.2"
-  network_ip_range     = "10.10.1.0/16"
+  network_ip_range     = "10.10.0.0/16"
   network_subnet_range = "10.10.1.0/24"
-  server_ip            = "10.10.1.5"
+  server_ip            = "10.10.1.8"
 }
 
 
 
 
-resource "hcloud_network" "network" {
+resource "hcloud_network" "core-network" {
   name     = "network"
   ip_range = local.network_ip_range
 }
 
-resource "hcloud_network_subnet" "network-subnet" {
+resource "hcloud_network_subnet" "cluster-subnet" {
   type         = "cloud"
-  network_id   = hcloud_network.network.id
+  network_id   = hcloud_network.core-network.id
   network_zone = (var.region == "ash") ? "us-east" : null
   ip_range     = local.network_subnet_range
+
+  depends_on = [
+    hcloud_network.core-network,
+  ]
+}
+
+resource "hcloud_server_network" "cluster-network" {
+  server_id = hcloud_server.server.id
+  subnet_id = hcloud_network_subnet.cluster-subnet.id
 }
 
 resource "hcloud_server" "server" {
@@ -40,18 +49,9 @@ resource "hcloud_server" "server" {
     replace_triggered_by = [
       hcloud_volume.server_disk.size
     ]
-    ignore_changes = [network, ssh_keys]
+    ignore_changes = [ssh_keys]
   }
 
-  depends_on = [
-    hcloud_network_subnet.network-subnet,
-    hcloud_network.network
-  ]
-
-  network {
-    network_id = hcloud_network.network.id
-    ip         = local.server_ip
-  }
 
   public_net {
     ipv6_enabled = false
