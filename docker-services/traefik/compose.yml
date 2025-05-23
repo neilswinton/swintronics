@@ -1,0 +1,30 @@
+services:
+  traefik:
+    image: "traefik:v3.4"
+    restart: unless-stopped
+    container_name: "traefik"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080" # dashboard
+    environment:
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+    volumes:
+      - ./config:/etc/traefik
+      - traefik-ssl-certs:/ssl-certs
+      - /etc/localtime:/etc/localtime
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  whoami:
+    image: "traefik/whoami"
+    container_name: "simple-service"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.swintronics.com`)"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls.certresolver=myresolver"
+      #- "traefik.http.routers.traefik.service=api@internal"
+
+volumes:
+  traefik-ssl-certs:
+
