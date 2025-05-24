@@ -5,5 +5,8 @@ services:
     image: "kennethreitz/httpbin"
     container_name: "httpbin"
     restart: "no"
-    ports:
-      - 80:80
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.httpbin.rule=Host(`httpbin.swintronics.com`)"
+      - "traefik.http.routers.httpbin.entrypoints=websecure"
+      - "traefik.http.routers.httpbin.tls.certresolver=myresolver"
