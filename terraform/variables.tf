@@ -57,12 +57,6 @@ variable "timezone" {
 }
 
 
-variable "public_access" {
-  type        = bool
-  default     = false
-  description = "If false a firewall that block all public access will be attached to the server."
-}
-
 variable "infisical_client_id" {
   type        = string
   sensitive   = true
