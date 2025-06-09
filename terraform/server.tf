@@ -1,12 +1,11 @@
 
 locals {
-  server_ip     = "10.10.1.8"
-  userdata_path = "${path.module}/scripts/runcmd.sh"
+  #userdata_path = "${path.module}/scripts/runcmd.sh"
   user_data = templatefile("${path.module}/scripts/cloud-init.yml", {
     admin_public_key = tls_private_key.admin.public_key_openssh
     admin_user       = var.admin_user
     timezone         = var.timezone
-    custom_userdata = fileexists(local.userdata_path) ? split("\n", templatefile(local.userdata_path, {
+    custom_userdata = fileexists(var.userdata_path) ? split("\n", templatefile(var.userdata_path, {
       username = var.admin_user
       }
     )) : []

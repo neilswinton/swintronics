@@ -99,3 +99,9 @@ variable "services" {
     error_message = "Valid values for availability_zone_names are: tester."
   }
 }
+
+variable "userdata_path" {
+  type        = string
+  default     = ""
+  description = "Path to bash script to run during server initialization"
+}
