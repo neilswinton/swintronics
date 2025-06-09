@@ -1,35 +1,16 @@
 
 locals {
-  deployr_version      = "0.2"
-  network_ip_range     = "10.10.0.0/16"
-  network_subnet_range = "10.10.1.0/24"
-  server_ip            = "10.10.1.8"
-}
-
-
-
-
-resource "hcloud_network" "core-network" {
-  name     = "network"
-  ip_range = local.network_ip_range
-}
-
-resource "hcloud_network_subnet" "cluster-subnet" {
-  type         = "cloud"
-  network_id   = hcloud_network.core-network.id
-  network_zone = (var.region == "ash") ? "us-east" : null
-  ip_range     = local.network_subnet_range
-
-  depends_on = [
-    hcloud_network.core-network,
-  ]
-}
-
-resource "hcloud_server_network" "cluster-network" {
-  count = var.cluster_size
-
-  server_id = hcloud_server.server[count.index].id
-  subnet_id = hcloud_network_subnet.cluster-subnet.id
+  server_ip     = "10.10.1.8"
+  userdata_path = "${path.module}/scripts/runcmd.sh"
+  user_data = templatefile("${path.module}/scripts/cloud-init.yml", {
+    admin_public_key = tls_private_key.admin.public_key_openssh
+    admin_user       = var.admin_user
+    timezone         = var.timezone
+    custom_userdata = fileexists(local.userdata_path) ? split("\n", templatefile(local.userdata_path, {
+      username = var.admin_user
+      }
+    )) : []
+  })
 }
 
 resource "hcloud_server" "server" {
@@ -43,11 +24,7 @@ resource "hcloud_server" "server" {
   firewall_ids = [hcloud_firewall.cluster.id]
   ssh_keys     = [hcloud_ssh_key.server_public_key.name]
 
-  user_data = templatefile("${path.module}/scripts/cloud-init.yml", {
-    admin_public_key = tls_private_key.admin.public_key_openssh
-    admin_user       = var.admin_user
-    timezone         = var.timezone
-  })
+  user_data = local.user_data
 
   lifecycle {
     ignore_changes = [ssh_keys]
@@ -55,7 +32,7 @@ resource "hcloud_server" "server" {
 
 
   public_net {
-    ipv6_enabled = false
+    ipv6_enabled = true
     ipv4_enabled = true
   }
 }
@@ -79,3 +56,8 @@ resource "hcloud_volume_attachment" "server" {
 }
 
 
+resource "local_file" "cloudinit" {
+  content         = local.user_data
+  filename        = "${path.module}/artifacts/cloud-init.yml"
+  file_permission = "0644"
+}
