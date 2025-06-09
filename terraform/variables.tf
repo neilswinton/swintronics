@@ -13,6 +13,10 @@ variable "cluster_size" {
   type        = number
   default     = 1
   description = "Number of machines in this cluster"
+  validation {
+    condition     = var.cluster_size > 0 && var.cluster_size <= 8
+    error_message = "Cluster must be more than one machine.  Eight seems like a lot"
+  }
 }
 
 variable "admin_user" {
@@ -34,15 +38,17 @@ variable "image" {
 }
 
 variable "server_type" {
-  default     = "CPX11"
   type        = string
   description = "The server type this server should be created with."
+  validation {
+    condition     = contains(local.hetzner_server_types, var.server_type)
+    error_message = "Valid values for availability_zone_names are: ${join(", ", local.hetzner_server_types)}."
+  }
 }
 
 variable "volume_size" {
-  default     = "15"
   type        = number
-  description = "The size of the volume which will be attached to the server"
+  description = "The size in GiB of the volume which will be attached to the server"
 }
 
 variable "volume_delete_protection" {
@@ -89,7 +95,7 @@ variable "services" {
   default     = []
   description = "A list DNS names to create in the specified domain for accessing those services over the internet"
   validation {
-    condition     = length(var.services) > 0 && alltrue([for svc in var.services : contains(["whoami", "httpbin"], svc)])
+    condition     = length(var.services) > 0 && alltrue([for svc in var.services : contains(["whoami", "httpbin", "immich"], svc)])
     error_message = "Valid values for availability_zone_names are: tester."
   }
 }
