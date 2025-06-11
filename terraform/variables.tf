@@ -9,16 +9,6 @@ variable "domain" {
   description = "The DNS domain in which to register names"
 }
 
-variable "cluster_size" {
-  type        = number
-  default     = 1
-  description = "Number of machines in this cluster"
-  validation {
-    condition     = var.cluster_size > 0 && var.cluster_size <= 8
-    error_message = "Cluster must be more than one machine.  Eight seems like a lot"
-  }
-}
-
 variable "admin_user" {
   default     = "admin"
   type        = string
@@ -37,12 +27,12 @@ variable "image" {
   description = "The image the server is created from."
 }
 
-variable "server_type" {
-  type        = string
-  description = "The server type this server should be created with."
+variable "server_types" {
+  type        = list(string)
+  description = "A list of Hetzner server types to deploy."
   validation {
-    condition     = contains(local.hetzner_server_types, var.server_type)
-    error_message = "Valid values for availability_zone_names are: ${join(", ", local.hetzner_server_types)}."
+    condition     = length(var.server_types) > 0 && length(var.server_types) <= 8 && alltrue([for server_type in var.server_types : contains(local.hetzner_server_types, server_type)])
+    error_message = "List must be 1-8 entries long.  Each entry must be one of:  ${join(", ", local.hetzner_server_types)}."
   }
 }
 
@@ -95,8 +85,8 @@ variable "services" {
   default     = []
   description = "A list DNS names to create in the specified domain for accessing those services over the internet"
   validation {
-    condition     = length(var.services) > 0 && alltrue([for svc in var.services : contains(["whoami", "httpbin", "immich"], svc)])
-    error_message = "Valid values for availability_zone_names are: tester."
+    condition     = length(var.services) > 0 && alltrue([for svc in var.services : contains(local.service_names, svc)])
+    error_message = "Valid values for services are: ${join(", ", local.service_names)}."
   }
 }
 

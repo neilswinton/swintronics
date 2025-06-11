@@ -22,7 +22,7 @@ resource "hcloud_network_subnet" "cluster-subnet" {
 }
 
 resource "hcloud_server_network" "server-subnet-binding" {
-  count = var.cluster_size
+  count = length(var.server_types)
 
   server_id = hcloud_server.server[count.index].id
   subnet_id = hcloud_network_subnet.cluster-subnet.id

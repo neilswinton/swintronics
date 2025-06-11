@@ -14,11 +14,10 @@ locals {
 
 resource "hcloud_server" "server" {
 
-  count = var.cluster_size
-
+  count        = length(var.server_types)
   name         = "${var.name}-${count.index}"
   image        = var.image
-  server_type  = lower(var.server_type)
+  server_type  = lower(var.server_types[count.index])
   location     = var.region
   firewall_ids = [hcloud_firewall.cluster.id]
   ssh_keys     = [hcloud_ssh_key.server_public_key.name]
@@ -31,13 +30,13 @@ resource "hcloud_server" "server" {
 
 
   public_net {
-    ipv6_enabled = true
+    ipv6_enabled = false
     ipv4_enabled = true
   }
 }
 
 resource "hcloud_volume" "server_disk" {
-  count             = var.cluster_size
+  count             = length(var.server_types)
   name              = "${var.name}-${count.index}-data"
   size              = var.volume_size
   location          = var.region
@@ -47,7 +46,7 @@ resource "hcloud_volume" "server_disk" {
 }
 
 resource "hcloud_volume_attachment" "server" {
-  count = var.cluster_size
+  count = length(var.server_types)
 
   volume_id = hcloud_volume.server_disk[count.index].id
   server_id = hcloud_server.server[count.index].id
