@@ -35,8 +35,7 @@ groups:
 
 users:
   - name: "${admin_user}"
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    gcos: "Admin User"
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
     groups: [sudo, adm, docker]
     shell: /bin/bash
     ssh-authorized-keys:
