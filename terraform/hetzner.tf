@@ -18,18 +18,22 @@ module "subnet_addrs" {
   base_cidr_block = "10.0.0.0/8"
   networks = [
     {
+      # 10.0.0.0/16
       name     = "ap-southeast"
       new_bits = 8
     },
     {
+      # 10.1.0.0/16
       name     = "eu-central"
       new_bits = 8
     },
     {
+      # 10.2.0.0/16
       name     = "us-east"
       new_bits = 8
     },
     {
+      # 10.3.0.0/16
       name     = "us-west"
       new_bits = 8
     },
