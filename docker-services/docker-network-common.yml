@@ -1,0 +1,4 @@
+networks:
+  ingress:
+    external: true
+  default:

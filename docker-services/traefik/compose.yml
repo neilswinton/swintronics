@@ -1,8 +1,12 @@
+include:
+  - "../docker-network-common.yml"
 services:
   traefik:
     image: "traefik:v3.4"
     restart: unless-stopped
     container_name: "traefik"
+    networks:
+      - ingress
     ports:
       - "80:80"
       - "443:443"
@@ -18,12 +22,15 @@ services:
   whoami:
     image: "traefik/whoami"
     container_name: "simple-service"
+    networks:
+      - ingress
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.whoami.rule=Host(`whoami.swintronics.com`)"
       - "traefik.http.routers.whoami.entrypoints=websecure"
       - "traefik.http.routers.whoami.tls.certresolver=myresolver"
       #- "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.docker.network=ingress
 
 volumes:
   traefik-ssl-certs:
