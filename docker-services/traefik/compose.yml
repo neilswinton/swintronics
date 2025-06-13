@@ -1,37 +1,49 @@
 include:
   - "../docker-network-common.yml"
+
 services:
   traefik:
-    image: "traefik:v3.4"
-    restart: unless-stopped
-    container_name: "traefik"
+    image: traefik:v3.0
+    container_name: traefik
+    restart: always
     networks:
-      - ingress
+      - proxy
     ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080" # dashboard
-    environment:
-      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+      - 80:80
+      - 443:443
     volumes:
-      - ./config:/etc/traefik
-      - traefik-ssl-certs:/ssl-certs
-      - /etc/localtime:/etc/localtime
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data/traefik.yml:/traefik.yml:ro
+      - ./data/configs:/configs:ro
+      - ./data/acme.json:/acme.json:rw
+      - ./data/logs:/logs:rw
+    environment:
+      - TZ=America/New_York
+      - CF_DNS_API_TOKEN=${CFAPI}
+    read_only: true
+    security_opt:
+      - no-new-privileges=true
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik-https.entrypoints=https
+      - traefik.http.routers.traefik-https.rule=Host(`myproxy.swintronics.com`)
+      - traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIKADMIN}
+      - traefik.http.routers.traefik-https.middlewares=traefik-auth
+      - traefik.http.routers.traefik-https.service=api@internal
+      - traefik.http.routers.traefik-https.tls.certresolver=letsencrypt
+      - traefik.http.routers.traefik-https.tls.domains[0].main=swintronics.com
+      - traefik.http.routers.traefik-https.tls.domains[0].sans=*.swintronics.com
 
   whoami:
     image: "traefik/whoami"
     container_name: "simple-service"
     networks:
-      - ingress
+      - proxy
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.whoami.rule=Host(`whoami.swintronics.com`)"
       - "traefik.http.routers.whoami.entrypoints=websecure"
       - "traefik.http.routers.whoami.tls.certresolver=myresolver"
       #- "traefik.http.routers.traefik.service=api@internal"
-      - "traefik.docker.network=ingress
-
-volumes:
-  traefik-ssl-certs:
-
+      - "traefik.docker.network=proxy
+      

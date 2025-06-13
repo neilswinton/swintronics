@@ -1,4 +1,4 @@
 networks:
-  ingress:
+  proxy:
     external: true
   default:

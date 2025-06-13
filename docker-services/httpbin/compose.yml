@@ -7,11 +7,11 @@ services:
     container_name: "httpbin"
     restart: "no"
     networks:
-      - ingress
+      - proxy
 
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.httpbin.rule=Host(`httpbin.swintronics.com`)"
       - "traefik.http.routers.httpbin.entrypoints=websecure"
       - "traefik.http.routers.httpbin.tls.certresolver=myresolver"
-      - "traefik.docker.network=ingress"
+      - "traefik.docker.network=proxy"
