@@ -13,6 +13,7 @@ timezone: ${timezone}
 # TODO: Unattended security upgrades: https://linuxgenie.net/set-up-automatic-updates-ubuntu-24-04/
 packages:
   # - apt-config-auto-update  # https://linuxcapable.com/how-to-configure-unattended-upgrades-on-ubuntu-linux/
+  - apache2-utils
   - apt-transport-https
   - ca-certificates
   - curl
