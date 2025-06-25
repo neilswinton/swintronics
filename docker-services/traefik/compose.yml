@@ -3,14 +3,14 @@ include:
 
 services:
   traefik:
-    image: traefik:v3.41
+    image: traefik:v3.4.1
     container_name: traefik
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     environment:
       - TZ=America/New_York
-      - CF_DNS_API_TOKEN=${CFAPI}
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
       - CF_API_EMAIL=${CF_API_EMAIL}
     networks:
       - proxy
@@ -28,16 +28,15 @@ services:
     read_only: true
 
 
-  services:
   whoami:
     container_name: simple-service
     image: traefik/whoami
     labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.whoami.rule=Host(`test.example.com`)"
+        - "traefik.http.routers.whoami.rule=Host(`whoami.swintronics.com`)"
         - "traefik.http.routers.whoami.entrypoints=websecure"
         - "traefik.http.routers.whoami.tls=true"
-        - "traefik.http.routers.whoami.tls.certresolver=letencrypt"
+        - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
         - "traefik.http.services.whoami.loadbalancer.server.port=80"
     networks:
         - proxy
