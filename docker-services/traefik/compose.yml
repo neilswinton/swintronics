@@ -3,14 +3,16 @@ include:
 
 services:
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.4.1
     container_name: traefik
     restart: always
     networks:
       - proxy
     ports:
       - 80:80
-      - 443:443
+      - 443:443      
+      # The Web UI (enabled by --api.insecure=true)
+      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./data/traefik.yml:/traefik.yml:ro
@@ -19,16 +21,16 @@ services:
       - ./data/logs:/logs:rw
     environment:
       - TZ=America/New_York
-      - CF_DNS_API_TOKEN=${CFAPI}
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
     read_only: true
     security_opt:
-      - no-new-privileges=true
+      - no-new-privileges:true
     labels:
       - traefik.enable=true
       - traefik.http.routers.traefik-https.entrypoints=https
       - traefik.http.routers.traefik-https.rule=Host(`myproxy.swintronics.com`)
       - traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIKADMIN}
-      - traefik.http.routers.traefik-https.middlewares=traefik-auth
+      # - traefik.http.routers.traefik-https.middlewares=traefik-auth
       - traefik.http.routers.traefik-https.service=api@internal
       - traefik.http.routers.traefik-https.tls.certresolver=letsencrypt
       - traefik.http.routers.traefik-https.tls.domains[0].main=swintronics.com
@@ -36,14 +38,14 @@ services:
 
   whoami:
     image: "traefik/whoami"
-    container_name: "simple-service"
+    container_name: "whoami"
     networks:
       - proxy
+    restart: unless-stopped
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.whoami.rule=Host(`whoami.swintronics.com`)"
-      - "traefik.http.routers.whoami.entrypoints=websecure"
-      - "traefik.http.routers.whoami.tls.certresolver=myresolver"
-      #- "traefik.http.routers.traefik.service=api@internal"
-      - "traefik.docker.network=proxy
-      
+     - traefik.enable=true
+     - traefik.http.routers.whoami-https.rule=Host(`whoami.swintronics.com`)
+     - traefik.http.routers.whoami-https.entrypoints=https
+     - traefik.http.routers.whoami-https.service=whoami
+     - traefik.http.services.whoami.loadbalancer.server.scheme=https
+     - traefik.http.services.whoami.loadbalancer.server.port=8443

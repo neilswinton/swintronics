@@ -12,6 +12,6 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.httpbin.rule=Host(`httpbin.swintronics.com`)"
-      - "traefik.http.routers.httpbin.entrypoints=websecure"
-      - "traefik.http.routers.httpbin.tls.certresolver=myresolver"
+      - "traefik.http.routers.httpbin.entrypoints=https"
+      - "traefik.http.routers.httpbin.tls.certresolver=letsencrypt"
       - "traefik.docker.network=proxy"

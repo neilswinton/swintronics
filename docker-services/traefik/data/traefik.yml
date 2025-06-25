@@ -1,6 +1,25 @@
 api:
   dashboard: true
+  insecure: true
+  debug: true
 
+# entryPoints:
+#   web:
+#     address: ":80"                            # Create the HTTP entrypoint on port 80
+#     http:
+#       redirections:                           # HTTPS redirection (80 to 443)
+#         entryPoint:
+#           to: "https"                         # The target element
+#           scheme: "https"                     # The redirection target scheme
+#   websecure:
+#     address: ":443"                           # Create the HTTPS entrypoint on port 443
+#     http:
+#       tls:
+#         certResolver: letsencrypt cfargotunnel.com
+#         domains:
+#           - main: cactus-cantina.com
+#             sans: 
+#               - "*.cactus-cantina.com"
 entryPoints:
   http:
     address: ":80"
@@ -76,6 +95,8 @@ certificatesResolvers:
         entryPoint: http
   letsencrypt:
     acme:
+      # Uncomment caserver to use non-rate limited staging server 
+      caserver: https://acme-staging-v02.api.letsencrypt.org/directory
       email: cert@swintronics.com
       storage: acme.json
       dnsChallenge:
@@ -109,5 +130,5 @@ accessLog:
 
 log:
   filePath: "/logs/traefik.log"
-  level: INFO
+  level: DEBUG
 
