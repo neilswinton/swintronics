@@ -38,3 +38,5 @@ services:
         - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
     networks:
         - proxy
+    profiles: ["debug"]
+
