@@ -9,8 +9,11 @@ package_upgrade: true
 ssh_pwauth: false
 
 timezone: ${timezone}
+
+# TODO: Unattended security upgrades: https://linuxgenie.net/set-up-automatic-updates-ubuntu-24-04/
 packages:
-  - apt-config-auto-update  # https://linuxcapable.com/how-to-configure-unattended-upgrades-on-ubuntu-linux/
+  # - apt-config-auto-update  # https://linuxcapable.com/how-to-configure-unattended-upgrades-on-ubuntu-linux/
+  - apache2-utils
   - apt-transport-https
   - ca-certificates
   - curl
@@ -19,7 +22,7 @@ packages:
   - gnupg-agent
   - jq
   - software-properties-common
-  - unattended-upgrades
+  # - unattended-upgrades
 
 # Enable ipv4 forwarding, required on CIS hardened machines
 write_files:
@@ -33,8 +36,7 @@ groups:
 
 users:
   - name: "${admin_user}"
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    gcos: "Admin User"
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
     groups: [sudo, adm, docker]
     shell: /bin/bash
     ssh-authorized-keys:
@@ -49,6 +51,13 @@ runcmd:
   - apt-get install -y docker-ce docker-ce-cli containerd.io
   - systemctl start docker
   - systemctl enable docker
-  - echo "Configuring unattended upgrades"
-  - dpkg-reconfigure unattended-upgrades
+  # - echo "Configuring unattended upgrades"
+  # - dpkg-reconfigure unattended-upgrades
 
+ # User-provided custom runcmd commands
+  # Append user-provided custom runcmd commands
+%{ if custom_userdata != "" ~}
+%{ for cmd in custom_userdata ~}
+  - ${cmd}
+%{ endfor ~}
+%{ endif ~}

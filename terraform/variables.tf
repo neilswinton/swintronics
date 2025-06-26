@@ -27,16 +27,18 @@ variable "image" {
   description = "The image the server is created from."
 }
 
-variable "server_type" {
-  default     = "CPX11"
-  type        = string
-  description = "The server type this server should be created with."
+variable "server_types" {
+  type        = list(string)
+  description = "A list of Hetzner server types to deploy."
+  validation {
+    condition     = length(var.server_types) > 0 && length(var.server_types) <= 8 && alltrue([for server_type in var.server_types : contains(local.hetzner_server_types, server_type)])
+    error_message = "List must be 1-8 entries long.  Each entry must be one of:  ${join(", ", local.hetzner_server_types)}."
+  }
 }
 
 variable "volume_size" {
-  default     = "15"
   type        = number
-  description = "The size of the volume which will be attached to the server"
+  description = "The size in GiB of the volume which will be attached to the server"
 }
 
 variable "volume_delete_protection" {
@@ -50,12 +52,6 @@ variable "timezone" {
   description = "The timezone which the server will be configured."
 }
 
-
-variable "public_access" {
-  type        = bool
-  default     = false
-  description = "If false a firewall that block all public access will be attached to the server."
-}
 
 variable "infisical_client_id" {
   type        = string
@@ -84,3 +80,18 @@ variable "infisical_api_url" {
   description = "The infisical api URL. This value will be exported to INFISICAL_API_URL if set"
 }
 
+variable "services" {
+  type        = list(string)
+  default     = []
+  description = "A list DNS names to create in the specified domain for accessing those services over the internet"
+  validation {
+    condition     = length(var.services) > 0 && alltrue([for svc in var.services : contains(local.service_names, svc)])
+    error_message = "Valid values for services are: ${join(", ", local.service_names)}."
+  }
+}
+
+variable "userdata_path" {
+  type        = string
+  default     = ""
+  description = "Path to bash script to run during server initialization"
+}
