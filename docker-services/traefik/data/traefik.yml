@@ -61,8 +61,8 @@ entryPoints:
         - 2405:8100::/32
         - 2a06:98c0::/29
         - 2c0f:f248::/32
-# serversTransport:
-# insecureSkipVerify: true  # No cert verification between traefik and containers
+serversTransport:
+  insecureSkipVerify: true  # No cert verification between traefik and containers
 
 providers:
   docker:
