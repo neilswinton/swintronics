@@ -1,4 +1,0 @@
-networks:
-  proxy:
-    external: true
-  default:
