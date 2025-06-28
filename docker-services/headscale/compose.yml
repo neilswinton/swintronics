@@ -1,0 +1,38 @@
+
+
+  headscale:
+    image: headscale/headscale:v0.26
+    container_name: headscale
+    restart: unless-stopped
+    depends_on:
+      - traefik
+    volumes:
+      - ./headscale/config:/etc/headscale
+      - ./headscale/data:/var/lib/headscale
+    command: serve
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.headscale.rule=Host(`headscale.example.com`)"
+      - "traefik.http.routers.headscale.entrypoints=websecure"
+      - "traefik.http.routers.headscale.tls.certresolver=myresolver"
+      - "traefik.http.services.headscale.loadbalancer.server.port=8080"
+    
+services:
+  headscale:
+    image: docker.io/headscale/headscale:v0.26
+    restart: unless-stopped
+    container_name: headscale
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./headscale/config:/etc/headscale
+      - ./headscale/lib:/var/lib/headscale
+      - ./headscale/run:/var/run/headscale
+    command: serve
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.headscale.rule=Host(`headscale.swintronics.com`)"
+      - "traefik.http.routers.headscale.entrypoints=websecure"
+      - "traefik.http.routers.headscale.tls.certresolver=letsencrypt"
+      - "traefik.http.services.headscale.loadbalancer.server.port=8080"
