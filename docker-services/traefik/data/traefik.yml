@@ -102,4 +102,5 @@ log:
   filePath: "/logs/traefik.log"
   level: DEBUG
 
-
+ping:
+  entrypoint: "websecure"

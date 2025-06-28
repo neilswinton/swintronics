@@ -1,0 +1,21 @@
+# Top level compose to start everything and define a network
+#
+# Services use profiles.  Core services don't.  Other's use:
+# profiles: [ "debug", "tailscale"]
+
+
+include:
+  - ./traefik/compose.yml
+  - ./httpbin/compose.yml
+# networks:
+#   private_network:
+#     name: private_network
+#     driver: bridge
+#     ipam:
+#       config:
+#         - subnet: 172.29.1.0/24
+
+networks:
+  proxy:
+    external: true
+  default:
