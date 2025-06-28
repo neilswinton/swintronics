@@ -9,32 +9,31 @@ terraform {
       source  = "hetznercloud/hcloud"
       version = "~> 1.45"
     }
+    infisical = {
+      source  = "infisical/infisical"
+      version = "~> 0.15"
+    }
   }
 }
 
-# Set the variable value in *.tfvars file
-# or using the -var="hcloud_token=..." CLI option
-variable "hcloud_token" {
-  sensitive = true
+provider "infisical" {
+  host = "https://app.infisical.com" # Optional for cloud, required for self-hosted
+  auth = {
+    universal = { # or use oidc authentication method by providing an identity_id
+      client_id     = var.infisical_client_id
+      client_secret = var.infisical_client_secret
+    }
+  }
+}
+ephemeral "infisical_secret" "hetzner_token" {
+  name         = "HETZNER_TOKEN"
+  env_slug     = "dev"
+  workspace_id = var.infisical_project_id
+  folder_path  = "/terraform"
 }
 
 # Configure the Hetzner Cloud Provider
 provider "hcloud" {
-  token = var.hcloud_token
+  token = ephemeral.infisical_secret.hetzner_token.value
 }
 
-
-provider "cloudflare" {
-  api_token = var.cloudflare_api_token
-}
-
-variable "cloudflare_api_token" {
-  type = string
-}
-variable "cloudflare_zone_id" {
-  type = string
-}
-
-variable "cloudflare_account_id" {
-  type = string
-}
