@@ -4,6 +4,15 @@ variable "name" {
   description = "The name of your server"
 }
 
+variable "cloudflare_zone_id" {
+  type        = string
+  description = "Cloudflare zone id for domain's DNS zone"
+}
+variable "cloudflare_account_id" {
+  type        = string
+  description = "Cloudflare account id that holds the domain's DNS zone"
+}
+
 variable "domain" {
   type        = string
   description = "The DNS domain in which to register names"
