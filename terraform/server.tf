@@ -1,16 +1,13 @@
 
 locals {
-  #userdata_path = "${path.module}/scripts/runcmd.sh"
   user_data = templatefile("${path.module}/scripts/cloud-init.yml", {
     admin_public_key = tls_private_key.admin.public_key_openssh
-    admin_user       = var.admin_user
+    admin_user       = nonsensitive(data.infisical_secrets.root_secrets.secrets["username"].value)
     timezone         = var.timezone
-    custom_userdata = fileexists(var.userdata_path) ? split("\n", templatefile(var.userdata_path, {
-      username = var.admin_user
-      }
-    )) : []
+    custom_userdata  = split("\n", data.infisical_secrets.terraform_secrets.secrets["RUNCMD"].value)
   })
 }
+
 
 resource "hcloud_server" "server" {
 

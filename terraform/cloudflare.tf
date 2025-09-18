@@ -1,10 +1,3 @@
-ephemeral "infisical_secret" "cloudflare_api_token" {
-  name         = "CLOUDFLARE_API_TOKEN"
-  env_slug     = "dev"
-  workspace_id = var.infisical_project_id
-  folder_path  = "/terraform"
-}
-
 
 provider "cloudflare" {
   api_token = ephemeral.infisical_secret.cloudflare_api_token.value
@@ -17,13 +10,13 @@ data "cloudflare_ip_ranges" "whitelist" {
 }
 
 resource "cloudflare_dns_record" "ssh" {
-  name = "ssh.${var.domain}"
+  name = "ssh"
 
   content = hcloud_server.server[0].ipv4_address
   proxied = false
   ttl     = 1
   type    = "A"
-  zone_id = var.cloudflare_zone_id
+  zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
 }
 
 resource "cloudflare_dns_record" "root" {
@@ -33,7 +26,7 @@ resource "cloudflare_dns_record" "root" {
   proxied = false
   ttl     = 1
   type    = "A"
-  zone_id = var.cloudflare_zone_id
+  zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
 }
 
 resource "cloudflare_dns_record" "webservices" {
@@ -43,5 +36,5 @@ resource "cloudflare_dns_record" "webservices" {
   proxied = false
   ttl     = 1
   type    = "A"
-  zone_id = var.cloudflare_zone_id
+  zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
 }

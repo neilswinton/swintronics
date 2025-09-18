@@ -25,12 +25,6 @@ provider "infisical" {
     }
   }
 }
-ephemeral "infisical_secret" "hetzner_token" {
-  name         = "HETZNER_TOKEN"
-  env_slug     = "dev"
-  workspace_id = var.infisical_project_id
-  folder_path  = "/terraform"
-}
 
 # Configure the Hetzner Cloud Provider
 provider "hcloud" {
