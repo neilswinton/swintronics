@@ -18,6 +18,11 @@ resource "cloudflare_dns_record" "ssh" {
   type    = "A"
   zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
   comment = "Deployed ${timestamp()} ssh for ${var.name}"
+  lifecycle {
+    ignore_changes = [
+      comment
+    ]
+  }
 }
 
 resource "cloudflare_dns_record" "root" {
@@ -29,6 +34,11 @@ resource "cloudflare_dns_record" "root" {
   type    = "A"
   zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
   comment = "Deployed ${timestamp()} root for ${var.name}"
+  lifecycle {
+    ignore_changes = [
+      comment
+    ]
+  }
 }
 
 resource "cloudflare_dns_record" "webservices" {
@@ -40,4 +50,10 @@ resource "cloudflare_dns_record" "webservices" {
   type    = "A"
   zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
   comment = "Deployed ${timestamp()} webservices wildcard for ${var.name}"
+  lifecycle {
+    ignore_changes = [
+      comment
+    ]
+  }
+
 }

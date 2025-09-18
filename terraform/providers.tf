@@ -7,11 +7,15 @@ terraform {
     }
     hcloud = {
       source  = "hetznercloud/hcloud"
-      version = "~> 1.45"
+      version = "~> 1.52"
     }
     infisical = {
       source  = "infisical/infisical"
       version = "~> 0.15"
+    }
+    tailscale = {
+      source  = "tailscale/tailscale"
+      version = "~> 0.21"
     }
   }
 }
@@ -31,3 +35,11 @@ provider "hcloud" {
   token = ephemeral.infisical_secret.hetzner_token.value
 }
 
+# Provider for tailscale using provisioning client id
+
+provider "tailscale" {
+  #oauth_client_id     = ephemeral.infisical_secret.tailscale_provider_oauth_client.value
+  # oauth_client_secret = ephemeral.infisical_secret.tailscale_provider_oauth_client_secret.value
+  api_key = ephemeral.infisical_secret.tailscale_api_key.value
+  tailnet = nonsensitive(data.infisical_secrets.root_secrets.secrets["TS_TAILNET_NAME"].value)
+}
