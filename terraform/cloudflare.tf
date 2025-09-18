@@ -17,6 +17,7 @@ resource "cloudflare_dns_record" "ssh" {
   ttl     = 1
   type    = "A"
   zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
+  comment = "Deployed ${timestamp()} ssh for ${var.name}"
 }
 
 resource "cloudflare_dns_record" "root" {
@@ -27,6 +28,7 @@ resource "cloudflare_dns_record" "root" {
   ttl     = 1
   type    = "A"
   zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
+  comment = "Deployed ${timestamp()} root for ${var.name}"
 }
 
 resource "cloudflare_dns_record" "webservices" {
@@ -37,4 +39,5 @@ resource "cloudflare_dns_record" "webservices" {
   ttl     = 1
   type    = "A"
   zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
+  comment = "Deployed ${timestamp()} webservices wildcard for ${var.name}"
 }
