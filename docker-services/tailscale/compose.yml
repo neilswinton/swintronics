@@ -1,0 +1,27 @@
+# compose-oauth.yaml
+---
+version: "3.7"
+services:
+  tailscale:
+    image: tailscale/tailscale:stable
+    hostname: swintronics
+    environment:
+      - TS_AUTH_KEY=${TS_OAUTH_CLIENT_SECRET}
+      - TS_EXTRA_ARGS=--advertise-tags=tag:container
+      - TS_STATE_DIR=/var/lib/tailscale
+    volumes:
+      - tailscale-data:/var/lib/tailscale
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - net_admin
+      - sys_module
+    restart: unless-stopped
+  swintronics:
+      image: nginx
+      network_mode: service:tailscale
+      depends_on: 
+        - tailscale
+volumes:
+  tailscale-data:
+    driver: local

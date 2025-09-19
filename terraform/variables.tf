@@ -4,26 +4,6 @@ variable "name" {
   description = "The name of your server"
 }
 
-variable "cloudflare_zone_id" {
-  type        = string
-  description = "Cloudflare zone id for domain's DNS zone"
-}
-variable "cloudflare_account_id" {
-  type        = string
-  description = "Cloudflare account id that holds the domain's DNS zone"
-}
-
-variable "domain" {
-  type        = string
-  description = "The DNS domain in which to register names"
-}
-
-variable "admin_user" {
-  default     = "admin"
-  type        = string
-  description = "The username for the non-root user who will administer the servers"
-}
-
 variable "region" {
   default     = "ash"
   type        = string
@@ -87,20 +67,4 @@ variable "infisical_api_url" {
   type        = string
   default     = "https://app.infisical.com"
   description = "The infisical api URL. This value will be exported to INFISICAL_API_URL if set"
-}
-
-variable "services" {
-  type        = list(string)
-  default     = []
-  description = "A list DNS names to create in the specified domain for accessing those services over the internet"
-  validation {
-    condition     = length(var.services) > 0 && alltrue([for svc in var.services : contains(local.service_names, svc)])
-    error_message = "Valid values for services are: ${join(", ", local.service_names)}."
-  }
-}
-
-variable "userdata_path" {
-  type        = string
-  default     = ""
-  description = "Path to bash script to run during server initialization"
 }

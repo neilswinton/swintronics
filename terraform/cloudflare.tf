@@ -1,10 +1,3 @@
-ephemeral "infisical_secret" "cloudflare_api_token" {
-  name         = "CLOUDFLARE_API_TOKEN"
-  env_slug     = "dev"
-  workspace_id = var.infisical_project_id
-  folder_path  = "/terraform"
-}
-
 
 provider "cloudflare" {
   api_token = ephemeral.infisical_secret.cloudflare_api_token.value
@@ -16,27 +9,20 @@ data "cloudflare_ip_ranges" "whitelist" {
 
 }
 
-resource "cloudflare_dns_record" "service_dns" {
-
-  for_each = toset(var.services)
-  name     = "${each.key}.${var.domain}"
-
-  content = var.domain
-  proxied = true
-  ttl     = 1
-  type    = "CNAME"
-  zone_id = var.cloudflare_zone_id
-
-}
-
 resource "cloudflare_dns_record" "ssh" {
-  name = "ssh.${var.domain}"
+  name = "ssh"
 
   content = hcloud_server.server[0].ipv4_address
   proxied = false
   ttl     = 1
   type    = "A"
-  zone_id = var.cloudflare_zone_id
+  zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
+  comment = "Deployed ${timestamp()} ssh for ${var.name}"
+  lifecycle {
+    ignore_changes = [
+      comment
+    ]
+  }
 }
 
 resource "cloudflare_dns_record" "root" {
@@ -46,5 +32,28 @@ resource "cloudflare_dns_record" "root" {
   proxied = false
   ttl     = 1
   type    = "A"
-  zone_id = var.cloudflare_zone_id
+  zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
+  comment = "Deployed ${timestamp()} root for ${var.name}"
+  lifecycle {
+    ignore_changes = [
+      comment
+    ]
+  }
+}
+
+resource "cloudflare_dns_record" "webservices" {
+  name = "*.ts"
+
+  content = hcloud_server.server[0].ipv4_address
+  proxied = false
+  ttl     = 1
+  type    = "A"
+  zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
+  comment = "Deployed ${timestamp()} webservices wildcard for ${var.name}"
+  lifecycle {
+    ignore_changes = [
+      comment
+    ]
+  }
+
 }
