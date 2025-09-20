@@ -11,7 +11,7 @@ data "cloudflare_ip_ranges" "whitelist" {
 
 resource "cloudflare_dns_record" "ssh" {
   name = "ssh"
-
+  count = 0
   content = hcloud_server.server[0].ipv4_address
   proxied = false
   ttl     = 1
@@ -44,7 +44,8 @@ resource "cloudflare_dns_record" "root" {
 resource "cloudflare_dns_record" "webservices" {
   name = "*.ts"
 
-  content = hcloud_server.server[0].ipv4_address
+  count = length(var.ts_server_ip) > 0 ? 1 : 0
+  content = var.ts_server_ip
   proxied = false
   ttl     = 1
   type    = "A"

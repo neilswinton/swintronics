@@ -23,21 +23,6 @@ resource "hcloud_firewall" "cluster" {
     port       = "22"
     source_ips = ["${local.my_ip}/32"]
   }
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "80"
-    source_ips = local.any_ip
-    # source_ips = concat(
-    #   ["${chomp(data.http.myip.response_body)}/32"],
-    #   data.cloudflare_ip_ranges.whitelist.ipv4_cidrs
-    # )
-  }
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "443"
-    source_ips = local.any_ip
-  }
+  # Ports blocked for tailscale
 
 }
