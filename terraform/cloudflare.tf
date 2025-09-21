@@ -10,14 +10,14 @@ data "cloudflare_ip_ranges" "whitelist" {
 }
 
 resource "cloudflare_dns_record" "ssh" {
-  name = "ssh"
-  count = 0
+  name    = "ssh"
+  count   = 0
   content = hcloud_server.server[0].ipv4_address
   proxied = false
   ttl     = 1
   type    = "A"
   zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
-  comment = "Deployed ${timestamp()} ssh for ${var.name}"
+  comment = "Deployed ${timestamp()} ssh for ${var.project_name}"
   lifecycle {
     ignore_changes = [
       comment
@@ -33,7 +33,7 @@ resource "cloudflare_dns_record" "root" {
   ttl     = 1
   type    = "A"
   zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
-  comment = "Deployed ${timestamp()} root for ${var.name}"
+  comment = "Deployed ${timestamp()} root for ${var.project_name}"
   lifecycle {
     ignore_changes = [
       comment
@@ -44,13 +44,13 @@ resource "cloudflare_dns_record" "root" {
 resource "cloudflare_dns_record" "webservices" {
   name = "*.ts"
 
-  count = length(var.ts_server_ip) > 0 ? 1 : 0
+  count   = length(var.ts_server_ip) > 0 ? 1 : 0
   content = var.ts_server_ip
   proxied = false
   ttl     = 1
   type    = "A"
   zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
-  comment = "Deployed ${timestamp()} webservices wildcard for ${var.name}"
+  comment = "Deployed ${timestamp()} webservices wildcard for ${var.project_name}"
   lifecycle {
     ignore_changes = [
       comment

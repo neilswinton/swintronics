@@ -12,7 +12,7 @@ locals {
 resource "hcloud_server" "server" {
 
   count        = length(var.server_types)
-  name         = "${var.name}-${count.index}"
+  name         = "${var.project_name}-${count.index}"
   image        = var.image
   server_type  = lower(var.server_types[count.index])
   location     = var.region
@@ -34,7 +34,7 @@ resource "hcloud_server" "server" {
 
 resource "hcloud_volume" "server_disk" {
   count             = length(var.server_types)
-  name              = "${var.name}-${count.index}-data"
+  name              = "${var.project_name}-${count.index}-data"
   size              = var.volume_size
   location          = var.region
   automount         = false

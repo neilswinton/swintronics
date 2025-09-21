@@ -15,7 +15,7 @@ data "http" "myip" {
 # Allow any IP into ports 80 and 443.  Only allow my local IP into ssh
 
 resource "hcloud_firewall" "cluster" {
-  name = var.name
+  name = var.project_name
 
   rule {
     direction  = "in"
