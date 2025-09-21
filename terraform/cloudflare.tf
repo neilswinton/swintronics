@@ -42,7 +42,7 @@ resource "cloudflare_dns_record" "root" {
 }
 
 resource "cloudflare_dns_record" "webservices" {
-  name = "*.ts"
+  name = "*"
 
   count   = length(var.ts_server_ip) > 0 ? 1 : 0
   content = var.ts_server_ip
