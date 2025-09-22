@@ -23,9 +23,9 @@ output "admin_private_key" {
 
 # export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --silent --plain) # silent and plain is important to ensure only the token itself is printed, so we can easily set it as an environment variable.
 output "docker_deploy_infisical_login" {
-  value     = "export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=${local.infisical_client_id} --client-secret=${local.infisical_client_secret} --silent --plain)"
+  value     = " export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=${local.infisical_client_id} --client-secret=${local.infisical_client_secret} --silent --plain)"
   sensitive = true
 }
 output "docker_deploy_infisical_project_id" {
-  value = infisical_project.runtime_secrets.id
+  value = " export INFISICAL_PROJECT_ID=${infisical_project.runtime_secrets.id}"
 }
