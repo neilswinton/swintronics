@@ -1,4 +1,4 @@
-variable "name" {
+variable "project_name" {
   default     = "swintronics"
   type        = string
   description = "The name of your server"
@@ -67,4 +67,10 @@ variable "infisical_api_url" {
   type        = string
   default     = "https://app.infisical.com"
   description = "The infisical api URL. This value will be exported to INFISICAL_API_URL if set"
+}
+
+variable "ts_server_ip" {
+  type        = string
+  default     = ""
+  description = "Server IP assigned by tailscale -- not known until after deploy"
 }
