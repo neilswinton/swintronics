@@ -1,5 +1,4 @@
-include:
-  - "../docker-network-common.yml"
+
 
 services:
   traefik:
@@ -12,12 +11,7 @@ services:
       - TZ=America/New_York
       - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
       - CF_API_EMAIL=${CF_API_EMAIL}
-    networks:
-      - proxy
-    ports:
-      - 80:80
-      - 443:443
-      - 8080:8080 # Dashboard WebGui
+    network_mode: "service:tailscale"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./data/traefik.yml:/traefik.yml:ro
@@ -36,7 +30,5 @@ services:
         - "traefik.http.routers.whoami.rule=Host(`whoami.swintronics.com`)"
         - "traefik.http.routers.whoami.entrypoints=websecure"
         - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
-    networks:
-        - proxy
     profiles: ["debug"]
 
