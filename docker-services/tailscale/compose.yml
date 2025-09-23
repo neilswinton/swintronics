@@ -1,6 +1,5 @@
 # compose-oauth.yaml
 ---
-version: "3.7"
 services:
   tailscale:
     image: tailscale/tailscale:stable
@@ -17,11 +16,6 @@ services:
       - net_admin
       - sys_module
     restart: unless-stopped
-  swintronics:
-      image: nginx
-      network_mode: service:tailscale
-      depends_on: 
-        - tailscale
 volumes:
   tailscale-data:
     driver: local
