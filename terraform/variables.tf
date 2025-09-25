@@ -69,8 +69,3 @@ variable "infisical_api_url" {
   description = "The infisical api URL. This value will be exported to INFISICAL_API_URL if set"
 }
 
-variable "ts_server_ip" {
-  type        = string
-  default     = ""
-  description = "Server IP assigned by tailscale -- not known until after deploy"
-}
