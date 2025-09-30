@@ -2,6 +2,7 @@
 ---
 services:
   tailscale:
+    container_name: tailscale
     image: tailscale/tailscale:stable
     hostname: swintronics
     environment:

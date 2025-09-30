@@ -2,7 +2,7 @@
 
 services:
   traefik:
-    image: traefik:v3.4.1
+    image: traefik:3.5
     container_name: traefik
     restart: unless-stopped
     security_opt:
@@ -20,7 +20,9 @@ services:
       - ./data/logs:/logs:rw
 
     read_only: true
-
+    depends_on:
+      tailscale:
+        condition: service_started # service_healthy with tailscale healthcheck
 
   whoami:
     container_name: simple-service
