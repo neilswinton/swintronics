@@ -29,6 +29,21 @@ resource "infisical_project_user" "terraform" {
   ]
 }
 
+
+ephemeral "infisical_secret" "tailscale_provider_oauth_client" {
+  name         = "TS_OAUTH_CLIENT_ID"
+  env_slug     = "dev"
+  workspace_id = data.infisical_projects.server.id
+  folder_path  = "/terraform"
+}
+
+ephemeral "infisical_secret" "tailscale_provider_oauth_client_secret" {
+  name         = "TS_OAUTH_CLIENT_SECRET"
+  env_slug     = "dev"
+  workspace_id = data.infisical_projects.server.id
+  folder_path  = "/terraform"
+}
+
 # Generate credentials for infisical login on server for docker
 resource "infisical_identity" "docker_deploy" {
   name = "docker_deploy"
