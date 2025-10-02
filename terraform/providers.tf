@@ -38,8 +38,8 @@ provider "hcloud" {
 # Provider for tailscale using provisioning client id
 
 provider "tailscale" {
-  #oauth_client_id     = ephemeral.infisical_secret.tailscale_provider_oauth_client.value
-  # oauth_client_secret = ephemeral.infisical_secret.tailscale_provider_oauth_client_secret.value
-  api_key = ephemeral.infisical_secret.tailscale_api_key.value
+  oauth_client_id     = ephemeral.infisical_secret.tailscale_provider_oauth_client.value
+  oauth_client_secret = ephemeral.infisical_secret.tailscale_provider_oauth_client_secret.value
+  # api_key = ephemeral.infisical_secret.tailscale_api_key.value
   tailnet = nonsensitive(data.infisical_secrets.root_secrets.secrets["TS_TAILNET_NAME"].value)
 }
