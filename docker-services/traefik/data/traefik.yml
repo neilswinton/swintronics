@@ -37,11 +37,22 @@ providers:
     watch: true
 
 certificatesResolvers:
-  letsencrypt:
+  production:
     acme:
       email: cert@swintronics.com
-      storage: acme.json
-      # caServer: https://acme-v02.api.letsencrypt.org/directory # prod (default)
+      storage: /certs/acme-production.json
+      caServer: https://acme-v02.api.letsencrypt.org/directory # prod (default)
+      dnsChallenge:
+        provider: cloudflare
+        propagation:
+          delayBeforeChecks: 10
+        resolvers:
+          - "1.1.1.1:53"
+          - "1.0.0.1:53"
+  staging:
+    acme:
+      email: cert@swintronics.com
+      storage: /certs/acme-staging.json
       caServer: https://acme-staging-v02.api.letsencrypt.org/directory # staging
       dnsChallenge:
         provider: cloudflare

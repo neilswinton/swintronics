@@ -35,7 +35,7 @@ services:
       traefik.http.routers.immich.entrypoints: websecure
       traefik.http.routers.immich.rule: Host(`immich.swintronics.com`)
       traefik.http.services.immich.loadbalancer.server.port: 2283
-      traefik.http.routers.immich.tls.certresolver: letsencrypt
+      traefik.http.routers.immich.tls.certresolver: ${CERT_RESOLVER}
 
   immich-machine-learning:
     container_name: immich_machine_learning
