@@ -26,6 +26,7 @@ services:
         - "traefik.http.routers.traefik.service=api@internal"
         - "traefik.http.routers.traefik.tls.certresolver=${CERT_RESOLVER}"
         - "traefik.http.routers.traefik.tls.domains[0].main=${SERVER_DOMAIN}"
+        - "traefik.http.routers.traefik.tls.domains[0].sans=*.${SERVER_DOMAIN}"
         - "traefik.http.services.traefik.loadbalancer.server.port=8080"
         - "tailscale=true"
     healthcheck:
