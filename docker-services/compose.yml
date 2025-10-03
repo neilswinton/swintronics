@@ -1,4 +1,10 @@
 
+name: swintronics
+networks:
+  default:
+    name: tailnet
 include:
   - "tailscale/compose.yml"
   - "traefik/compose.yml"
+  - "immich-app/docker-compose.yml"
+  

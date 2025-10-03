@@ -6,6 +6,8 @@ api:
 entryPoints:
   web:
     address: ":80"
+    forwardedHeaders:
+      insecure: true
     http:
       redirections:
         entryPoint:
@@ -13,6 +15,15 @@ entryPoints:
           scheme: https
   websecure:
     address: ":443"
+    forwardedHeaders:
+        insecure: true
+      # trustedIPs:
+      #   - "100.0.0.0/8"      # Tailscale IPs     insecure: true
+    transport:  
+      respondingTimeouts: # Increase timeouts for immich large uploads
+        readTimeout: 600s
+        idleTimeout: 600s
+        writeTimeout: 600s
 serversTransport:
   insecureSkipVerify: true  # No cert verification between traefik and containers
 
@@ -21,18 +32,28 @@ providers:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
     # defaultRule: "Host(`{{ index .Labels \"com.docker.compose.service\"}}.swintronics.com`)"
-    network: proxy
   file:
     directory: "/configs"
     watch: true
 
 certificatesResolvers:
-  letsencrypt:
+  production:
     acme:
       email: cert@swintronics.com
-      storage: acme.json
+      storage: /certs/acme-production.json
       caServer: https://acme-v02.api.letsencrypt.org/directory # prod (default)
-      # scaServer: https://acme-staging-v02.api.letsencrypt.org/directory # staging
+      dnsChallenge:
+        provider: cloudflare
+        propagation:
+          delayBeforeChecks: 10
+        resolvers:
+          - "1.1.1.1:53"
+          - "1.0.0.1:53"
+  staging:
+    acme:
+      email: cert@swintronics.com
+      storage: /certs/acme-staging.json
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory # staging
       dnsChallenge:
         provider: cloudflare
         propagation:
@@ -43,7 +64,7 @@ certificatesResolvers:
 
 accessLog:
   filePath: "/logs/access.log"
-  format: json
+  format: common
   fields:
     headers:
       defaultMode: keep
