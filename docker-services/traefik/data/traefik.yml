@@ -64,7 +64,7 @@ certificatesResolvers:
 
 accessLog:
   filePath: "/logs/access.log"
-  format: json
+  format: common
   fields:
     headers:
       defaultMode: keep
