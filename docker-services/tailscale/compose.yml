@@ -5,6 +5,8 @@ services:
     container_name: tailscale
     image: tailscale/tailscale:stable
     hostname: swintronics
+    ports:
+      - "41641:41641/udp" # Tailscale default port
     environment:
       - TS_AUTH_KEY=${TS_OAUTH_CLIENT_SECRET}
       - TS_EXTRA_ARGS=--advertise-tags=tag:container
