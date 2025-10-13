@@ -59,7 +59,7 @@ locals {
 
 # Register a wildcard DNS record for the tailscale container's IP
 resource "cloudflare_dns_record" "webservices" {
-  name = "*"
+  name     = "*"
   for_each = local.container_devices
 
   content = each.value
