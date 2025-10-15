@@ -69,3 +69,8 @@ variable "infisical_api_url" {
   description = "The infisical api URL. This value will be exported to INFISICAL_API_URL if set"
 }
 
+variable "source_repo" {
+  type        = string
+  default     = "https://github.com/neilswinton/swintronics.git"
+  description = "Repository to clone on cloud instance"
+}

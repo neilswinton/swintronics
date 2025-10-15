@@ -1,10 +1,21 @@
 
 locals {
   user_data = templatefile("${path.module}/scripts/cloud-init.yml", {
-    admin_public_key = tls_private_key.admin.public_key_openssh
+    admin_public_key = trimspace(tls_private_key.admin.public_key_openssh)
     admin_user       = nonsensitive(data.infisical_secrets.root_secrets.secrets["username"].value)
     timezone         = var.timezone
+    project          = var.project_name
+    repo             = var.source_repo
     custom_userdata  = split("\n", data.infisical_secrets.terraform_secrets.secrets["RUNCMD"].value)
+    immich_env = split("\n", templatefile("${path.module}/../docker-services/immich-app/template.env", {
+      IMMICH_DATA_LOCATION = "/mnt/data/immich"
+      TZ                   = var.timezone
+      IMMICH_DB_PASSWORD   = random_password.immich_postgres_password.result
+    }))
+    root_env = split("\n", templatefile("${path.module}/../docker-services/template.env", {
+      SERVER_DOMAIN = var.project_name
+      TZ            = var.timezone
+    }))
   })
 }
 
