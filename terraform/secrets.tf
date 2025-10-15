@@ -141,3 +141,18 @@ data "infisical_secrets" "terraform_secrets" {
   folder_path  = "/terraform"
 }
 
+# Immich
+
+resource "random_password" "immich_postgres_password" {
+  length  = 16
+  special = false
+}
+
+
+resource "infisical_secret" "immich_postgres_password" {
+  name         = "IMMICH_DB_PASSWORD"
+  value        = random_password.immich_postgres_password.result
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
