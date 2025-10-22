@@ -21,7 +21,7 @@ resource "infisical_project" "runtime_secrets" {
 # Give ourselves access
 resource "infisical_project_user" "terraform" {
   project_id = infisical_project.runtime_secrets.id
-  username   = "<username/email>"
+  username   = var.infisical_project_user_username
   roles = [
     {
       role_slug = "admin"
