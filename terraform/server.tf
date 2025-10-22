@@ -1,21 +1,17 @@
 
 locals {
+  immich_data_location    = "${var.data_disk_mountpoint}/immich"
+  paperless_data_location = "${var.data_disk_mountpoint}/paperless-ngx"
   user_data = templatefile("${path.module}/scripts/cloud-init.yml", {
-    admin_public_key = trimspace(tls_private_key.admin.public_key_openssh)
-    admin_user       = nonsensitive(data.infisical_secrets.root_secrets.secrets["username"].value)
-    timezone         = var.timezone
-    project          = var.project_name
-    repo             = var.source_repo
-    custom_userdata  = split("\n", data.infisical_secrets.terraform_secrets.secrets["RUNCMD"].value)
-    immich_env = split("\n", templatefile("${path.module}/../docker-services/immich-app/template.env", {
-      IMMICH_DATA_LOCATION = "/mnt/data/immich"
-      TZ                   = var.timezone
-      IMMICH_DB_PASSWORD   = random_password.immich_postgres_password.result
-    }))
-    root_env = split("\n", templatefile("${path.module}/../docker-services/template.env", {
-      SERVER_DOMAIN = var.project_name
-      TZ            = var.timezone
-    }))
+    admin_public_key        = trimspace(tls_private_key.admin.public_key_openssh)
+    admin_user              = nonsensitive(data.infisical_secrets.root_secrets.secrets["username"].value)
+    timezone                = var.timezone
+    project                 = var.project_name
+    repo                    = var.source_repo
+    mountpoint              = var.data_disk_mountpoint
+    custom_userdata         = split("\n", data.infisical_secrets.terraform_secrets.secrets["RUNCMD"].value)
+    immich_data_location    = local.immich_data_location
+    paperless_data_location = local.paperless_data_location
   })
 }
 
@@ -66,4 +62,23 @@ resource "local_file" "cloudinit" {
   content         = local.user_data
   filename        = "${path.module}/artifacts/cloud-init.yml"
   file_permission = "0644"
+}
+
+resource "local_file" "immich_env" {
+  filename        = "${path.module}/artifacts/immich.env"
+  file_permission = "0644"
+  content = templatefile("${path.module}/../docker-services/immich-app/template.env", {
+    IMMICH_DATA_LOCATION = local.immich_data_location
+    TZ                   = var.timezone
+    IMMICH_DB_PASSWORD   = random_password.immich_postgres_password.result
+  })
+}
+
+resource "local_file" "root_env" {
+  filename        = "${path.module}/artifacts/docker-services.env"
+  file_permission = "0644"
+  content = templatefile("${path.module}/../docker-services/template.env", {
+    SERVER_DOMAIN = var.project_name
+    TZ            = var.timezone
+  })
 }

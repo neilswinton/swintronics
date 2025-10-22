@@ -29,28 +29,6 @@ write_files:
   - path: /etc/sysctl.d/99-enable-ipv4-forwarding.conf
     content: |
       net.ipv4.conf.all.forwarding=1
-  - path: /root/setup_repo.sh
-    # owner: ${admin_user}:${admin_user}
-    permissions: '0644'
-    content: |
-      git clone ${repo}
-      test -f /root/docker-services.env && cp /root/docker-services.env /home/${admin_user}/${project}/docker-services/.env 
-      test -f /root/immich.env && cp /root/docker-services.env /home/${admin_user}/${project}/docker-services/immich-app/.env 
-      sudo chown ${admin_user}:${admin_user} /home/${admin_user}/${project}/docker-services/immich-app/.env /home/${admin_user}/${project}/docker-services/.env 
-  - path: /root/docker-services.env
-    # owner: ${admin_user}:${admin_user}
-    permissions: '0644'
-    content: |
-%{ for line in root_env ~}
-      ${line}
-%{ endfor ~}
-  - path: /root/immich.env
-    # owner: ${admin_user}:${admin_user}
-    permissions: '0644'
-    content: |
-%{ for line in immich_env ~}
-      ${line}
-%{ endfor ~}
 
 # create the docker group
 groups:
@@ -103,15 +81,27 @@ runcmd:
     echo "[INFO] Formatted $${DEVICE}1 as Btrfs"
 
     # Mount and persist
-    mkdir -p /mnt/data
-    echo "$${DEVICE}1 /mnt/data btrfs defaults,nofail 0 0" >> /etc/fstab
+    mkdir -p ${mountpoint}
+    echo "$${DEVICE}1 ${mountpoint} btrfs defaults,nofail 0 0" >> /etc/fstab
     systemctl daemon-reload
     mount -a
 
-    echo "[INFO] Mounted $${DEVICE}1 to /mnt/data"
+    echo "[INFO] Mounted $${DEVICE}1 to ${mountpoint}"
+    mkdir -p ${immich_data_location}
+    mkdir -p ${paperless_data_location}
+    chown -R ${admin_user}:${admin_user} ${mountpoint}
     } >> "$LOGFILE" 2>&1
-    
-  - echo "Data disk configuration is complete"
+    echo "Data disk configuration is complete"
+
+  - |
+    LOGFILE="/var/log/docker-init.log"
+    {
+    # Install infisical CLI
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash -
+    apt-get update && apt-get install -y infisical
+    echo "Infisical CLI installation is complete"
+    } >> "$LOGFILE" 2>&1
+
   - |
     su --login ${admin_user} --command 'git clone ${repo} '
 

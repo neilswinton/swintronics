@@ -79,3 +79,9 @@ variable "source_repo" {
   default     = "https://github.com/neilswinton/swintronics.git"
   description = "Repository to clone on cloud instance"
 }
+
+variable "data_disk_mountpoint" {
+  type        = string
+  default     = "/mnt/docker-data"
+  description = "Mountpoint for the data disk"
+}
