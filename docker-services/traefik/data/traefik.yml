@@ -3,6 +3,8 @@ api:
   insecure: true
   debug: true
 
+ping: {}
+
 entryPoints:
   web:
     address: ":80"

@@ -21,7 +21,7 @@ resource "infisical_project" "runtime_secrets" {
 # Give ourselves access
 resource "infisical_project_user" "terraform" {
   project_id = infisical_project.runtime_secrets.id
-  username   = "<username/email>"
+  username   = var.infisical_project_user_username
   roles = [
     {
       role_slug = "admin"
@@ -31,14 +31,16 @@ resource "infisical_project_user" "terraform" {
 
 
 ephemeral "infisical_secret" "tailscale_provider_oauth_client" {
-  name         = "TS_OAUTH_CLIENT_ID"
+  # OAuth client required scopes: auth_keys, devices:core, dns:read, oauth_keys
+  # The "container" tag must exist and be assigned to the devices:core scope
+  name         = "TS_MS_PROVIDER_OAUTH_CLIENT_ID"
   env_slug     = "dev"
   workspace_id = data.infisical_projects.server.id
   folder_path  = "/terraform"
 }
 
 ephemeral "infisical_secret" "tailscale_provider_oauth_client_secret" {
-  name         = "TS_OAUTH_CLIENT_SECRET"
+  name         = "TS_MS_PROVIDER_OAUTH_CLIENT_SECRET"
   env_slug     = "dev"
   workspace_id = data.infisical_projects.server.id
   folder_path  = "/terraform"
@@ -139,10 +141,18 @@ data "infisical_secrets" "terraform_secrets" {
   folder_path  = "/terraform"
 }
 
-# Tailscale api key for provisioning in terraform
-ephemeral "infisical_secret" "tailscale_api_key" {
-  name         = "TS_API_KEY"
+# Immich
+
+resource "random_password" "immich_postgres_password" {
+  length  = 16
+  special = false
+}
+
+
+resource "infisical_secret" "immich_postgres_password" {
+  name         = "IMMICH_DB_PASSWORD"
+  value        = random_password.immich_postgres_password.result
   env_slug     = "dev"
-  workspace_id = var.infisical_project_id
-  folder_path  = "/terraform"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
 }

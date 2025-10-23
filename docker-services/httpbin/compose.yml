@@ -9,7 +9,7 @@ services:
 
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.httpbin.rule=Host(`httpbin.swintronics.com`)"
+      - "traefik.http.routers.httpbin.rule=Host(`httpbin.${SERVER_DOMAIN}`)"
       - "traefik.http.routers.httpbin.entrypoints=websecure"
       - "traefik.http.routers.httpbin.tls.certresolver=${CERT_RESOLVER}"
     profiles:

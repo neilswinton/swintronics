@@ -69,3 +69,19 @@ variable "infisical_api_url" {
   description = "The infisical api URL. This value will be exported to INFISICAL_API_URL if set"
 }
 
+variable "infisical_project_user_username" {
+  description = "Username or email for Infisical project user"
+  type        = string
+}
+
+variable "source_repo" {
+  type        = string
+  default     = "https://github.com/neilswinton/swintronics.git"
+  description = "Repository to clone on cloud instance"
+}
+
+variable "data_disk_mountpoint" {
+  type        = string
+  default     = "/mnt/docker-data"
+  description = "Mountpoint for the data disk"
+}

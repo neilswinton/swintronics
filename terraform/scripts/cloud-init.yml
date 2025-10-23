@@ -39,20 +39,71 @@ users:
     sudo: "ALL=(ALL) NOPASSWD:ALL"
     groups: [sudo, adm, docker]
     shell: /bin/bash
-    ssh-authorized-keys:
+    ssh_authorized_keys:
     - "${admin_public_key}"
 
 # Install Docker, for production, consider pinning to stable versions
+
 runcmd:
-  - echo "Installing docker"
-  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-  - add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-  - apt-get update -y
-  - apt-get install -y docker-ce docker-ce-cli containerd.io
-  - systemctl start docker
-  - systemctl enable docker
-  # - echo "Configuring unattended upgrades"
-  # - dpkg-reconfigure unattended-upgrades
+  - |
+    # Install and start docker
+    LOGFILE="/var/log/docker-init.log"
+    {
+    echo "Installing docker"
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | DEBIAN_FRONTEND=noninteractive apt-key add -
+    DEBIAN_FRONTEND=noninteractive add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+    DEBIAN_FRONTEND=noninteractive apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io
+    systemctl start docker
+    systemctl enable docker
+    } >> "$LOGFILE" 2>&1
+
+
+  - |
+    # Configure the data disk on the system
+    LOGFILE="/var/log/disk-init.log"
+    {
+
+    echo "[INFO] Starting disk initialization at $(date)"
+
+    # Identify unformatted disk (excluding root)
+    ROOT_DISK=$(lsblk -dn -o NAME | head -n1)
+    UNFORMATTED_DISK=$(lsblk -dn -o NAME | grep -v "$ROOT_DISK" | head -n1)
+    DEVICE="/dev/$${UNFORMATTED_DISK}"
+
+    echo "[INFO] Target device: $$DEVICE"
+
+    # Partition and format as Btrfs
+    parted --script "$DEVICE" mklabel gpt mkpart primary btrfs 0% 100%
+    sleep 2  # allow kernel to register partition
+    mkfs.btrfs "$${DEVICE}1"
+
+    echo "[INFO] Formatted $${DEVICE}1 as Btrfs"
+
+    # Mount and persist
+    mkdir -p ${mountpoint}
+    echo "$${DEVICE}1 ${mountpoint} btrfs defaults,nofail 0 0" >> /etc/fstab
+    systemctl daemon-reload
+    mount -a
+
+    echo "[INFO] Mounted $${DEVICE}1 to ${mountpoint}"
+    mkdir -p ${immich_data_location}
+    mkdir -p ${paperless_data_location}
+    chown -R ${admin_user}:${admin_user} ${mountpoint}
+    } >> "$LOGFILE" 2>&1
+    echo "Data disk configuration is complete"
+
+  - |
+    LOGFILE="/var/log/docker-init.log"
+    {
+    # Install infisical CLI
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash -
+    apt-get update && apt-get install -y infisical
+    echo "Infisical CLI installation is complete"
+    } >> "$LOGFILE" 2>&1
+
+  - |
+    su --login ${admin_user} --command 'git clone ${repo} '
 
  # User-provided custom runcmd commands
   # Append user-provided custom runcmd commands

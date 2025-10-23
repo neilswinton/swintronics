@@ -23,6 +23,13 @@ resource "hcloud_firewall" "cluster" {
     port       = "22"
     source_ips = ["${local.my_ip}/32"]
   }
+
+  rule {
+    direction  = "in"
+    protocol   = "udp"
+    port       = "41641" # Tailscale default port
+    source_ips = local.any_ip
+  }
   # Ports blocked for tailscale
 
 }
