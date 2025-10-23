@@ -8,15 +8,16 @@ services:
     security_opt:
       - no-new-privileges:true
     environment:
-      - TZ=${TZ}
-      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
-      - CF_API_EMAIL=${CF_API_EMAIL}
+      - TZ=${TZ:?Please set the TZ environment variable}
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN:?Please set the CF_DNS_API_TOKEN environment variable}
+      - CERT_RESOLVER=${CERT_RESOLVER:?Please set the CERT_RESOLVER environment variable}
+      - SERVER_DOMAIN=${SERVER_DOMAIN:?Please set the SERVER_DOMAIN environment variable}
     network_mode: "service:tailscale"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./data/traefik.yml:/traefik.yml:ro
       - ./data/configs:/configs:ro
-      - traefik-certs:/certs:rw
+      - ${CERT_RESOLVER}-certs:/certs:rw
       - ./data/logs:/logs:rw
     labels:
         - "traefik.enable=true"
@@ -50,4 +51,5 @@ services:
     profiles: ["debug"]
 
 volumes:
-  traefik-certs: null
+  production-certs: null
+  staging-certs: null
