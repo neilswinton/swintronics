@@ -20,16 +20,14 @@ services:
       - ${CERT_RESOLVER}-certs:/certs:rw
       - ./data/logs:/logs:rw
     labels:
+        - "traefik.http.services.dummy.loadbalancer.server.port=8080"
         - "traefik.enable=true"
         - "traefik.http.routers.traefik.rule=Host(`traefik.${SERVER_DOMAIN}`)"
-        - "traefik.http.services.traefik.loadbalancer.server.port=1337"
         - "traefik.http.routers.traefik.entrypoints=websecure"
         - "traefik.http.routers.traefik.service=api@internal"
         - "traefik.http.routers.traefik.tls.certresolver=${CERT_RESOLVER}"
-        - "traefik.http.routers.traefik.tls.domains[0].main=${SERVER_DOMAIN}"
-        - "traefik.http.routers.traefik.tls.domains[0].sans=*.${SERVER_DOMAIN}"
-        - "traefik.http.services.traefik.loadbalancer.server.port=8080"
-        - "tailscale=true"
+        
+
     healthcheck:
       test: traefik healthcheck || exit 1
       interval: 60s
@@ -45,7 +43,7 @@ services:
     image: traefik/whoami
     labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.whoami.rule=Host(`whoami.swintronics.com`)"
+        - "traefik.http.routers.whoami.rule=Host(`whoami.${SERVER_DOMAIN}`)"
         - "traefik.http.routers.whoami.entrypoints=websecure"
         - "traefik.http.routers.whoami.tls.certresolver=${CERT_RESOLVER}"
     profiles: ["debug"]
