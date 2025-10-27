@@ -1,0 +1,17 @@
+services:
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    ports:
+      - "8888:8080"  # Access via http://localhost:8888
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DOZZLE_LEVEL: info
+      # DOZZLE_FILTER: "dozzle"  # Optional: only show dozzle logs
+    restart: unless-stopped
+    labels:
+      traefik.enable: true
+      traefik.http.routers.dozzle.entrypoints: websecure
+      traefik.http.routers.dozzle.rule: Host(`logs.${SERVER_DOMAIN}`)
+      traefik.http.routers.dozzle.tls.certresolver: ${CERT_RESOLVER}
