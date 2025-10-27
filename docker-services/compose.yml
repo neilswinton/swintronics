@@ -7,3 +7,4 @@ include:
   - "tailscale/compose.yml"
   - "traefik/compose.yml"
   - "immich-app/docker-compose.yml"
+  - "dozzle/compose.yml"
