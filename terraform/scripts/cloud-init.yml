@@ -22,6 +22,8 @@ packages:
   - gnupg-agent
   - jq
   - software-properties-common
+  - shellcheck
+  - restic
   # - unattended-upgrades
 
 # Enable ipv4 forwarding, required on CIS hardened machines
@@ -82,7 +84,7 @@ runcmd:
 
     # Mount and persist
     mkdir -p ${mountpoint}
-    echo "$${DEVICE}1 ${mountpoint} btrfs defaults,nofail 0 0" >> /etc/fstab
+    echo "$${DEVICE}1 ${mountpoint} btrfs defaults,nofail,user_subvol_rm_allowed 0 0" >> /etc/fstab
     systemctl daemon-reload
     mount -a
 

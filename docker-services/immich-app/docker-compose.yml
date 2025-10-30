@@ -22,6 +22,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
     env_file:
       - .env
+      - ../.env
     ports:
       - '2283:2283'
     depends_on:
@@ -33,7 +34,7 @@ services:
     labels:
       traefik.enable: true
       traefik.http.routers.immich.entrypoints: websecure
-      traefik.http.routers.immich.rule: Host(`immich.swintronics.com`)
+      traefik.http.routers.immich.rule: Host(`photos.${SERVER_DOMAIN}`)
       traefik.http.services.immich.loadbalancer.server.port: 2283
       traefik.http.routers.immich.tls.certresolver: ${CERT_RESOLVER}
 
