@@ -8,3 +8,5 @@ include:
   - "traefik/compose.yml"
   - "immich-app/docker-compose.yml"
   - "dozzle/compose.yml"
+  - "paperless/compose.yml"
+  
