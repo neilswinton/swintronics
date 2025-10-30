@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+
+
 # 📍 CONFIGURATION
 DATE=$(date +%F_%H-%M)
 DAY=$(date +%A)
@@ -9,6 +11,8 @@ SNAP_DIR="/swintronics-data/snapshots/immich/library/backup"
 DB_DUMP="${SOURCE_SUBVOLUME_PATH}/immich_db.sql"
 RESTIC_TAGS="--tag immich --tag ${DATE}"
 IMMICH_SERVICES="immich-server immich-machine-learning"
+
+exec >/swintronics-data/logs/cron/photo-backup.${DATE}.log 2>&1
 
 cd /home/neil/swintronics/docker-services
 . .env
@@ -22,7 +26,7 @@ test -d "${SNAP_DIR}" && btrfs property set -ts "${SNAP_DIR}" ro false && btrfs 
 HC_PING_URL="https://hc-ping.com/529e5971-f85c-40a1-80ff-d7af6527b165"
 
 # 🚦 Notify Healthchecks.io of start
-curl -fsS --retry 3 "${HC_PING_URL}/start" || echo "Healthchecks.io start ping failed"
+curl -fsS -o /dev/null --retry 3 "${HC_PING_URL}/start" || echo "Healthchecks.io start ping failed"
 
 # 🛑 Stop Immich containers
 echo "Stopping Immich containers..."
@@ -65,7 +69,7 @@ mv "${SNAP_DIR}"  "${ARCHIVE_DIR}"
 # TODO: cronjob
 
 # ✅ Notify Healthchecks.io of success
-echo curl -fsS --retry 3 "${HC_PING_URL}" || echo "Healthchecks.io success ping failed"
+curl -fsS -o /dev/null --retry 3  "${HC_PING_URL}" || echo "Healthchecks.io success ping failed"
 
 echo "✅ Backup complete: ${DATE}"
 exit 0
