@@ -9,4 +9,6 @@ include:
   - "immich-app/docker-compose.yml"
   - "dozzle/compose.yml"
   - "paperless/compose.yml"
+  - "uptime-kuma/compose.yml"
+  
   
