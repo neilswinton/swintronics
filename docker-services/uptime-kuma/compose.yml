@@ -1,15 +1,15 @@
 services:
   uptime-kuma:
+    container_name: uptime-kuma
     image: louislam/uptime-kuma:2
     restart: unless-stopped
     volumes:
       - /swintronics-data/volumes/uptime-kuma/data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       # <Host Port>:<Container Port>
       - "3001:3001"
     labels:
       traefik.enable: true
       traefik.http.routers.uptime-kuma.entrypoints: websecure
-      traefik.http.routers.uptime-kuma.rule: Host(`uptime-kuma.${SERVER_DOMAIN}`)
+      traefik.http.routers.uptime-kuma.rule: Host(`status.${SERVER_DOMAIN}`)
       traefik.http.routers.uptime-kuma.tls.certresolver: ${CERT_RESOLVER}
