@@ -7,10 +7,14 @@ services:
     hostname: swintronics
     ports:
       - "41641:41641/udp" # Tailscale default port
+      - 8080:8080 # For Traefik healthcheck
     environment:
       - TS_AUTH_KEY=${TS_OAUTH_CLIENT_SECRET}
       - TS_EXTRA_ARGS=--advertise-tags=tag:container
       - TS_STATE_DIR=/var/lib/tailscale
+      - TS_ENABLE_HEALTH_CHECK=true
+      - TS_ENABLE_METRICS=true
+
     volumes:
       - tailscale-data:/var/lib/tailscale
     devices:
