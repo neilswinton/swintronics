@@ -12,21 +12,24 @@ DB_DUMP="${SOURCE_SUBVOLUME_PATH}/immich_db.sql"
 RESTIC_TAGS="--tag immich --tag ${DATE}"
 IMMICH_SERVICES="immich-server immich-machine-learning"
 
-exec >/swintronics-data/logs/cron/photo-backup.${DATE}.log 2>&1
+exec >/swintronics-data/logs/cron/photo-backup."${DATE}".log 2>&1
+
+date +"🕓 Starting Immich backup at %Y-%m-%d %H:%M:%S"
 
 cd /home/neil/swintronics/docker-services
+# shellcheck disable=SC1091
 . .env
+# shellcheck disable=SC1091
 . ./immich-app/.env
+# shellcheck disable=SC1091
 . ./backup.env
 
 # 🧹 Clean up previous snapshot if it exists
 test -d "${SNAP_DIR}" && btrfs property set -ts "${SNAP_DIR}" ro false && btrfs subvolume delete "${SNAP_DIR}"
 
-# 🔔 Healthchecks.io URLs
-HC_PING_URL="https://hc-ping.com/529e5971-f85c-40a1-80ff-d7af6527b165"
 
 # 🚦 Notify Healthchecks.io of start
-curl -fsS -o /dev/null --retry 3 "${HC_PING_URL}/start" || echo "Healthchecks.io start ping failed"
+curl -fsS -o /dev/null --retry 3 "${HC_PHOTO_PING_URL}/start" || echo "Healthchecks.io start ping failed"
 
 # 🛑 Stop Immich containers
 echo "Stopping Immich containers..."
@@ -57,6 +60,7 @@ echo "Backing up snapshot with Restic..."
 # shellcheck disable=SC2086
 restic backup ${RESTIC_TAGS} "${SNAP_DIR}" 
 restic forget  --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+restic check
          
 # 🗄️ Rename snapshot to day of the week.  Remove previous week's as needed
 ARCHIVE_DIR="$(dirname ${SNAP_DIR})/${DAY}"
@@ -69,10 +73,13 @@ mv "${SNAP_DIR}"  "${ARCHIVE_DIR}"
 # TODO: cronjob
 
 # ✅ Notify Healthchecks.io of success
-curl -fsS -o /dev/null --retry 3  "${HC_PING_URL}" || echo "Healthchecks.io success ping failed"
+curl -fsS -o /dev/null --retry 3  "${HC_PHOTO_PING_URL}" || echo "Healthchecks.io success ping failed"
 
-echo "✅ Backup complete: ${DATE}"
+# Notify Uptime Kuma of success
+curl -fsS -o /dev/null --retry 3  "${KUMA_PHOTO_PUSH_URL}" || echo "Uptime Kuma photo backup ping failed"
+date +"✅ Backup complete at %Y-%m-%d %H:%M:%S"
 exit 0
 
 # ❌ Error handler
-trap 'curl -fsS --retry 3 "${HC_PING_URL}/fail" || echo "Healthchecks.io failure ping failed"' ERR
+# shellcheck disable=SC2317
+trap 'curl -fsS --retry 3 "${HC_PHOTO_PING_URL}/fail" || echo "Healthchecks.io failure ping failed"' ERR
