@@ -15,10 +15,10 @@ services:
     network_mode: "service:tailscale"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./data/traefik.yml:/traefik.yml:ro
-      - ./data/configs:/configs:ro
+      - ./traefik-data/traefik.yml:/traefik.yml:ro
+      - ./traefik-data/configs:/configs:ro
       - ${CERT_RESOLVER}-certs:/certs:rw
-      - ./data/logs:/logs:rw
+      - /swintronics-data/logs/traefik:/logs:rw
     labels:
         - "traefik.http.services.dummy.loadbalancer.server.port=8080"
         - "traefik.enable=true"
@@ -41,6 +41,9 @@ services:
   whoami:
     container_name: simple-service
     image: traefik/whoami
+    restart: unless-stopped
+    networks:
+      - proxy
     labels:
         - "traefik.enable=true"
         - "traefik.http.routers.whoami.rule=Host(`whoami.${SERVER_DOMAIN}`)"

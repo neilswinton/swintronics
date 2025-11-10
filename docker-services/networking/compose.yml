@@ -1,0 +1,5 @@
+name: tailnet
+include:
+  - ../networks.yml
+  - tailscale.yml
+  - traefik.yml
