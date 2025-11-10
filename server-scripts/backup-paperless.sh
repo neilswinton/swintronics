@@ -13,13 +13,13 @@ exec >/swintronics-data/logs/cron/paperless-backup."${DATE}".log 2>&1
 
 date +"🕓 Starting Paperless backup at %Y-%m-%d %H:%M:%S"
 
-cd /home/neil/swintronics/docker-services
+cd /home/neil/swintronics/docker-services/paperless
 # shellcheck disable=SC1091
 . .env
 # shellcheck disable=SC1091
-. ./paperless/docker-compose.env
+. ./docker-compose.env
 # shellcheck disable=SC1091
-. ./backup.env
+. ../backup.env
 
 # Export the paperless data
 docker compose exec -T webserver document_exporter ../export

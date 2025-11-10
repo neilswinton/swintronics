@@ -1,4 +1,4 @@
 networks:
-  proxy:
-    external: true
   default:
+    external: true
+    name: proxy

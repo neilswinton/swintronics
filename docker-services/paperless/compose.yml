@@ -46,9 +46,6 @@ services:
       POSTGRES_PASSWORD: paperless
   webserver:
     image: ghcr.io/paperless-ngx/paperless-ngx:2.19.4
-    networks:   
-      default:  # networking among paperless services
-      proxy:    # networking to traefik reverse proxy
     restart: unless-stopped
     depends_on:
       - db

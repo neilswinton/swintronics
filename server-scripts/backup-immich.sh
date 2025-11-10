@@ -16,13 +16,13 @@ exec >/swintronics-data/logs/cron/photo-backup."${DATE}".log 2>&1
 
 date +"🕓 Starting Immich backup at %Y-%m-%d %H:%M:%S"
 
-cd /home/neil/swintronics/docker-services
+cd /home/neil/swintronics/docker-services/immich-app
+
 # shellcheck disable=SC1091
 . .env
+
 # shellcheck disable=SC1091
-. ./immich-app/.env
-# shellcheck disable=SC1091
-. ./backup.env
+. ../backup.env
 
 # 🧹 Clean up previous snapshot if it exists
 test -d "${SNAP_DIR}" && btrfs property set -ts "${SNAP_DIR}" ro false && btrfs subvolume delete "${SNAP_DIR}"
@@ -30,6 +30,10 @@ test -d "${SNAP_DIR}" && btrfs property set -ts "${SNAP_DIR}" ro false && btrfs 
 
 # 🚦 Notify Healthchecks.io of start
 curl -fsS -o /dev/null --retry 3 "${HC_PHOTO_PING_URL}/start" || echo "Healthchecks.io start ping failed"
+
+# Save the image versions to a file so we can match them to the backup later if needed
+echo "Saving Immich Docker image versions..."
+docker compose images > "${SOURCE_SUBVOLUME_PATH}/immich_docker_images.txt"
 
 # 🛑 Stop Immich containers
 echo "Stopping Immich containers..."

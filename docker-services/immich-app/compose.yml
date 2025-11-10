@@ -9,6 +9,9 @@
 
 name: immich
 
+include:
+  - ../networks.yml
+
 services:
   immich-server:
     container_name: immich_server

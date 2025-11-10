@@ -1,3 +1,6 @@
+include:
+  - ../networks.yml
+
 services:
   uptime-kuma:
     container_name: uptime-kuma
