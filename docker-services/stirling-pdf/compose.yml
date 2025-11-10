@@ -1,6 +1,12 @@
+name: stirling-pdf
+include:
+  - ../networks.yml
+
 services:
   stirling-pdf:
     image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:1.5.0
+    networks:   
+      proxy:    # networking to traefik reverse proxy
     volumes:
       - /swintronics-data/volumes/stirling-pdf/trainingData:/usr/share/tessdata # Required for extra OCR languages
       - /swintronics-data/volumes/stirling-pdf/extraConfigs:/configs
