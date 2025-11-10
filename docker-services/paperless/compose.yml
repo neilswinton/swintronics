@@ -24,6 +24,11 @@
 #
 # For more extensive installation and update instructions, refer to the
 # documentation.
+
+name: paperless
+include:
+  - ../networks.yml
+
 services:
   broker:
     image: docker.io/library/redis:8
@@ -41,6 +46,9 @@ services:
       POSTGRES_PASSWORD: paperless
   webserver:
     image: ghcr.io/paperless-ngx/paperless-ngx:2.19.4
+    networks:   
+      default:  # networking among paperless services
+      proxy:    # networking to traefik reverse proxy
     restart: unless-stopped
     depends_on:
       - db
