@@ -5,6 +5,7 @@ set -euo pipefail
 
 # 📍 CONFIGURATION
 DATE=$(date +%F_%H-%M)
+RESTIC_TAGS="--tag paperless --tag ${DATE}"
 BACKUP_DATA_PATH="/swintronics-data/volumes/paperless/export"
 
 
@@ -27,7 +28,7 @@ docker compose exec -T webserver document_exporter ../export
 # 📦 Run Restic backup
 echo "Backing up snapshot with Restic..."
 # shellcheck disable=SC2086
-restic backup "${BACKUP_DATA_PATH}" 
+restic backup ${RESTIC_TAGS} "${BACKUP_DATA_PATH}" 
 restic forget  --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
 restic check
 

@@ -40,7 +40,7 @@ services:
       POSTGRES_USER: paperless
       POSTGRES_PASSWORD: paperless
   webserver:
-    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    image: ghcr.io/paperless-ngx/paperless-ngx:2.19.4
     restart: unless-stopped
     depends_on:
       - db
@@ -52,7 +52,8 @@ services:
       - media:/usr/src/paperless/media
       - /swintronics-data/volumes/paperless/export:/usr/src/paperless/export
       - /swintronics-data/volumes/paperless/consume:/usr/src/paperless/consume
-    env_file: docker-compose.env
+    env_file: 
+      - docker-compose.env
     environment:
       PAPERLESS_REDIS: redis://broker:6379
       PAPERLESS_DBHOST: db

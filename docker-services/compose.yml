@@ -6,9 +6,10 @@ networks:
 include:
   - "tailscale/compose.yml"
   - "traefik/compose.yml"
-  - "immich-app/docker-compose.yml"
+  - "immich-app/compose.yml"
   - "dozzle/compose.yml"
   - "paperless/compose.yml"
   - "uptime-kuma/compose.yml"
+  - "stirling-pdf/compose.yml"
   
   

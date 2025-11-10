@@ -1,7 +1,7 @@
 services:
   uptime-kuma:
     container_name: uptime-kuma
-    image: louislam/uptime-kuma:2
+    image: louislam/uptime-kuma:2.0.2
     restart: unless-stopped
     volumes:
       - /swintronics-data/volumes/uptime-kuma/data:/app/data
