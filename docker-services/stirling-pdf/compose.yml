@@ -1,0 +1,23 @@
+name: stirling-pdf
+include:
+  - ../networks.yml
+
+services:
+  stirling-pdf:
+    image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:1.5.0
+    volumes:
+      - /swintronics-data/volumes/stirling-pdf/trainingData:/usr/share/tessdata # Required for extra OCR languages
+      - /swintronics-data/volumes/stirling-pdf/extraConfigs:/configs
+      - /swintronics-data/volumes/stirling-pdf/customFiles:/customFiles/
+      - /swintronics-data/logs/stirling-pdf/logs:/logs/
+      - /swintronics-data/volumes/stirling-pdf/pipeline:/pipeline/
+    environment:
+      - DISABLE_ADDITIONAL_FEATURES=false
+      - LANGS=en_US
+      - TZ=${TZ:-America/New_York}
+    restart: unless-stopped
+    labels:
+      traefik.enable: true
+      traefik.http.routers.stirling-pdf.entrypoints: websecure
+      traefik.http.routers.stirling-pdf.rule: Host(`stirling-pdf.${SERVER_DOMAIN}`)
+      traefik.http.routers.stirling-pdf.tls.certresolver: ${CERT_RESOLVER}
