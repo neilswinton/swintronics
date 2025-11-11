@@ -12,7 +12,7 @@ DB_DUMP="${SOURCE_SUBVOLUME_PATH}/immich_db.sql"
 RESTIC_TAGS="--tag immich --tag ${DATE}"
 IMMICH_SERVICES="immich-server immich-machine-learning"
 
-exec >/swintronics-data/logs/cron/photo-backup."${DATE}".log 2>&1
+exec >/swintronics-data/logs/cron/immich/photo-backup."${DATE}".log 2>&1
 
 date +"🕓 Starting Immich backup at %Y-%m-%d %H:%M:%S"
 

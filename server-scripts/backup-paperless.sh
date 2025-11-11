@@ -9,7 +9,7 @@ RESTIC_TAGS="--tag paperless --tag ${DATE}"
 BACKUP_DATA_PATH="/swintronics-data/volumes/paperless/export"
 
 
-exec >/swintronics-data/logs/cron/paperless-backup."${DATE}".log 2>&1
+exec >/swintronics-data/logs/cron/paperless/paperless-backup."${DATE}".log 2>&1
 
 date +"🕓 Starting Paperless backup at %Y-%m-%d %H:%M:%S"
 
@@ -26,7 +26,7 @@ docker compose exec -T webserver document_exporter ../export
 
 
 # 📦 Run Restic backup
-echo "Backing up snapshot with Restic..."
+echo "Backing up exported state with Restic..."
 # shellcheck disable=SC2086
 restic backup ${RESTIC_TAGS} "${BACKUP_DATA_PATH}" 
 restic forget  --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
