@@ -3,9 +3,12 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
+    user: "1000:1001"
     environment:
       - GF_SECURITY_ADMIN_USER=neil
       - GF_SECURITY_ADMIN_PASSWORD=change-me
+    volumes:
+      - /swintronics-data/volumes/grafana:/var/lib/grafana
     labels:
       traefik.enable: true
       traefik.http.routers.grafana.entrypoints: websecure
