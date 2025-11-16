@@ -2,7 +2,7 @@
 set -euo pipefail
 # Default values
 action="up"
-wait=0
+wait=30
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
