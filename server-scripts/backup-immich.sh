@@ -1,6 +1,25 @@
 #!/bin/bash
 set -euo pipefail
 
+# Default value
+debug=false
+
+# Parse arguments
+for arg in "$@"; do
+  case "$arg" in
+    --debug)
+      debug=true
+      ;;
+    --no-debug)
+      debug=false
+      ;;
+    *)
+      echo "Unknown option: $arg"
+      echo "Usage: $0 [--debug|--no-debug]"
+      exit 1
+      ;;
+  esac
+done
 
 
 # 📍 CONFIGURATION
@@ -9,10 +28,14 @@ DAY=$(date +%A)
 SOURCE_SUBVOLUME_PATH="/swintronics-data/volumes/immich/library"
 SNAP_DIR="/swintronics-data/snapshots/immich/library/backup"
 DB_DUMP="${SOURCE_SUBVOLUME_PATH}/immich_db.sql"
-RESTIC_TAGS="--tag immich --tag ${DATE}"
+RESTIC_SERVICE_TAG="immich"
 IMMICH_SERVICES="immich-server immich-machine-learning"
 
-exec >/swintronics-data/logs/cron/immich/photo-backup."${DATE}".log 2>&1
+if $debug; then
+    set -x
+else
+    exec >/swintronics-data/logs/cron/immich/photo-backup."${DATE}".log 2>&1
+fi 
 
 date +"🕓 Starting Immich backup at %Y-%m-%d %H:%M:%S"
 
@@ -61,20 +84,14 @@ docker compose start ${IMMICH_SERVICES}
 
 # 📦 Run Restic backup
 echo "Backing up snapshot with Restic..."
-# shellcheck disable=SC2086
-restic backup ${RESTIC_TAGS} "${SNAP_DIR}" 
-restic forget  --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+restic backup --tag "${RESTIC_SERVICE_TAG}" --tag "${DATE}" "${SNAP_DIR}" 
+restic forget --tag "${RESTIC_SERVICE_TAG}" --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
 restic check
          
 # 🗄️ Rename snapshot to day of the week.  Remove previous week's as needed
 ARCHIVE_DIR="$(dirname ${SNAP_DIR})/${DAY}"
 test -d "${ARCHIVE_DIR}" &&  btrfs property set -ts "${ARCHIVE_DIR}" ro false && btrfs subvolume delete "${ARCHIVE_DIR}"
 mv "${SNAP_DIR}"  "${ARCHIVE_DIR}"
-
-# TODO: second disk
-# TODO: remove snaps -- or all but latest
-# TODO: healthcheck
-# TODO: cronjob
 
 # ✅ Notify Healthchecks.io of success
 curl -fsS -o /dev/null --retry 3  "${HC_PHOTO_PING_URL}" || echo "Healthchecks.io success ping failed"

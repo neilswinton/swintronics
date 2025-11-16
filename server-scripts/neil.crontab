@@ -1,3 +1,4 @@
 03 2 * * * /home/neil/swintronics/server-scripts/backup-immich.sh
 53 3 * * * /home/neil/swintronics/server-scripts/backup-paperless.sh
 53 1 * * * /home/neil/swintronics/server-scripts/backup-docker.sh
+53 4 * * * /home/neil/swintronics/server-scripts/backup-kuma.sh
