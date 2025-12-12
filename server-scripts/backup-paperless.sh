@@ -1,15 +1,37 @@
 #!/bin/bash
 set -euo pipefail
 
+# Default value
+debug=false
 
+# Parse arguments
+for arg in "$@"; do
+  case "$arg" in
+    --debug)
+      debug=true
+      ;;
+    --no-debug)
+      debug=false
+      ;;
+    *)
+      echo "Unknown option: $arg"
+      echo "Usage: $0 [--debug|--no-debug]"
+      exit 1
+      ;;
+  esac
+done
 
 # 📍 CONFIGURATION
 DATE=$(date +%F_%H-%M)
-RESTIC_TAGS="--tag paperless --tag ${DATE}"
+RESTIC_SERVICE_TAG="paperless"
+LOG_DIRECTORY="/swintronics-data/logs/cron/${RESTIC_SERVICE_TAG}"
 BACKUP_DATA_PATH="/swintronics-data/volumes/paperless/export"
 
-
-exec >/swintronics-data/logs/cron/paperless/paperless-backup."${DATE}".log 2>&1
+if $debug; then
+    set -x
+else
+    exec >"${LOG_DIRECTORY}/backup.${DATE}".log 2>&1
+fi
 
 date +"🕓 Starting Paperless backup at %Y-%m-%d %H:%M:%S"
 
@@ -26,10 +48,9 @@ docker compose exec -T webserver document_exporter ../export
 
 
 # 📦 Run Restic backup
-echo "Backing up exported state with Restic..."
-# shellcheck disable=SC2086
-restic backup ${RESTIC_TAGS} "${BACKUP_DATA_PATH}" 
-restic forget  --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+echo "Backing up ${RESTIC_SERVICE_TAG} with Restic..."
+restic backup --tag "${RESTIC_SERVICE_TAG}" --tag "${DATE}" "${BACKUP_DATA_PATH}"
+restic forget --tag "${RESTIC_SERVICE_TAG}" --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
 restic check
 
 # Notify Uptime Kuma of success

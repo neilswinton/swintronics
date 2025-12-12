@@ -1,27 +1,48 @@
 #!/bin/bash
 set -euo pipefail
 
+# Default value
+debug=false
 
+# Parse arguments
+for arg in "$@"; do
+  case "$arg" in
+    --debug)
+      debug=true
+      ;;
+    --no-debug)
+      debug=false
+      ;;
+    *)
+      echo "Unknown option: $arg"
+      echo "Usage: $0 [--debug|--no-debug]"
+      exit 1
+      ;;
+  esac
+done
 
 # 📍 CONFIGURATION
 DATE=$(date +%F_%H-%M)
-RESTIC_TAGS="--tag docker --tag ${DATE}"
+RESTIC_SERVICE_TAG="docker-services"
 SOURCE_PATH="/home/neil/swintronics/docker-services"
 
-
-exec >/swintronics-data/logs/cron/docker-services/docker-backup."${DATE}".log 2>&1
+if $debug; then
+    set -x
+else
+    exec >/swintronics-data/logs/cron/docker-services/docker-backup."${DATE}".log 2>&1
+fi 
 
 date +"🕓 Starting docker backup at %Y-%m-%d %H:%M:%S"
 
-cd /home/neil/swintronics
+cd "${SOURCE_PATH}"
 
-. ./docker-services/backup.env
+# shellcheck disable=SC1091
+. ../docker-services/backup.env
 
 # 📦 Run Restic backup
-echo "Backing up docker-services with Restic..."
-# shellcheck disable=SC2086
-restic backup ${RESTIC_TAGS} "${SOURCE_PATH}" 
-restic forget  --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+echo "Backing up ${RESTIC_SERVICE_TAG} with Restic..."
+restic backup --tag "${RESTIC_SERVICE_TAG}" --tag "${DATE}" "${SOURCE_PATH}" 
+restic forget --tag "${RESTIC_SERVICE_TAG}" --keep-daily 7 --keep-weekly 4 --prune
 restic check
 
 # Notify Uptime Kuma of success
