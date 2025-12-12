@@ -3,6 +3,7 @@ set -euo pipefail
 # Default values
 action="up"
 wait=30
+pull=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -19,6 +20,10 @@ while [[ $# -gt 0 ]]; do
 
         --down)
             action="down"
+            shift
+    ;;        
+        --pull)
+            pull=true
             shift
     ;;
 
@@ -46,6 +51,10 @@ while [[ $# -gt 0 ]]; do
 
 if [ "$action" == "up" ];then
 
+    if $pull; then
+        for svc in dozzle stirling-pdf immich-app paperless monitoring; do (cd $svc;docker compose pull);done
+    fi
+    
     (cd networking;docker compose up -d)
     for svc in dozzle stirling-pdf immich-app paperless monitoring; do (cd $svc;docker compose up -d);done
     sleep "$wait"
