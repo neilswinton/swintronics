@@ -72,6 +72,7 @@ variable "infisical_api_url" {
 variable "infisical_project_user_username" {
   description = "Username or email for Infisical project user"
   type        = string
+  default     = "" # empty to skip inviting user -- unneeded for admins
 }
 
 variable "source_repo" {
@@ -84,4 +85,9 @@ variable "data_disk_mountpoint" {
   type        = string
   default     = "/mnt/docker-data"
   description = "Mountpoint for the data disk"
+}
+
+variable "domain_name" {
+  type = string
+  description = "The domain name of the server"
 }

@@ -20,6 +20,7 @@ resource "infisical_project" "runtime_secrets" {
 
 # Give ourselves access
 resource "infisical_project_user" "terraform" {
+  count = var.infisical_project_user_username != "" ? 1 : 0
   project_id = infisical_project.runtime_secrets.id
   username   = var.infisical_project_user_username
   roles = [
@@ -153,6 +154,21 @@ resource "infisical_secret" "immich_postgres_password" {
   name         = "IMMICH_DB_PASSWORD"
   value        = random_password.immich_postgres_password.result
   env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
+# linkwarden
+resource "random_password" "linkwarden_passwords" {
+  for_each = toset(["NEXTAUTH_SECRET", "MEILI_MASTER_KEY", "POSTGRES_PASSWORD"])
+  length  = 16
+}
+
+resource "infisical_secret" "linkwarden_passwords" {
+  for_each = random_password.linkwarden_passwords
+  name = "LINKWARDEN_${each.key}"
+  value = each.value.result
+  env_slug = "dev"
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"
 }
