@@ -29,12 +29,12 @@ resource "hcloud_server" "server" {
   user_data = local.user_data
 
   lifecycle {
-    ignore_changes = [ssh_keys]
+    ignore_changes = [ssh_keys, user_data]
   }
 
 
   public_net {
-    ipv6_enabled = false
+    ipv6_enabled = true
     ipv4_enabled = true
   }
 }
@@ -78,7 +78,20 @@ resource "local_file" "root_env" {
   filename        = "${path.module}/artifacts/docker-services.env"
   file_permission = "0644"
   content = templatefile("${path.module}/../docker-services/template.env", {
-    SERVER_DOMAIN = var.project_name
+    SERVER_DOMAIN = var.domain_name
     TZ            = var.timezone
+  })
+}
+
+resource "local_file" "linkwarden_env" {
+  filename        = "${path.module}/artifacts/linkwarden.env"
+  file_permission = "0644"
+  content = templatefile("${path.module}/../docker-services/linkwarden/template.env", {
+    SERVER_DOMAIN     = "linkwarden.${var.domain_name}"
+    CERT_RESOLVER     = "production"
+    POSTGRES_PASSWORD = random_password.linkwarden_passwords["POSTGRES_PASSWORD"].result
+    NEXTAUTH_SECRET   = random_password.linkwarden_passwords["NEXTAUTH_SECRET"].result
+    MEILI_MASTER_KEY  = random_password.linkwarden_passwords["MEILI_MASTER_KEY"].result
+    TZ                = var.timezone
   })
 }
