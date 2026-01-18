@@ -1,3 +1,8 @@
+name: karakeep
+
+include:
+  - ../networks.yml
+  
 services:
   web:
     image: ghcr.io/karakeep-app/karakeep:${KARAKEEP_VERSION:-release}
@@ -9,8 +14,6 @@ services:
       # - data:/data
       - /swintronics-data/volumes/karakeep/data:/data
 
-    ports:
-      - 3000:3000
     env_file:
       - .env
     environment:
@@ -21,6 +24,13 @@ services:
       # You almost never want to change the value of the DATA_DIR variable.
       # If you want to mount a custom directory, change the volume mapping above instead.
       DATA_DIR: /data # DON'T CHANGE THIS
+
+    labels:
+      traefik.enable: true
+      traefik.http.routers.karakeep.entrypoints: websecure
+      traefik.http.routers.karakeep.rule: Host(`karakeep.${SERVER_DOMAIN}`)
+      traefik.http.routers.karakeep.tls.certresolver: ${CERT_RESOLVER}
+      traefik.http.services.karakeep.loadbalancer.server.port: 3000
   chrome:
     image: gcr.io/zenika-hub/alpine-chrome:124
     restart: unless-stopped
