@@ -75,6 +75,4 @@ accessLog:
 
 log:
   filePath: "/logs/traefik.log"
-  level: DEBUG
-
-
+  level: INFO
