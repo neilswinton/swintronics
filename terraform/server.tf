@@ -95,3 +95,15 @@ resource "local_file" "linkwarden_env" {
     TZ                = var.timezone
   })
 }
+
+resource "local_file" "karakeep_env" {
+  filename        = "${path.module}/artifacts/karakeep.env"
+  file_permission = "0644"
+  content = templatefile("${path.module}/../docker-services/karakeep-app/template.env", {
+    SERVER_DOMAIN    = "${var.domain_name}"
+    CERT_RESOLVER    = "production"
+    NEXTAUTH_SECRET  = random_password.karakeep_passwords["NEXTAUTH_SECRET"].result
+    MEILI_MASTER_KEY = random_password.karakeep_passwords["MEILI_MASTER_KEY"].result
+    TZ               = var.timezone
+  })
+}
