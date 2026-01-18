@@ -4,6 +4,7 @@ set -euo pipefail
 action="up"
 wait=30
 pull=false
+normal_services=("dozzle" "stirling-pdf" "immich-app" "paperless" "monitoring"  "linkwarden" "karakeep-app")
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -52,11 +53,11 @@ while [[ $# -gt 0 ]]; do
 if [ "$action" == "up" ];then
 
     if $pull; then
-        for svc in dozzle stirling-pdf immich-app paperless monitoring; do (cd $svc;docker compose pull);done
+        for svc in "${normal_services[@]}"; do (cd $svc;docker compose pull);done
     fi
     
     (cd networking;docker compose up -d)
-    for svc in dozzle stirling-pdf immich-app paperless monitoring; do (cd $svc;docker compose up -d);done
+    for svc in "${normal_services[@]}"; do (echo $svc;cd $svc;docker compose up -d);done
     sleep "$wait"
     (cd uptime-kuma;docker compose up -d)
     # Tell Healthchecks.io to resume monitoring the cluster heartbeat from uptime-kuma
@@ -66,7 +67,7 @@ else
     # Tell Healthchecks.io to pause monitoring the cluster heartbeat from uptime-kuma
     curl --header "X-Api-Key: ${HEARTBEAT_HEALTHCHECK_API_KEY}" --request POST --data "" "${HEARTBEAT_HEALTHCHECK_PAUSE_URL}"
     (cd uptime-kuma;docker compose down)
-    for svc in dozzle stirling-pdf immich-app paperless monitoring; do (cd $svc;docker compose down);done
+    for svc in "${normal_services[@]}"; do (cd $svc;docker compose down);done
     sleep 2
     (cd networking;docker compose down)
 fi 
