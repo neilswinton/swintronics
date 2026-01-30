@@ -95,6 +95,13 @@ resource "infisical_secret" "ts_docker_client_secret" {
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"
 }
+resource "infisical_secret" "tailscale_auth_key" {
+  name         = "TS_AUTH_KEY"
+  value        = tailscale_tailnet_key.swintronics_auth.key
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
 resource "infisical_secret" "cloudflare_runtime" {
   for_each     = toset(["CF_API_EMAIL", "CF_DNS_API_TOKEN"])
   name         = each.key
