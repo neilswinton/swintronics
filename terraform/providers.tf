@@ -41,3 +41,21 @@ provider "tailscale" {
   oauth_client_id     = ephemeral.infisical_secret.tailscale_provider_oauth_client.value
   oauth_client_secret = ephemeral.infisical_secret.tailscale_provider_oauth_client_secret.value
 }
+
+# Configure the R2 backend for terraform state storage
+terraform {
+  backend "s3" {
+    bucket = "swintronics-tfstate"
+    key    = "swintronics/terraform.tfstate"
+    region = "auto"
+    endpoints = {
+      s3 = "https://b36f9e73188dcaad461bb82e5ff002f7.r2.cloudflarestorage.com"
+    }
+    skip_credentials_validation = true
+    skip_metadata_api_check     = true
+    skip_region_validation      = true
+    skip_requesting_account_id  = true
+    skip_s3_checksum            = true
+    use_path_style              = true
+  }
+}
