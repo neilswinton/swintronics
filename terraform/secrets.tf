@@ -81,16 +81,9 @@ resource "infisical_project_identity" "docker_deploy" {
 # Populate runtime secrets to the runtime project
 # Store tailscale-generated OAuth client credentials into Infisical
 
-resource "infisical_secret" "ts_docker_client_id" {
-  name         = "TS_OAUTH_CLIENT_ID"
-  value        = tailscale_oauth_client.docker_identity.id
-  env_slug     = "dev"
-  workspace_id = infisical_project.runtime_secrets.id
-  folder_path  = "/"
-}
-resource "infisical_secret" "ts_docker_client_secret" {
-  name         = "TS_OAUTH_CLIENT_SECRET"
-  value        = tailscale_oauth_client.docker_identity.key
+resource "infisical_secret" "tailscale_auth_key" {
+  name         = "TS_AUTH_KEY"
+  value        = tailscale_tailnet_key.swintronics_auth.key
   env_slug     = "dev"
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"
