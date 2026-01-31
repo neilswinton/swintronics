@@ -12,7 +12,7 @@ services:
       - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN:?Please set the CF_DNS_API_TOKEN environment variable}
       - CERT_RESOLVER=${CERT_RESOLVER:?Please set the CERT_RESOLVER environment variable}
       - SERVER_DOMAIN=${SERVER_DOMAIN:?Please set the SERVER_DOMAIN environment variable}
-    network_mode: "service:tailscale"
+    network_mode: "host"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik-data/traefik.yml:/traefik.yml:ro
@@ -34,9 +34,6 @@ services:
       timeout: 30s
       retries: 3
       start_period: 20s
-    depends_on:
-      tailscale:
-        condition: service_started # service_healthy with tailscale healthcheck
 
   whoami:
     container_name: simple-service
