@@ -27,6 +27,11 @@ while [[ $# -gt 0 ]]; do
             pull=true
             shift
     ;;
+        --upgrade)
+            pull=true
+            action="upgrade"
+            shift
+    ;;
 
         --wait)
             if [[ -n "$2" && "$2" =~ ^[0-9]+$ ]]; then
@@ -50,26 +55,45 @@ while [[ $# -gt 0 ]]; do
 # shellcheck disable=SC1091
 . ./backup.env 
 
-if [ "$action" == "up" ];then
+# Pull first while everything is running
+if $pull; then
+    echo "Pulling images"
+    for svc in "${normal_services[@]}"; do (cd "$svc";docker compose pull);done
+    (cd networking && docker compose pull)
+    (cd uptime-kuma;docker compose pull)
+fi
 
-    if $pull; then
-        for svc in "${normal_services[@]}"; do (cd $svc;docker compose pull);done
-    fi
-    
-    (cd networking;docker compose up -d)
-    for svc in "${normal_services[@]}"; do (echo $svc;cd $svc;docker compose up -d);done
-    sleep "$wait"
-    (cd uptime-kuma;docker compose up -d)
-    # Tell Healthchecks.io to resume monitoring the cluster heartbeat from uptime-kuma
-    curl --header "X-Api-Key: ${HEARTBEAT_HEALTHCHECK_API_KEY}" --request POST --data "" "${HEARTBEAT_HEALTHCHECK_RESUME_URL}"
+# Shutdown services: kuma first, then all but network, network last
 
-else 
+if [ "$action" == "down" ] || [ "$action" == "upgrade" ];then
+    echo "Stopping services"
+
     # Tell Healthchecks.io to pause monitoring the cluster heartbeat from uptime-kuma
-    curl --header "X-Api-Key: ${HEARTBEAT_HEALTHCHECK_API_KEY}" --request POST --data "" "${HEARTBEAT_HEALTHCHECK_PAUSE_URL}"
+    curl --fail --silent --show-error --output /dev/null --retry 3 --header "X-Api-Key: ${HEARTBEAT_HEALTHCHECK_API_KEY}" --request POST --data "" "${HEARTBEAT_HEALTHCHECK_PAUSE_URL}"
+
+    # Stop the services
     (cd uptime-kuma;docker compose down)
-    for svc in "${normal_services[@]}"; do (cd $svc;docker compose down);done
+    for svc in "${normal_services[@]}"; do (cd "$svc";docker compose down);done
     sleep 2
     (cd networking;docker compose down)
 fi 
 
+# Start services
+if [ "$action" == "up" ] || [ "$action" == "upgrade" ];then
+    echo "Starting services"
 
+    # Start the services
+    (cd networking;docker compose up -d)
+    for svc in "${normal_services[@]}"; do (echo "$svc";cd "$svc";docker compose up -d);done
+    sleep "$wait"
+    (cd uptime-kuma;docker compose up -d)
+
+    # Tell Healthchecks.io to resume monitoring the cluster heartbeat from uptime-kuma
+    curl --fail --silent --show-error --output /dev/null --retry 3 --header "X-Api-Key: ${HEARTBEAT_HEALTHCHECK_API_KEY}" --request POST --data "" "${HEARTBEAT_HEALTHCHECK_RESUME_URL}"
+
+    # Clean up old images as needed
+    if $pull; then
+        echo "Pruning old images"
+        docker image prune --force
+    fi
+fi
