@@ -1,0 +1,13 @@
+---
+# Infisical configuration
+# Machine identity credentials should be in ~/.infisical.json on your local machine:
+# {
+#   "client_id": "your-client-id",
+#   "client_secret": "your-client-secret"
+# }
+
+infisical_project_id: "Swintronics Runtime"
+infisical_environment: "dev"
+
+# Docker services base path
+docker_services_path: /home/neil/swintronics/docker-services

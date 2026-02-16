@@ -1,0 +1,102 @@
+---
+- name: Update Docker Service
+  hosts: "{{ target_host | default('swintronics') }}"
+  become: yes
+  
+  vars:
+    # These will be set in Semaphore or command line
+    service_name: ""  # e.g., immich, paperless-ngx, kuma
+    new_version: ""   # e.g., v1.117.0
+    
+    # Infisical configuration
+    infisical_project_id: "Swintronics Runtime"
+    infisical_environment: "dev"
+    
+    # Pull secrets from Infisical
+    healthchecks_api_key: "{{ lookup('community.general.infisical_secrets', 'HEALTHCHECKS_API_KEY', project_id=infisical_project_id, environment=infisical_environment) }}"
+    healthchecks_check_uuid: "{{ lookup('community.general.infisical_secrets', 'HEALTHCHECKS_KUMA_CHECK_UUID', project_id=infisical_project_id, environment=infisical_environment) }}"
+    
+    # Service paths
+    service_path: "{{ docker_services_path }}/{{ service_name }}"
+    
+    # Whether to stop/start Uptime Kuma (skip if we're updating Uptime Kuma itself)
+    manage_kuma: "{{ service_name != 'uptime-kuma' }}"
+    
+  tasks:
+    - name: Validate required variables
+      fail:
+        msg: "service_name and new_version are required"
+      when: service_name == "" or new_version == ""
+    
+    - name: Pause healthchecks.io monitor
+      uri:
+        url: "https://healthchecks.io/api/v3/checks/{{ healthchecks_check_uuid }}/pause"
+        method: POST
+        headers:
+          X-Api-Key: "{{ healthchecks_api_key }}"
+        status_code: 200
+      delegate_to: localhost
+      
+    - name: Stop Uptime Kuma container
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/uptime-kuma"
+        state: absent
+      when: manage_kuma | bool
+      
+    - name: Backup current .env file
+      copy:
+        src: "{{ service_path }}/.env"
+        dest: "{{ service_path }}/.env.backup-{{ ansible_date_time.iso8601_basic_short }}"
+        remote_src: yes
+        
+    - name: Update version in .env file
+      lineinfile:
+        path: "{{ service_path }}/.env"
+        regexp: "^{{ service_name | upper | replace('-', '_') }}_VERSION=.*"
+        line: "{{ service_name | upper | replace('-', '_') }}_VERSION={{ new_version }}"
+        
+    - name: Pull new Docker image
+      community.docker.docker_compose_v2:
+        project_src: "{{ service_path }}"
+        pull: yes
+        
+    - name: Restart service with new version
+      community.docker.docker_compose_v2:
+        project_src: "{{ service_path }}"
+        restarted: yes
+        
+    - name: Wait for container to be running
+      community.docker.docker_container_info:
+        name: "{{ service_name }}"
+      register: container_info
+      until: container_info.exists and container_info.container.State.Running
+      retries: 30
+      delay: 2
+      
+    - name: Start Uptime Kuma container
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/uptime-kuma"
+        state: present
+      when: manage_kuma | bool
+      
+    - name: Wait for Kuma to be ready
+      wait_for:
+        port: 3001
+        delay: 5
+        timeout: 60
+      when: manage_kuma | bool
+      
+    - name: Resume healthchecks.io monitor
+      uri:
+        url: "https://healthchecks.io/api/v3/checks/{{ healthchecks_check_uuid }}/resume"
+        method: POST
+        headers:
+          X-Api-Key: "{{ healthchecks_api_key }}"
+        status_code: 200
+      delegate_to: localhost
+      
+    - name: Display update summary
+      debug:
+        msg: |
+          ✅ {{ service_name }} successfully updated to {{ new_version }}
+          Container is running and healthy

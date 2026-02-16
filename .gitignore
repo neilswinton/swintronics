@@ -43,3 +43,5 @@ selfhosted-migrate/
 
 # Playgrounds
 tfplayground/
+
+.infisical.json
