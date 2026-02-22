@@ -111,7 +111,12 @@
         delay: 5
         timeout: 60
       when: manage_kuma | bool
-      
+
+    - name: Wait for Uptime Kuma to start issuing heartbeats
+      pause:
+        seconds: 30
+      when: manage_kuma | bool
+
     - name: Resume healthchecks.io monitor
       uri:
         url: "https://healthchecks.io/api/v3/checks/{{ secrets.secrets.HEALTHCHECKS_KUMA_CHECK_UUID }}/resume"

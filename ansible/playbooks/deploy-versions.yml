@@ -232,6 +232,11 @@
         timeout: 60
       when: any_changed | bool
 
+    - name: Wait for Uptime Kuma to start issuing heartbeats
+      pause:
+        seconds: 30
+      when: any_changed | bool
+
     - name: Resume healthchecks.io monitor
       uri:
         url: "https://healthchecks.io/api/v3/checks/{{ infisical_secrets.secrets.HEALTHCHECKS_KUMA_CHECK_UUID }}/resume"
