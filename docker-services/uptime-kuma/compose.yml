@@ -4,13 +4,16 @@ include:
 services:
   uptime-kuma:
     container_name: uptime-kuma
-    image: louislam/uptime-kuma:2.0.2
+    image: louislam/uptime-kuma:${UPTIME_KUMA_VERSION}
     restart: unless-stopped
     volumes:
       - /swintronics-data/volumes/uptime-kuma/data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock 
     ports:
       # <Host Port>:<Container Port>
       - "3001:3001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     labels:
 
       # Shared service definition
@@ -35,5 +38,4 @@ services:
       traefik.http.middlewares.redirect-status.redirectregex.regex: "^https://status\\.[^/]+/?$"
       traefik.http.middlewares.redirect-status.redirectregex.replacement: "https://status.${SERVER_DOMAIN}/status/default"
       traefik.http.middlewares.redirect-status.redirectregex.permanent: true
-
 
