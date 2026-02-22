@@ -1,0 +1,10 @@
+---
+# Infisical configuration
+# Credentials are read from environment variables — source ansible/.env before running playbooks.
+infisical_client_id: "{{ lookup('env', 'INFISICAL_CLIENT_ID') }}"
+infisical_client_secret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') }}"
+infisical_project_id: "{{ lookup('env', 'INFISICAL_PROJECT_ID') }}"
+infisical_environment: "dev"
+
+# Docker services base path
+docker_services_path: /home/neil/swintronics/docker-services
