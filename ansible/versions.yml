@@ -1,0 +1,25 @@
+---
+# Service versions — edit these and run deploy-versions.yml to update.
+# Ansible will only restart services whose compose file actually changes.
+
+versions:
+  # https://github.com/traefik/traefik/releases
+  traefik: "3.6.8"
+
+  # https://github.com/immich-app/immich/releases
+  immich: "v2.5.6"
+
+  # https://github.com/paperless-ngx/paperless-ngx/releases
+  paperless: "2.20.6"
+
+  # https://github.com/louislam/uptime-kuma/releases
+  kuma: "2.1.0"
+
+  # https://github.com/amir20/dozzle/releases
+  dozzle: "v8.14.7"
+
+  # https://github.com/Stirling-Tools/Stirling-PDF/releases
+  stirling_pdf: "1.5.0"
+
+  # https://github.com/linkwarden/linkwarden/releases
+  linkwarden: "latest"

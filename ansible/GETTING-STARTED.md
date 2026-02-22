@@ -37,19 +37,31 @@ cd ansible-docker
 ansible-galaxy collection install -r requirements.yml
 ```
 
-This installs the `community.docker` collection needed for Docker management.
+This installs the `community.docker`, `ansible.posix`, and `infisical.vault` collections.
 
 ## Step 3: Configure Infisical
 
-The playbook pulls secrets from Infisical instead of storing them in files.
+The playbook authenticates to Infisical using a Machine Identity (Universal Auth).
 
-**First, follow INFISICAL-SETUP.md to:**
-1. Add secrets to Infisical (HEALTHCHECKS_API_KEY and HEALTHCHECKS_KUMA_CHECK_UUID)
-2. Create `~/.infisical.json` with your machine identity credentials
-3. Install Infisical CLI
-4. Test the connection
+**One-time setup:**
+1. Add secrets to your Infisical project: `HEALTHCHECKS_API_KEY` and `HEALTHCHECKS_KUMA_CHECK_UUID`
+2. Create a Machine Identity in Infisical with Universal Auth and grant it read access to the project
+3. Copy `ansible/.env.example` to `ansible/.env` and fill in your Client ID, Client Secret, and project UUID
 
-Once Infisical is set up, secrets will be fetched automatically when you run playbooks.
+```bash
+cp ansible/.env.example ansible/.env
+# edit ansible/.env with your values
+```
+
+4. Install the required Python package:
+```bash
+pip install infisicalsdk
+```
+
+**Before each session**, source the env file:
+```bash
+source ansible/.env
+```
 
 ## Step 4: Test Connectivity
 

@@ -1,12 +1,9 @@
 ---
 # Infisical configuration
-# Machine identity credentials should be in ~/.infisical.json on your local machine:
-# {
-#   "client_id": "your-client-id",
-#   "client_secret": "your-client-secret"
-# }
-
-infisical_project_id: "Swintronics Runtime"
+# Credentials are read from environment variables — source ansible/.env before running playbooks.
+infisical_client_id: "{{ lookup('env', 'INFISICAL_CLIENT_ID') }}"
+infisical_client_secret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') }}"
+infisical_project_id: "{{ lookup('env', 'INFISICAL_PROJECT_ID') }}"
 infisical_environment: "dev"
 
 # Docker services base path

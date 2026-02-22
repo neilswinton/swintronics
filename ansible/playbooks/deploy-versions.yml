@@ -1,0 +1,260 @@
+---
+# Deploy service versions from ansible/versions.yml.
+# Edit versions.yml and run this playbook — only services whose compose file
+# actually changes will be restarted.
+#
+# Usage:
+#   ansible-playbook playbooks/deploy-versions.yml
+#
+# Dry run (shows what would change without restarting anything):
+#   ansible-playbook playbooks/deploy-versions.yml --check
+
+- name: Deploy service versions
+  hosts: "{{ target_host | default('swintronics') }}"
+  become: yes
+
+  vars_files:
+    - "{{ playbook_dir }}/../versions.yml"
+
+  pre_tasks:
+    - name: Login to Infisical
+      infisical.vault.login:
+        url: "https://app.infisical.com"
+        auth_method: universal_auth
+        universal_auth_client_id: "{{ infisical_client_id }}"
+        universal_auth_client_secret: "{{ infisical_client_secret }}"
+      register: infisical_login
+      delegate_to: localhost
+      check_mode: no
+
+    - name: Fetch secrets from Infisical
+      infisical.vault.read_secrets:
+        login_data: "{{ infisical_login.login_data }}"
+        project_id: "{{ infisical_project_id }}"
+        env_slug: "{{ infisical_environment }}"
+        path: "/"
+        as_dict: true
+      register: infisical_secrets
+      delegate_to: localhost
+      check_mode: no
+
+  tasks:
+    # ── Deploy compose templates ──────────────────────────────────────────────
+
+    - name: Deploy networking compose files
+      template:
+        src: "{{ playbook_dir }}/../services/networking/{{ item }}.j2"
+        dest: "{{ docker_services_path }}/networking/{{ item }}"
+        mode: '0644'
+      loop:
+        - compose.yml
+        - traefik.yml
+      register: networking_result
+
+    - name: Deploy uptime-kuma compose file
+      template:
+        src: "{{ playbook_dir }}/../services/uptime-kuma/compose.yml.j2"
+        dest: "{{ docker_services_path }}/uptime-kuma/compose.yml"
+        mode: '0644'
+      register: kuma_result
+
+    - name: Deploy paperless compose file
+      template:
+        src: "{{ playbook_dir }}/../services/paperless/compose.yml.j2"
+        dest: "{{ docker_services_path }}/paperless/compose.yml"
+        mode: '0644'
+      register: paperless_result
+
+    - name: Deploy stirling-pdf compose file
+      template:
+        src: "{{ playbook_dir }}/../services/stirling-pdf/compose.yml.j2"
+        dest: "{{ docker_services_path }}/stirling-pdf/compose.yml"
+        mode: '0644'
+      register: stirling_result
+
+    - name: Deploy dozzle compose file
+      template:
+        src: "{{ playbook_dir }}/../services/dozzle/compose.yml.j2"
+        dest: "{{ docker_services_path }}/dozzle/compose.yml"
+        mode: '0644'
+      register: dozzle_result
+
+    - name: Deploy immich compose file
+      template:
+        src: "{{ playbook_dir }}/../services/immich-app/compose.yml.j2"
+        dest: "{{ docker_services_path }}/immich-app/compose.yml"
+        mode: '0644'
+      register: immich_result
+
+    - name: Deploy linkwarden compose file
+      template:
+        src: "{{ playbook_dir }}/../services/linkwarden/compose.yml.j2"
+        dest: "{{ docker_services_path }}/linkwarden/compose.yml"
+        mode: '0644'
+      register: linkwarden_result
+
+    # ── Determine whether anything needs updating ─────────────────────────────
+
+    - name: Check if any service needs updating
+      set_fact:
+        any_changed: >-
+          {{ networking_result.changed or
+             kuma_result.changed or
+             paperless_result.changed or
+             stirling_result.changed or
+             dozzle_result.changed or
+             immich_result.changed or
+             linkwarden_result.changed }}
+
+    - name: Skip update steps when nothing changed
+      debug:
+        msg: "All services are already at the correct versions."
+      when: not any_changed | bool
+
+    # ── Pause monitoring before making changes ────────────────────────────────
+
+    - name: Pause healthchecks.io monitor
+      uri:
+        url: "https://healthchecks.io/api/v3/checks/{{ infisical_secrets.secrets.HEALTHCHECKS_KUMA_CHECK_UUID }}/pause"
+        method: POST
+        headers:
+          X-Api-Key: "{{ infisical_secrets.secrets.HEALTHCHECKS_API_KEY }}"
+        status_code: 200
+      delegate_to: localhost
+      when: any_changed | bool
+
+    - name: Stop Uptime Kuma
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/uptime-kuma"
+        state: absent
+      when: any_changed | bool
+
+    # ── Update changed services ───────────────────────────────────────────────
+
+    - name: Update networking / traefik
+      block:
+        - name: Pull traefik image
+          community.docker.docker_compose_v2:
+            project_src: "{{ docker_services_path }}/networking"
+            pull: always
+        - name: Restart traefik
+          community.docker.docker_compose_v2:
+            project_src: "{{ docker_services_path }}/networking"
+            state: present
+            recreate: always
+      when: networking_result.changed
+
+    - name: Update paperless
+      block:
+        - name: Pull paperless image
+          community.docker.docker_compose_v2:
+            project_src: "{{ docker_services_path }}/paperless"
+            pull: always
+        - name: Restart paperless
+          community.docker.docker_compose_v2:
+            project_src: "{{ docker_services_path }}/paperless"
+            state: present
+            recreate: always
+      when: paperless_result.changed
+
+    - name: Update stirling-pdf
+      block:
+        - name: Pull stirling-pdf image
+          community.docker.docker_compose_v2:
+            project_src: "{{ docker_services_path }}/stirling-pdf"
+            pull: always
+        - name: Restart stirling-pdf
+          community.docker.docker_compose_v2:
+            project_src: "{{ docker_services_path }}/stirling-pdf"
+            state: present
+            recreate: always
+      when: stirling_result.changed
+
+    - name: Update dozzle
+      block:
+        - name: Pull dozzle image
+          community.docker.docker_compose_v2:
+            project_src: "{{ docker_services_path }}/dozzle"
+            pull: always
+        - name: Restart dozzle
+          community.docker.docker_compose_v2:
+            project_src: "{{ docker_services_path }}/dozzle"
+            state: present
+            recreate: always
+      when: dozzle_result.changed
+
+    - name: Update immich
+      block:
+        - name: Pull immich image
+          community.docker.docker_compose_v2:
+            project_src: "{{ docker_services_path }}/immich-app"
+            pull: always
+        - name: Restart immich
+          community.docker.docker_compose_v2:
+            project_src: "{{ docker_services_path }}/immich-app"
+            state: present
+            recreate: always
+      when: immich_result.changed
+
+    - name: Update linkwarden
+      block:
+        - name: Pull linkwarden image
+          community.docker.docker_compose_v2:
+            project_src: "{{ docker_services_path }}/linkwarden"
+            pull: always
+        - name: Restart linkwarden
+          community.docker.docker_compose_v2:
+            project_src: "{{ docker_services_path }}/linkwarden"
+            state: present
+            recreate: always
+      when: linkwarden_result.changed
+
+    - name: Update uptime-kuma
+      block:
+        - name: Pull uptime-kuma image
+          community.docker.docker_compose_v2:
+            project_src: "{{ docker_services_path }}/uptime-kuma"
+            pull: always
+      when: kuma_result.changed
+
+    # ── Restart Uptime Kuma and resume monitoring ─────────────────────────────
+
+    - name: Start Uptime Kuma
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/uptime-kuma"
+        state: present
+      when: any_changed | bool
+
+    - name: Wait for Uptime Kuma to be ready
+      wait_for:
+        port: 3001
+        delay: 5
+        timeout: 60
+      when: any_changed | bool
+
+    - name: Resume healthchecks.io monitor
+      uri:
+        url: "https://healthchecks.io/api/v3/checks/{{ infisical_secrets.secrets.HEALTHCHECKS_KUMA_CHECK_UUID }}/resume"
+        method: POST
+        headers:
+          X-Api-Key: "{{ infisical_secrets.secrets.HEALTHCHECKS_API_KEY }}"
+        status_code: [200, 409]  # 409 means already active, which is fine
+      delegate_to: localhost
+      when: any_changed | bool
+
+    - name: Summary
+      debug:
+        msg: |
+          Updated services:
+          {% for svc, result in [
+            ('networking/traefik', networking_result),
+            ('uptime-kuma',        kuma_result),
+            ('paperless',          paperless_result),
+            ('stirling-pdf',       stirling_result),
+            ('dozzle',             dozzle_result),
+            ('immich',             immich_result),
+            ('linkwarden',         linkwarden_result),
+          ] %}
+          {{ '  ✓ ' + svc if result.changed else '  - ' + svc + ' (unchanged)' }}
+          {% endfor %}
+      when: any_changed | bool

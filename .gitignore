@@ -45,3 +45,6 @@ selfhosted-migrate/
 tfplayground/
 
 .infisical.json
+
+# Ansible secrets
+ansible/.env

@@ -10,7 +10,9 @@ Infrastructure-as-Code for a self-hosted home server cluster on Hetzner Cloud. I
 
 - **`terraform/`** — Provisions the Hetzner Cloud server, Cloudflare DNS, Tailscale node, firewall, SSH keys, and Cloudflare R2 backend for Terraform state
 - **`ansible/`** — Manages rolling updates to Docker services from your local machine; connects via Tailscale
-- **`docker-services/`** — Docker Compose configurations for all services running on the server
+  - `versions.yml` — single file tracking all service versions; edit and run `deploy-versions.yml` to update
+  - `services/` — Docker Compose files as Jinja2 templates; Ansible renders and deploys these to the server
+- **`docker-services/`** — Non-versioned service config (cluster.sh, networks.yml, env files, traefik config); compose files are deployed here by Ansible
 - **`server-scripts/`** — Backup scripts (Restic) and cron definitions that live on the server
 
 ## Key Commands
@@ -26,27 +28,29 @@ terraform apply   # Run twice on first deploy (per README)
 
 ### Ansible
 
-Run from the `ansible/` directory. Requires Infisical CLI installed locally with `~/.infisical.json` credentials.
+Run from the `ansible/` directory. Source `ansible/.env` first (see `ansible/.env.example`).
 
 ```bash
 # Install collections (first time)
 ansible-galaxy collection install -r requirements.yml
+pip install infisicalsdk
+
+# Load credentials
+source ansible/.env
 
 # Test connectivity
 ansible swintronics -m ping
 
-# Update a service
+# Update versions: edit ansible/versions.yml, then:
+ansible-playbook playbooks/deploy-versions.yml
+
+# Dry run (shows what would change)
+ansible-playbook playbooks/deploy-versions.yml --check
+
+# Update a single service manually
 ansible-playbook playbooks/update-service.yml \
   -e "service_name=immich" \
   -e "new_version=v1.117.0"
-
-# Dry run
-ansible-playbook playbooks/update-service.yml \
-  -e "service_name=immich" -e "new_version=v1.117.0" --check
-
-# Debug
-ansible-playbook playbooks/update-service.yml \
-  -e "service_name=immich" -e "new_version=v1.117.0" -vvv
 ```
 
 ### Docker Cluster (run on the server in `/home/neil/swintronics/docker-services/`)
@@ -74,38 +78,31 @@ ansible-playbook playbooks/update-service.yml \
 All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime", environment: "dev"). Neither `.env` files nor `.tfvars` files are committed to git.
 
 - Terraform accesses Infisical via machine identity in `.auto.tfvars`
-- Ansible fetches secrets at playbook runtime using `infisical export` (delegated to localhost)
+- Ansible authenticates to Infisical using Universal Auth (Machine Identity); credentials in `ansible/.env`
 - `cluster.sh` reads local `backup.env` on the server for healthchecks.io keys
 
 ### Service Update Workflow (Ansible)
 
-The `playbooks/update-service.yml` playbook:
-1. Fetches secrets from Infisical (runs locally)
-2. Pauses healthchecks.io monitoring
-3. Stops Uptime Kuma (skipped if updating Kuma itself)
-4. Backs up the service's `.env` file with a timestamp
-5. Updates the `SERVICE_VERSION=` line in `.env` using `lineinfile`
-6. Pulls new image via `community.docker.docker_compose`
-7. Restarts the container
-8. Waits for container to report `Running`
-9. Restarts Uptime Kuma and waits for port 3001
-10. Resumes healthchecks.io monitoring
+**Preferred:** Edit `ansible/versions.yml` and run `deploy-versions.yml`. The playbook:
+1. Renders Jinja2 compose templates from `ansible/services/` to the server
+2. Detects which service files actually changed
+3. If anything changed: pauses healthchecks.io, stops Kuma, pulls+restarts changed services, starts Kuma, resumes healthchecks.io
+4. If nothing changed: exits cleanly with no restarts
+
+**Single-service update:** `update-service.yml -e service_name=X -e new_version=Y` (same orchestration flow for one service).
 
 ### Service Name Mapping
 
-The playbook maps `service_name` → directory → env var name:
-
-| service_name   | directory      | env var                  |
-|----------------|----------------|--------------------------|
-| immich         | immich-app     | IMMICH_VERSION           |
-| paperless      | paperless      | PAPERLESS_VERSION        |
-| kuma           | uptime-kuma    | KUMA_VERSION             |
-| stirling-pdf   | sterling-pdf   | STIRLING_PDF_VERSION     |
-| linkwarden     | linkwarden     | LINKWARDEN_VERSION       |
-| dozzle         | dozzle         | DOZZLE_VERSION           |
-| traefik        | networking     | TRAEFIK_VERSION          |
-
-Version strings for all services are tracked in `docker-services/versions.txt`.
+| service_name   | directory      | template                            |
+|----------------|----------------|-------------------------------------|
+| immich         | immich-app     | services/immich-app/compose.yml.j2  |
+| paperless      | paperless      | services/paperless/compose.yml.j2   |
+| kuma           | uptime-kuma    | services/uptime-kuma/compose.yml.j2 |
+| stirling-pdf   | stirling-pdf   | services/stirling-pdf/compose.yml.j2|
+| linkwarden     | linkwarden     | services/linkwarden/compose.yml.j2  |
+| dozzle         | dozzle         | services/dozzle/compose.yml.j2      |
+| traefik        | networking     | services/networking/traefik.yml.j2  |
+| karakeep       | karakeep-app   | services/karakeep-app/compose.yml.j2|
 
 ### Networking
 
