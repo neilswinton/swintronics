@@ -57,7 +57,7 @@ Test if Ansible can connect to your server:
 
 ```bash
 ansible swintronics -m ping
-``` 
+```
 
 You should see:
 ```

@@ -3,24 +3,45 @@
   hosts: "{{ target_host | default('swintronics') }}"
   become: yes
   
+  pre_tasks:
+    - name: Fetch all secrets from Infisical
+      shell: |
+        infisical export --projectId="{{ infisical_project_id }}" --env={{ infisical_environment }} --format=dotenv-export
+      register: infisical_secrets_raw
+      delegate_to: localhost
+      changed_when: false
+      
+    - name: Parse secrets into dictionary
+      set_fact:
+        secrets: "{{ infisical_secrets_raw.stdout | regex_findall('export ([^=]+)=\"([^\"]+)\"') | items2dict }}"
+  
   vars:
     # These will be set in Semaphore or command line
-    service_name: ""  # e.g., immich, paperless-ngx, kuma
+    service_name: ""  # e.g., immich, paperless, kuma
     new_version: ""   # e.g., v1.117.0
     
     # Infisical configuration
     infisical_project_id: "Swintronics Runtime"
     infisical_environment: "dev"
     
-    # Pull secrets from Infisical
-    healthchecks_api_key: "{{ lookup('community.general.infisical_secrets', 'HEALTHCHECKS_API_KEY', project_id=infisical_project_id, environment=infisical_environment) }}"
-    healthchecks_check_uuid: "{{ lookup('community.general.infisical_secrets', 'HEALTHCHECKS_KUMA_CHECK_UUID', project_id=infisical_project_id, environment=infisical_environment) }}"
+    # Map service names to directory names
+    service_directory_map:
+      immich: "immich-app"
+      paperless: "paperless"
+      kuma: "uptime-kuma"
+      stirling-pdf: "sterling-pdf"
+      linkwarden: "linkwarden"
+      dozzle: "dozzle"
+      traefik: "networking"
+    
+    # Get actual directory name
+    service_directory: "{{ service_directory_map[service_name] | default(service_name) }}"
     
     # Service paths
-    service_path: "{{ docker_services_path }}/{{ service_name }}"
+    service_path: "{{ docker_services_path }}/{{ service_directory }}"
     
-    # Whether to stop/start Uptime Kuma (skip if we're updating Uptime Kuma itself)
-    manage_kuma: "{{ service_name != 'uptime-kuma' }}"
+    # Whether to stop/start Kuma (skip if we're updating Kuma itself)
+    manage_kuma: "{{ service_name != 'kuma' }}"
     
   tasks:
     - name: Validate required variables
@@ -30,15 +51,15 @@
     
     - name: Pause healthchecks.io monitor
       uri:
-        url: "https://healthchecks.io/api/v3/checks/{{ healthchecks_check_uuid }}/pause"
+        url: "https://healthchecks.io/api/v3/checks/{{ secrets.HEALTHCHECKS_KUMA_CHECK_UUID }}/pause"
         method: POST
         headers:
-          X-Api-Key: "{{ healthchecks_api_key }}"
+          X-Api-Key: "{{ secrets.HEALTHCHECKS_API_KEY }}"
         status_code: 200
       delegate_to: localhost
       
     - name: Stop Uptime Kuma container
-      community.docker.docker_compose_v2:
+      community.docker.docker_compose:
         project_src: "{{ docker_services_path }}/uptime-kuma"
         state: absent
       when: manage_kuma | bool
@@ -56,12 +77,12 @@
         line: "{{ service_name | upper | replace('-', '_') }}_VERSION={{ new_version }}"
         
     - name: Pull new Docker image
-      community.docker.docker_compose_v2:
+      community.docker.docker_compose:
         project_src: "{{ service_path }}"
         pull: yes
         
     - name: Restart service with new version
-      community.docker.docker_compose_v2:
+      community.docker.docker_compose:
         project_src: "{{ service_path }}"
         restarted: yes
         
@@ -74,7 +95,7 @@
       delay: 2
       
     - name: Start Uptime Kuma container
-      community.docker.docker_compose_v2:
+      community.docker.docker_compose:
         project_src: "{{ docker_services_path }}/uptime-kuma"
         state: present
       when: manage_kuma | bool
@@ -88,10 +109,10 @@
       
     - name: Resume healthchecks.io monitor
       uri:
-        url: "https://healthchecks.io/api/v3/checks/{{ healthchecks_check_uuid }}/resume"
+        url: "https://healthchecks.io/api/v3/checks/{{ secrets.HEALTHCHECKS_KUMA_CHECK_UUID }}/resume"
         method: POST
         headers:
-          X-Api-Key: "{{ healthchecks_api_key }}"
+          X-Api-Key: "{{ secrets.HEALTHCHECKS_API_KEY }}"
         status_code: 200
       delegate_to: localhost
       
