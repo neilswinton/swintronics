@@ -1,0 +1,96 @@
+---
+# Set up the data disk directory structure.
+# Run this once after provisioning before starting services.
+#
+# Usage:
+#   ansible-playbook playbooks/setup-storage.yml
+
+- name: Set up data disk storage layout
+  hosts: "{{ target_host | default('swintronics') }}"
+  become: yes
+
+  tasks:
+    - name: Verify data disk mountpoint exists
+      stat:
+        path: "{{ data_disk_mountpoint }}"
+      register: mountpoint_stat
+
+    - name: Fail if mountpoint does not exist
+      fail:
+        msg: "Data disk mountpoint {{ data_disk_mountpoint }} does not exist"
+      when: not mountpoint_stat.stat.exists
+
+    - name: Get filesystem type of data disk
+      command: findmnt -n -o FSTYPE {{ data_disk_mountpoint }}
+      register: fstype
+      changed_when: false
+
+    - name: Fail if data disk is not btrfs
+      fail:
+        msg: "{{ data_disk_mountpoint }} is {{ fstype.stdout.strip() }}, expected btrfs"
+      when: fstype.stdout.strip() != 'btrfs'
+
+    - name: Create volumes directory
+      file:
+        path: "{{ data_disk_mountpoint }}/volumes"
+        state: directory
+        mode: '0755'
+
+    - name: Create immich directory
+      file:
+        path: "{{ data_disk_mountpoint }}/volumes/immich"
+        state: directory
+        mode: '0755'
+
+    - name: Check if immich library btrfs subvolume already exists
+      command: btrfs subvolume show {{ data_disk_mountpoint }}/volumes/immich/library
+      register: subvol_check
+      changed_when: false
+      failed_when: false
+
+    - name: Create immich library btrfs subvolume
+      command: btrfs subvolume create {{ data_disk_mountpoint }}/volumes/immich/library
+      when: subvol_check.rc != 0
+
+    - name: Create paperless directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ data_disk_mountpoint }}/volumes/paperless/export"
+        - "{{ data_disk_mountpoint }}/volumes/paperless/consume"
+
+    - name: Create stirling-pdf directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ data_disk_mountpoint }}/volumes/stirling-pdf/trainingData"
+        - "{{ data_disk_mountpoint }}/volumes/stirling-pdf/extraConfigs"
+        - "{{ data_disk_mountpoint }}/volumes/stirling-pdf/customFiles"
+        - "{{ data_disk_mountpoint }}/volumes/stirling-pdf/pipeline"
+        - "{{ data_disk_mountpoint }}/logs/stirling-pdf/logs"
+
+    - name: Check if uptime-kuma btrfs subvolume already exists
+      command: btrfs subvolume show {{ data_disk_mountpoint }}/volumes/uptime-kuma
+      register: kuma_subvol_check
+      changed_when: false
+      failed_when: false
+
+    - name: Create uptime-kuma btrfs subvolume
+      command: btrfs subvolume create {{ data_disk_mountpoint }}/volumes/uptime-kuma
+      when: kuma_subvol_check.rc != 0
+
+    - name: Create uptime-kuma data directory
+      file:
+        path: "{{ data_disk_mountpoint }}/volumes/uptime-kuma/data"
+        state: directory
+        mode: '0755'
+
+    - name: Create traefik log directory
+      file:
+        path: "{{ data_disk_mountpoint }}/logs/traefik"
+        state: directory
+        mode: '0755'

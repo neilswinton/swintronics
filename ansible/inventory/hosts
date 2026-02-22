@@ -6,4 +6,3 @@ ansible_user=neil
 ansible_python_interpreter=/usr/bin/python3
 # Tailscale SSH handles authentication automatically
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-docker_services_path=/home/neil/swintronics/docker-services

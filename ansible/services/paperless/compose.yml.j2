@@ -28,8 +28,8 @@ services:
     volumes:
       - data:/usr/src/paperless/data
       - media:/usr/src/paperless/media
-      - /swintronics-data/volumes/paperless/export:/usr/src/paperless/export
-      - /swintronics-data/volumes/paperless/consume:/usr/src/paperless/consume
+      - {{ data_disk_mountpoint }}/volumes/paperless/export:/usr/src/paperless/export
+      - {{ data_disk_mountpoint }}/volumes/paperless/consume:/usr/src/paperless/consume
     env_file:
       - docker-compose.env
     environment:
