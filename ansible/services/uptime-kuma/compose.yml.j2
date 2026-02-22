@@ -1,3 +1,5 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+
 include:
   - ../networks.yml
 
@@ -7,7 +9,7 @@ services:
     image: louislam/uptime-kuma:{{ versions.kuma }}
     restart: unless-stopped
     volumes:
-      - /swintronics-data/volumes/uptime-kuma/data:/app/data
+      - {{ data_disk_mountpoint }}/volumes/uptime-kuma/data:/app/data
     ports:
       # <Host Port>:<Container Port>
       - "3001:3001"

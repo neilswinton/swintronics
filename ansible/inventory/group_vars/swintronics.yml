@@ -1,0 +1,12 @@
+---
+# Docker services base path
+docker_services_path: /home/neil/swintronics/docker-services
+
+# Server configuration
+tz: "America/New_York"
+server_domain: "swintronics.com"
+cert_resolver: "production"
+
+# Data disk
+data_disk_mountpoint: /swintronics-data
+immich_data_location: "{{ data_disk_mountpoint }}/volumes/immich"

@@ -1,3 +1,5 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+
 
 
 services:
@@ -18,7 +20,7 @@ services:
       - ./traefik-data/traefik.yml:/traefik.yml:ro
       - ./traefik-data/configs:/configs:ro
       - ${CERT_RESOLVER}-certs:/certs:rw
-      - /swintronics-data/logs/traefik:/logs:rw
+      - {{ data_disk_mountpoint }}/logs/traefik:/logs:rw
     labels:
         - "traefik.http.services.dummy.loadbalancer.server.port=8080"
         - "traefik.enable=true"

@@ -1,3 +1,5 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+
 name: stirling-pdf
 include:
   - ../networks.yml
@@ -6,11 +8,11 @@ services:
   stirling-pdf:
     image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:{{ versions.stirling_pdf }}
     volumes:
-      - /swintronics-data/volumes/stirling-pdf/trainingData:/usr/share/tessdata # Required for extra OCR languages
-      - /swintronics-data/volumes/stirling-pdf/extraConfigs:/configs
-      - /swintronics-data/volumes/stirling-pdf/customFiles:/customFiles/
-      - /swintronics-data/logs/stirling-pdf/logs:/logs/
-      - /swintronics-data/volumes/stirling-pdf/pipeline:/pipeline/
+      - {{ data_disk_mountpoint }}/volumes/stirling-pdf/trainingData:/usr/share/tessdata # Required for extra OCR languages
+      - {{ data_disk_mountpoint }}/volumes/stirling-pdf/extraConfigs:/configs
+      - {{ data_disk_mountpoint }}/volumes/stirling-pdf/customFiles:/customFiles/
+      - {{ data_disk_mountpoint }}/logs/stirling-pdf/logs:/logs/
+      - {{ data_disk_mountpoint }}/volumes/stirling-pdf/pipeline:/pipeline/
     environment:
       - DISABLE_ADDITIONAL_FEATURES=false
       - LANGS=en_US

@@ -1,7 +1,7 @@
 ---
 # Deploy service versions from ansible/versions.yml.
 # Edit versions.yml and run this playbook — only services whose compose file
-# actually changes will be restarted.
+# or .env actually changes will be restarted.
 #
 # Usage:
 #   ansible-playbook playbooks/deploy-versions.yml
@@ -93,18 +93,79 @@
         mode: '0644'
       register: linkwarden_result
 
+    # ── Deploy .env files ─────────────────────────────────────────────────────
+
+    - name: Deploy networking .env file
+      template:
+        src: "{{ playbook_dir }}/../services/networking/.env.j2"
+        dest: "{{ docker_services_path }}/networking/.env"
+        owner: neil
+        mode: '0600'
+      register: networking_env_result
+
+    - name: Deploy uptime-kuma .env file
+      template:
+        src: "{{ playbook_dir }}/../services/uptime-kuma/.env.j2"
+        dest: "{{ docker_services_path }}/uptime-kuma/.env"
+        owner: neil
+        mode: '0600'
+      register: kuma_env_result
+
+    - name: Deploy paperless .env files
+      template:
+        src: "{{ playbook_dir }}/../services/paperless/{{ item }}.j2"
+        dest: "{{ docker_services_path }}/paperless/{{ item }}"
+        owner: neil
+        mode: '0600'
+      loop:
+        - .env
+        - docker-compose.env
+      register: paperless_env_result
+
+    - name: Deploy stirling-pdf .env file
+      template:
+        src: "{{ playbook_dir }}/../services/stirling-pdf/.env.j2"
+        dest: "{{ docker_services_path }}/stirling-pdf/.env"
+        owner: neil
+        mode: '0600'
+      register: stirling_env_result
+
+    - name: Deploy dozzle .env file
+      template:
+        src: "{{ playbook_dir }}/../services/dozzle/.env.j2"
+        dest: "{{ docker_services_path }}/dozzle/.env"
+        owner: neil
+        mode: '0600'
+      register: dozzle_env_result
+
+    - name: Deploy immich .env file
+      template:
+        src: "{{ playbook_dir }}/../services/immich-app/.env.j2"
+        dest: "{{ docker_services_path }}/immich-app/.env"
+        owner: neil
+        mode: '0600'
+      register: immich_env_result
+
+    - name: Deploy linkwarden .env file
+      template:
+        src: "{{ playbook_dir }}/../services/linkwarden/.env.j2"
+        dest: "{{ docker_services_path }}/linkwarden/.env"
+        owner: neil
+        mode: '0600'
+      register: linkwarden_env_result
+
     # ── Determine whether anything needs updating ─────────────────────────────
 
     - name: Check if any service needs updating
       set_fact:
         any_changed: >-
-          {{ networking_result.changed or
-             kuma_result.changed or
-             paperless_result.changed or
-             stirling_result.changed or
-             dozzle_result.changed or
-             immich_result.changed or
-             linkwarden_result.changed }}
+          {{ networking_result.changed or networking_env_result.changed or
+             kuma_result.changed or kuma_env_result.changed or
+             paperless_result.changed or paperless_env_result.changed or
+             stirling_result.changed or stirling_env_result.changed or
+             dozzle_result.changed or dozzle_env_result.changed or
+             immich_result.changed or immich_env_result.changed or
+             linkwarden_result.changed or linkwarden_env_result.changed }}
 
     - name: Skip update steps when nothing changed
       debug:
@@ -142,7 +203,7 @@
             project_src: "{{ docker_services_path }}/networking"
             state: present
             recreate: always
-      when: networking_result.changed
+      when: networking_result.changed or networking_env_result.changed
 
     - name: Update paperless
       block:
@@ -155,7 +216,7 @@
             project_src: "{{ docker_services_path }}/paperless"
             state: present
             recreate: always
-      when: paperless_result.changed
+      when: paperless_result.changed or paperless_env_result.changed
 
     - name: Update stirling-pdf
       block:
@@ -168,7 +229,7 @@
             project_src: "{{ docker_services_path }}/stirling-pdf"
             state: present
             recreate: always
-      when: stirling_result.changed
+      when: stirling_result.changed or stirling_env_result.changed
 
     - name: Update dozzle
       block:
@@ -181,7 +242,7 @@
             project_src: "{{ docker_services_path }}/dozzle"
             state: present
             recreate: always
-      when: dozzle_result.changed
+      when: dozzle_result.changed or dozzle_env_result.changed
 
     - name: Update immich
       block:
@@ -194,7 +255,7 @@
             project_src: "{{ docker_services_path }}/immich-app"
             state: present
             recreate: always
-      when: immich_result.changed
+      when: immich_result.changed or immich_env_result.changed
 
     - name: Update linkwarden
       block:
@@ -207,7 +268,7 @@
             project_src: "{{ docker_services_path }}/linkwarden"
             state: present
             recreate: always
-      when: linkwarden_result.changed
+      when: linkwarden_result.changed or linkwarden_env_result.changed
 
     - name: Update uptime-kuma
       block:
@@ -215,7 +276,7 @@
           community.docker.docker_compose_v2:
             project_src: "{{ docker_services_path }}/uptime-kuma"
             pull: always
-      when: kuma_result.changed
+      when: kuma_result.changed or kuma_env_result.changed
 
     # ── Restart Uptime Kuma and resume monitoring ─────────────────────────────
 
