@@ -10,6 +10,9 @@ services:
     restart: unless-stopped
     volumes:
       - {{ data_disk_mountpoint }}/volumes/uptime-kuma/data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       # <Host Port>:<Container Port>
       - "3001:3001"
