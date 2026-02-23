@@ -135,6 +135,22 @@ data "infisical_secrets" "terraform_secrets" {
   folder_path  = "/terraform"
 }
 
+data "infisical_secrets" "server_secrets" {
+  env_slug     = "dev"
+  workspace_id = var.infisical_project_id
+  folder_path  = "/server"
+}
+
+# Telegram for sending notifications from the server
+
+resource "infisical_secret" "server_secrets" {
+  for_each     = data.infisical_secrets.server_secrets.secrets
+  name         = each.key
+  value        = each.value.value
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
 # Immich
 
 resource "random_password" "immich_postgres_password" {
