@@ -1,9 +1,0 @@
-name: monitoring
-
-include:
-  - ../networks.yml
-  - node-exporter.yml
-  - cadvisor.yml
-  - prometheus.yml
-  - grafana.yml
-

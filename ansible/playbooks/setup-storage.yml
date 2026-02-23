@@ -89,6 +89,12 @@
         state: directory
         mode: '0755'
 
+    - name: Create grafana directory
+      file:
+        path: "{{ data_disk_mountpoint }}/volumes/grafana"
+        state: directory
+        mode: '0755'
+
     - name: Create traefik log directory
       file:
         path: "{{ data_disk_mountpoint }}/logs/traefik"

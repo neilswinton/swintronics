@@ -23,3 +23,18 @@ versions:
 
   # https://github.com/linkwarden/linkwarden/releases
   linkwarden: "latest"
+
+  # https://github.com/prometheus/prometheus/releases
+  prometheus: "v3.1.0"
+
+  # https://github.com/grafana/grafana/releases
+  grafana: "11.5.0"
+
+  # https://github.com/google/cadvisor/releases
+  cadvisor: "v0.50.0"
+
+  # https://github.com/prometheus/node_exporter/releases
+  node_exporter: "v1.8.2"
+
+  # https://github.com/henrygd/beszel/releases
+  beszel: "0.18.3"

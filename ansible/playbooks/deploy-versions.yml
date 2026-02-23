@@ -93,13 +93,40 @@
         mode: '0644'
       register: linkwarden_result
 
+    - name: Ensure beszel directory exists
+      file:
+        path: "{{ docker_services_path }}/beszel"
+        state: directory
+        mode: '0755'
+
+    - name: Deploy beszel compose file
+      template:
+        src: "{{ playbook_dir }}/../services/beszel/compose.yml.j2"
+        dest: "{{ docker_services_path }}/beszel/compose.yml"
+        mode: '0644'
+      register: beszel_result
+
+    - name: Deploy monitoring compose file
+      template:
+        src: "{{ playbook_dir }}/../services/monitoring/compose.yml.j2"
+        dest: "{{ docker_services_path }}/monitoring/compose.yml"
+        mode: '0644'
+      register: monitoring_result
+
+    - name: Deploy monitoring prometheus config
+      copy:
+        src: "{{ playbook_dir }}/../services/monitoring/config/prometheus.yml"
+        dest: "{{ docker_services_path }}/monitoring/config/prometheus.yml"
+        mode: '0644'
+      register: monitoring_config_result
+
     # ── Deploy .env files ─────────────────────────────────────────────────────
 
     - name: Deploy networking .env file
       template:
         src: "{{ playbook_dir }}/../services/networking/.env.j2"
         dest: "{{ docker_services_path }}/networking/.env"
-        owner: neil
+        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
         mode: '0600'
       register: networking_env_result
 
@@ -107,7 +134,7 @@
       template:
         src: "{{ playbook_dir }}/../services/uptime-kuma/.env.j2"
         dest: "{{ docker_services_path }}/uptime-kuma/.env"
-        owner: neil
+        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
         mode: '0600'
       register: kuma_env_result
 
@@ -115,7 +142,7 @@
       template:
         src: "{{ playbook_dir }}/../services/paperless/{{ item }}.j2"
         dest: "{{ docker_services_path }}/paperless/{{ item }}"
-        owner: neil
+        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
         mode: '0600'
       loop:
         - .env
@@ -126,7 +153,7 @@
       template:
         src: "{{ playbook_dir }}/../services/stirling-pdf/.env.j2"
         dest: "{{ docker_services_path }}/stirling-pdf/.env"
-        owner: neil
+        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
         mode: '0600'
       register: stirling_env_result
 
@@ -134,7 +161,7 @@
       template:
         src: "{{ playbook_dir }}/../services/dozzle/.env.j2"
         dest: "{{ docker_services_path }}/dozzle/.env"
-        owner: neil
+        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
         mode: '0600'
       register: dozzle_env_result
 
@@ -142,7 +169,7 @@
       template:
         src: "{{ playbook_dir }}/../services/immich-app/.env.j2"
         dest: "{{ docker_services_path }}/immich-app/.env"
-        owner: neil
+        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
         mode: '0600'
       register: immich_env_result
 
@@ -150,9 +177,25 @@
       template:
         src: "{{ playbook_dir }}/../services/linkwarden/.env.j2"
         dest: "{{ docker_services_path }}/linkwarden/.env"
-        owner: neil
+        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
         mode: '0600'
       register: linkwarden_env_result
+
+    - name: Deploy beszel .env file
+      template:
+        src: "{{ playbook_dir }}/../services/beszel/.env.j2"
+        dest: "{{ docker_services_path }}/beszel/.env"
+        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
+        mode: '0600'
+      register: beszel_env_result
+
+    - name: Deploy monitoring .env file
+      template:
+        src: "{{ playbook_dir }}/../services/monitoring/.env.j2"
+        dest: "{{ docker_services_path }}/monitoring/.env"
+        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
+        mode: '0600'
+      register: monitoring_env_result
 
     # ── Determine whether anything needs updating ─────────────────────────────
 
@@ -165,7 +208,10 @@
              stirling_result.changed or stirling_env_result.changed or
              dozzle_result.changed or dozzle_env_result.changed or
              immich_result.changed or immich_env_result.changed or
-             linkwarden_result.changed or linkwarden_env_result.changed }}
+             linkwarden_result.changed or linkwarden_env_result.changed or
+             monitoring_result.changed or monitoring_env_result.changed or
+             monitoring_config_result.changed or
+             beszel_result.changed or beszel_env_result.changed }}
 
     - name: Skip update steps when nothing changed
       debug:
@@ -215,6 +261,20 @@
         project_src: "{{ docker_services_path }}/uptime-kuma"
         pull: always
       when: kuma_result.changed or kuma_env_result.changed
+
+    - name: Pull beszel images
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/beszel"
+        pull: always
+        profiles: "{{ active_profiles }}"
+      when: beszel_result.changed or beszel_env_result.changed
+
+    - name: Pull monitoring images
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/monitoring"
+        pull: always
+        profiles: "{{ active_profiles }}"
+      when: monitoring_result.changed or monitoring_env_result.changed or monitoring_config_result.changed
 
     # ── Pause monitoring and restart changed services ─────────────────────────
 
@@ -276,6 +336,22 @@
         recreate: always
       when: linkwarden_result.changed or linkwarden_env_result.changed
 
+    - name: Restart beszel
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/beszel"
+        state: present
+        recreate: always
+        profiles: "{{ active_profiles }}"
+      when: beszel_result.changed or beszel_env_result.changed
+
+    - name: Restart monitoring
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/monitoring"
+        state: present
+        recreate: always
+        profiles: "{{ active_profiles }}"
+      when: monitoring_result.changed or monitoring_env_result.changed or monitoring_config_result.changed
+
     # ── Restart Uptime Kuma and resume monitoring ─────────────────────────────
 
     - name: Start Uptime Kuma
@@ -325,6 +401,8 @@
             ('dozzle',             dozzle_result),
             ('immich',             immich_result),
             ('linkwarden',         linkwarden_result),
+            ('beszel',             beszel_result),
+            ('monitoring',         monitoring_result),
           ] %}
           {{ '  ✓ ' + svc if result.changed else '  - ' + svc + ' (unchanged)' }}
           {% endfor %}

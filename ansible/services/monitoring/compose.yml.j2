@@ -1,0 +1,82 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+
+name: monitoring
+include:
+  - ../networks.yml
+
+volumes:
+  prometheus_data: {}
+
+services:
+  node-exporter:
+    image: prom/node-exporter:{{ versions.node_exporter }}
+    container_name: node-exporter
+    restart: unless-stopped
+    profiles: [prometheus]
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    expose:
+      - 9100
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:{{ versions.cadvisor }}
+    container_name: cadvisor
+    restart: unless-stopped
+    profiles: [prometheus]
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    privileged: true
+    labels:
+      traefik.enable: true
+      traefik.http.routers.cadvisor.entrypoints: websecure
+      traefik.http.routers.cadvisor.rule: Host(`cadvisor.${SERVER_DOMAIN}`)
+      traefik.http.routers.cadvisor.tls.certresolver: ${CERT_RESOLVER}
+
+  prometheus:
+    image: prom/prometheus:{{ versions.prometheus }}
+    container_name: prometheus
+    restart: unless-stopped
+    profiles: [prometheus]
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    expose:
+      - 9090
+    labels:
+      traefik.enable: true
+      traefik.http.routers.prometheus.entrypoints: websecure
+      traefik.http.routers.prometheus.rule: Host(`prometheus.${SERVER_DOMAIN}`)
+      traefik.http.routers.prometheus.tls.certresolver: ${CERT_RESOLVER}
+
+  grafana:
+    image: grafana/grafana:{{ versions.grafana }}
+    container_name: grafana
+    restart: unless-stopped
+    profiles: [prometheus]
+    user: "1000:1001"
+    env_file: .env
+    volumes:
+      - {{ data_disk_mountpoint }}/volumes/grafana:/var/lib/grafana
+    labels:
+      traefik.enable: true
+      traefik.http.routers.grafana.entrypoints: websecure
+      traefik.http.routers.grafana.rule: Host(`monitoring.${SERVER_DOMAIN}`)
+      traefik.http.routers.grafana.tls.certresolver: ${CERT_RESOLVER}
