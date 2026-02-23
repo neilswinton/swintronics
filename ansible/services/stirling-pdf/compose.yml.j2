@@ -6,6 +6,7 @@ include:
 
 services:
   stirling-pdf:
+    container_name: stirling-pdf
     image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:{{ versions.stirling_pdf }}
     volumes:
       - {{ data_disk_mountpoint }}/volumes/stirling-pdf/trainingData:/usr/share/tessdata # Required for extra OCR languages

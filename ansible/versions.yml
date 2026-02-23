@@ -19,7 +19,7 @@ versions:
   dozzle: "v8.14.7"
 
   # https://github.com/Stirling-Tools/Stirling-PDF/releases
-  stirling_pdf: "1.5.0"
+  stirling_pdf: "2.5.2"
 
   # https://github.com/linkwarden/linkwarden/releases
   linkwarden: "latest"
