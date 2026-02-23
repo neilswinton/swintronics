@@ -1,0 +1,47 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+
+name: beszel
+include:
+  - ../networks.yml
+
+services:
+  beszel:
+    image: henrygd/beszel:{{ versions.beszel }}
+    container_name: beszel
+    restart: unless-stopped
+    profiles: [beszel_hub]
+    env_file: .env
+    #healthcheck:
+    #  # The URL is relative to the container, not the host
+    #  test: ['CMD', '/beszel', 'health', '--url', '${APP_URL}']
+    #  start_period: 5s # Check 5 seconds after the container starts
+    #  interval: 120s # Then check every 120 seconds after that
+    volumes:
+      - {{ data_disk_mountpoint }}/volumes/beszel/beszel_data:/beszel_data
+      - {{ data_disk_mountpoint }}/volumes/beszel/beszel_socket:/beszel_socket
+    labels:
+      traefik.enable: true
+      traefik.http.routers.beszel.entrypoints: websecure
+      traefik.http.routers.beszel.rule: Host(`beszel.${SERVER_DOMAIN}`)
+      traefik.http.routers.beszel.tls.certresolver: ${CERT_RESOLVER}
+      traefik.http.services.beszel.loadbalancer.server.port: 8090
+
+  beszel-agent:
+    image: henrygd/beszel-agent:{{ versions.beszel }}
+    container_name: beszel-agent
+    restart: unless-stopped
+    profiles: [beszel_agent]
+    network_mode: host
+    healthcheck:
+      test: ['CMD', '/agent', 'health']
+      interval: 120s
+    volumes:
+      - {{ data_disk_mountpoint }}/volumes/beszel/beszel_agent_data:/var/lib/beszel_agent
+      - {{ data_disk_mountpoint }}/volumes/beszel/beszel_socket:/beszel_socket
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - {{ data_disk_mountpoint }}:/extra-filesystems/sdb1__DockerData-1:ro
+    environment:
+      LISTEN: /beszel_socket/beszel.sock
+      KEY: "{{ infisical_secrets.secrets.BESZEL_AGENT_PUBLIC_KEY | default('') }}"
+      TOKEN: "{{ infisical_secrets.secrets.BESZEL_AGENT_TOKEN | default('') }}"
+      HUB_URL: ${APP_URL}

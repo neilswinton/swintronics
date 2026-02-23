@@ -2,8 +2,13 @@
 # Server admin username — must match the OS user on the server
 server_admin_username: neil
 
-# Active Docker Compose profiles — add "prometheus" to enable the monitoring stack
-active_profiles: []
+# Active Docker Compose profiles
+# - "prometheus"   — enables Prometheus, Grafana, cAdvisor, node-exporter
+# - "beszel_hub"   — enables Beszel hub (start here to generate the agent key)
+# - "beszel_agent" — enables Beszel agent (add BESZEL_AGENT_KEY to Infisical first)
+active_profiles:
+  - beszel_hub
+  - beszel_agent
 
 # Docker services base path
 docker_services_path: /home/{{ server_admin_username }}/swintronics/docker-services

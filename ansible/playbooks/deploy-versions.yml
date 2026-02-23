@@ -93,6 +93,19 @@
         mode: '0644'
       register: linkwarden_result
 
+    - name: Ensure beszel directory exists
+      file:
+        path: "{{ docker_services_path }}/beszel"
+        state: directory
+        mode: '0755'
+
+    - name: Deploy beszel compose file
+      template:
+        src: "{{ playbook_dir }}/../services/beszel/compose.yml.j2"
+        dest: "{{ docker_services_path }}/beszel/compose.yml"
+        mode: '0644'
+      register: beszel_result
+
     - name: Deploy monitoring compose file
       template:
         src: "{{ playbook_dir }}/../services/monitoring/compose.yml.j2"
@@ -168,6 +181,14 @@
         mode: '0600'
       register: linkwarden_env_result
 
+    - name: Deploy beszel .env file
+      template:
+        src: "{{ playbook_dir }}/../services/beszel/.env.j2"
+        dest: "{{ docker_services_path }}/beszel/.env"
+        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
+        mode: '0600'
+      register: beszel_env_result
+
     - name: Deploy monitoring .env file
       template:
         src: "{{ playbook_dir }}/../services/monitoring/.env.j2"
@@ -189,7 +210,8 @@
              immich_result.changed or immich_env_result.changed or
              linkwarden_result.changed or linkwarden_env_result.changed or
              monitoring_result.changed or monitoring_env_result.changed or
-             monitoring_config_result.changed }}
+             monitoring_config_result.changed or
+             beszel_result.changed or beszel_env_result.changed }}
 
     - name: Skip update steps when nothing changed
       debug:
@@ -239,6 +261,13 @@
         project_src: "{{ docker_services_path }}/uptime-kuma"
         pull: always
       when: kuma_result.changed or kuma_env_result.changed
+
+    - name: Pull beszel images
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/beszel"
+        pull: always
+        profiles: "{{ active_profiles }}"
+      when: beszel_result.changed or beszel_env_result.changed
 
     - name: Pull monitoring images
       community.docker.docker_compose_v2:
@@ -307,6 +336,14 @@
         recreate: always
       when: linkwarden_result.changed or linkwarden_env_result.changed
 
+    - name: Restart beszel
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/beszel"
+        state: present
+        recreate: always
+        profiles: "{{ active_profiles }}"
+      when: beszel_result.changed or beszel_env_result.changed
+
     - name: Restart monitoring
       community.docker.docker_compose_v2:
         project_src: "{{ docker_services_path }}/monitoring"
@@ -364,6 +401,7 @@
             ('dozzle',             dozzle_result),
             ('immich',             immich_result),
             ('linkwarden',         linkwarden_result),
+            ('beszel',             beszel_result),
             ('monitoring',         monitoring_result),
           ] %}
           {{ '  ✓ ' + svc if result.changed else '  - ' + svc + ' (unchanged)' }}
