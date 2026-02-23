@@ -172,7 +172,51 @@
         msg: "All services are already at the correct versions."
       when: not any_changed | bool
 
-    # ── Pause monitoring before making changes ────────────────────────────────
+    # ── Pull new images while services are still running ─────────────────────
+
+    - name: Pull traefik image
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/networking"
+        pull: always
+      when: networking_result.changed or networking_env_result.changed
+
+    - name: Pull paperless image
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/paperless"
+        pull: always
+      when: paperless_result.changed or paperless_env_result.changed
+
+    - name: Pull stirling-pdf image
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/stirling-pdf"
+        pull: always
+      when: stirling_result.changed or stirling_env_result.changed
+
+    - name: Pull dozzle image
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/dozzle"
+        pull: always
+      when: dozzle_result.changed or dozzle_env_result.changed
+
+    - name: Pull immich image
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/immich-app"
+        pull: always
+      when: immich_result.changed or immich_env_result.changed
+
+    - name: Pull linkwarden image
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/linkwarden"
+        pull: always
+      when: linkwarden_result.changed or linkwarden_env_result.changed
+
+    - name: Pull uptime-kuma image
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/uptime-kuma"
+        pull: always
+      when: kuma_result.changed or kuma_env_result.changed
+
+    # ── Pause monitoring and restart changed services ─────────────────────────
 
     - name: Pause healthchecks.io monitor
       uri:
@@ -190,93 +234,47 @@
         state: absent
       when: any_changed | bool
 
-    # ── Update changed services ───────────────────────────────────────────────
-
-    - name: Update networking / traefik
-      block:
-        - name: Pull traefik image
-          community.docker.docker_compose_v2:
-            project_src: "{{ docker_services_path }}/networking"
-            pull: always
-        - name: Restart traefik
-          community.docker.docker_compose_v2:
-            project_src: "{{ docker_services_path }}/networking"
-            state: present
-            recreate: always
+    - name: Restart traefik
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/networking"
+        state: present
+        recreate: always
       when: networking_result.changed or networking_env_result.changed
 
-    - name: Update paperless
-      block:
-        - name: Pull paperless image
-          community.docker.docker_compose_v2:
-            project_src: "{{ docker_services_path }}/paperless"
-            pull: always
-        - name: Restart paperless
-          community.docker.docker_compose_v2:
-            project_src: "{{ docker_services_path }}/paperless"
-            state: present
-            recreate: always
+    - name: Restart paperless
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/paperless"
+        state: present
+        recreate: always
       when: paperless_result.changed or paperless_env_result.changed
 
-    - name: Update stirling-pdf
-      block:
-        - name: Pull stirling-pdf image
-          community.docker.docker_compose_v2:
-            project_src: "{{ docker_services_path }}/stirling-pdf"
-            pull: always
-        - name: Restart stirling-pdf
-          community.docker.docker_compose_v2:
-            project_src: "{{ docker_services_path }}/stirling-pdf"
-            state: present
-            recreate: always
+    - name: Restart stirling-pdf
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/stirling-pdf"
+        state: present
+        recreate: always
       when: stirling_result.changed or stirling_env_result.changed
 
-    - name: Update dozzle
-      block:
-        - name: Pull dozzle image
-          community.docker.docker_compose_v2:
-            project_src: "{{ docker_services_path }}/dozzle"
-            pull: always
-        - name: Restart dozzle
-          community.docker.docker_compose_v2:
-            project_src: "{{ docker_services_path }}/dozzle"
-            state: present
-            recreate: always
+    - name: Restart dozzle
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/dozzle"
+        state: present
+        recreate: always
       when: dozzle_result.changed or dozzle_env_result.changed
 
-    - name: Update immich
-      block:
-        - name: Pull immich image
-          community.docker.docker_compose_v2:
-            project_src: "{{ docker_services_path }}/immich-app"
-            pull: always
-        - name: Restart immich
-          community.docker.docker_compose_v2:
-            project_src: "{{ docker_services_path }}/immich-app"
-            state: present
-            recreate: always
+    - name: Restart immich
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/immich-app"
+        state: present
+        recreate: always
       when: immich_result.changed or immich_env_result.changed
 
-    - name: Update linkwarden
-      block:
-        - name: Pull linkwarden image
-          community.docker.docker_compose_v2:
-            project_src: "{{ docker_services_path }}/linkwarden"
-            pull: always
-        - name: Restart linkwarden
-          community.docker.docker_compose_v2:
-            project_src: "{{ docker_services_path }}/linkwarden"
-            state: present
-            recreate: always
+    - name: Restart linkwarden
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/linkwarden"
+        state: present
+        recreate: always
       when: linkwarden_result.changed or linkwarden_env_result.changed
-
-    - name: Update uptime-kuma
-      block:
-        - name: Pull uptime-kuma image
-          community.docker.docker_compose_v2:
-            project_src: "{{ docker_services_path }}/uptime-kuma"
-            pull: always
-      when: kuma_result.changed or kuma_env_result.changed
 
     # ── Restart Uptime Kuma and resume monitoring ─────────────────────────────
 
@@ -306,6 +304,13 @@
           X-Api-Key: "{{ infisical_secrets.secrets.HEALTHCHECKS_API_KEY }}"
         status_code: [200, 409]  # 409 means already active, which is fine
       delegate_to: localhost
+      when: any_changed | bool
+
+    - name: Prune unused Docker images
+      community.docker.docker_prune:
+        images: true
+        images_filters:
+          dangling: false
       when: any_changed | bool
 
     - name: Summary
