@@ -48,3 +48,4 @@ tfplayground/
 
 # Ansible secrets
 ansible/.env
+terraform/.env
