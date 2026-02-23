@@ -2,7 +2,7 @@
 swintronics-1 ansible_host=ts.swintronics.com
 
 [swintronics:vars]
-ansible_user=neil
+ansible_user={{ server_admin_username }}
 ansible_python_interpreter=/usr/bin/python3
 # Tailscale SSH handles authentication automatically
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'

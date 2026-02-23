@@ -1,6 +1,12 @@
 ---
+# Server admin username — must match the OS user on the server
+server_admin_username: neil
+
+# Active Docker Compose profiles — add "prometheus" to enable the monitoring stack
+active_profiles: []
+
 # Docker services base path
-docker_services_path: /home/neil/swintronics/docker-services
+docker_services_path: /home/{{ server_admin_username }}/swintronics/docker-services
 
 # Server configuration
 tz: "America/New_York"

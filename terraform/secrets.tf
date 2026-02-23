@@ -182,16 +182,24 @@ resource "infisical_secret" "linkwarden_passwords" {
   folder_path  = "/"
 }
 
-# karakeep
-resource "random_password" "karakeep_passwords" {
-  for_each = toset(["NEXTAUTH_SECRET", "MEILI_MASTER_KEY"])
+# Monitoring
+resource "random_password" "monitoring_passwords" {
+  for_each = toset(["GRAFANA_ADMIN_PASSWORD"])
   length   = 16
 }
 
-resource "infisical_secret" "karakeep_passwords" {
-  for_each     = random_password.karakeep_passwords
-  name         = "KARAKEEP_${each.key}"
+resource "infisical_secret" "monitoring_passwords" {
+  for_each     = random_password.monitoring_passwords
+  name         = "${each.key}"
   value        = each.value.result
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
+resource "infisical_secret" "server_admin_username" {
+  name         = "SERVER_ADMIN_USERNAME"
+  value        = data.infisical_secrets.root_secrets.secrets["username"].value
   env_slug     = "dev"
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"
