@@ -1,0 +1,259 @@
+---
+# Configure unattended-upgrades for automatic security patch installation.
+# Installs and configures systemd services to gracefully handle reboots:
+# healthchecks.io is paused and Uptime Kuma is stopped before reboot,
+# then both are restored once the server is back online.
+#
+# Usage:
+#   ansible-playbook playbooks/configure-unattended-upgrades.yml
+
+- name: Configure unattended security updates
+  hosts: "{{ target_host | default('swintronics') }}"
+  become: yes
+
+  pre_tasks:
+    - name: Login to Infisical
+      infisical.vault.login:
+        url: "https://app.infisical.com"
+        auth_method: universal_auth
+        universal_auth_client_id: "{{ infisical_client_id }}"
+        universal_auth_client_secret: "{{ infisical_client_secret }}"
+      register: infisical_login
+      delegate_to: localhost
+      check_mode: no
+
+    - name: Fetch secrets from Infisical
+      infisical.vault.read_secrets:
+        login_data: "{{ infisical_login.login_data }}"
+        project_id: "{{ infisical_project_id }}"
+        env_slug: "{{ infisical_environment }}"
+        path: "/"
+        as_dict: true
+      register: infisical_secrets
+      delegate_to: localhost
+      check_mode: no
+
+  tasks:
+    # ── Install packages ──────────────────────────────────────────────────────
+
+    - name: Install unattended-upgrades
+      apt:
+        name:
+          - unattended-upgrades
+          - apt-listchanges
+        state: present
+        update_cache: yes
+
+    # ── Configure unattended-upgrades ─────────────────────────────────────────
+
+    - name: Configure unattended-upgrades
+      copy:
+        dest: /etc/apt/apt.conf.d/50swintronics-unattended-upgrades
+        content: |
+          // Swintronics unattended-upgrades configuration.
+          // Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+
+          Unattended-Upgrade::Allowed-Origins {
+              "${distro_id}:${distro_codename}-security";
+              "${distro_id}ESMApps:${distro_codename}-apps-security";
+              "${distro_id}ESM:${distro_codename}-infra-security";
+          };
+
+          Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+          Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+          Unattended-Upgrade::Remove-Unused-Dependencies "false";
+          Unattended-Upgrade::Automatic-Reboot "true";
+          Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+        mode: '0644'
+      notify: restart unattended-upgrades
+
+    - name: Enable unattended-upgrades service
+      service:
+        name: unattended-upgrades
+        enabled: yes
+        state: started
+
+    # ── Store monitoring credentials for reboot scripts ───────────────────────
+
+    - name: Create /etc/swintronics directory
+      file:
+        path: /etc/swintronics
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+
+    - name: Deploy monitoring credentials
+      copy:
+        dest: /etc/swintronics/monitoring.env
+        content: |
+          HEALTHCHECKS_API_KEY={{ infisical_secrets.secrets.HEALTHCHECKS_API_KEY }}
+          HEALTHCHECKS_KUMA_CHECK_UUID={{ infisical_secrets.secrets.HEALTHCHECKS_KUMA_CHECK_UUID }}
+          TELEGRAM_BOT_TOKEN={{ infisical_secrets.secrets.SERVER_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID={{ infisical_secrets.secrets.SERVER_TELEGRAM_CHAT_ID }}
+        owner: root
+        group: root
+        mode: '0600'
+
+    # ── Pre-reboot hook ───────────────────────────────────────────────────────
+
+    - name: Deploy pre-reboot script
+      copy:
+        dest: /usr/local/sbin/swintronics-pre-reboot.sh
+        content: |
+          #!/bin/bash
+          # Pause healthchecks.io and stop Uptime Kuma before reboot.
+          # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+          set -euo pipefail
+
+          KUMA_DIR="{{ docker_services_path }}/uptime-kuma"
+
+          echo "swintronics-pre-reboot: pausing healthchecks.io monitor..."
+          curl -sf -X POST \
+            -H "X-Api-Key: ${HEALTHCHECKS_API_KEY}" \
+            "https://healthchecks.io/api/v3/checks/${HEALTHCHECKS_KUMA_CHECK_UUID}/pause"
+
+          echo "swintronics-pre-reboot: stopping Uptime Kuma..."
+          docker compose -f "${KUMA_DIR}/compose.yml" stop
+
+          echo "swintronics-pre-reboot: notifying via Telegram..."
+          curl -sf -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
+            -d "text=🔄 swintronics: security updates applied, rebooting..."
+
+          echo "swintronics-pre-reboot: done."
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Deploy pre-reboot systemd unit
+      copy:
+        dest: /etc/systemd/system/swintronics-pre-reboot.service
+        content: |
+          [Unit]
+          Description=Swintronics pre-reboot: pause monitoring and stop Uptime Kuma
+          DefaultDependencies=no
+          Before=shutdown.target reboot.target halt.target
+          After=docker.service
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/swintronics-pre-reboot.sh
+          EnvironmentFile=/etc/swintronics/monitoring.env
+          TimeoutStartSec=30
+
+          [Install]
+          WantedBy=reboot.target halt.target shutdown.target
+        mode: '0644'
+      notify: reload systemd
+
+    # ── Post-boot hook ────────────────────────────────────────────────────────
+
+    - name: Deploy post-boot script
+      copy:
+        dest: /usr/local/sbin/swintronics-post-boot.sh
+        content: |
+          #!/bin/bash
+          # Start Uptime Kuma and resume healthchecks.io monitoring after reboot.
+          # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+          set -euo pipefail
+
+          KUMA_DIR="{{ docker_services_path }}/uptime-kuma"
+
+          echo "swintronics-post-boot: starting Uptime Kuma..."
+          docker compose -f "${KUMA_DIR}/compose.yml" up -d
+
+          echo "swintronics-post-boot: waiting for Uptime Kuma to be ready on port 3001..."
+          timeout 60 bash -c \
+            'until bash -c "echo >/dev/tcp/localhost/3001" 2>/dev/null; do sleep 2; done'
+
+          echo "swintronics-post-boot: waiting for Uptime Kuma to start issuing heartbeats..."
+          sleep 30
+
+          echo "swintronics-post-boot: resuming healthchecks.io monitor..."
+          curl -sf -X POST \
+            -H "X-Api-Key: ${HEALTHCHECKS_API_KEY}" \
+            "https://healthchecks.io/api/v3/checks/${HEALTHCHECKS_KUMA_CHECK_UUID}/resume"
+
+          echo "swintronics-post-boot: notifying via Telegram..."
+          curl -sf -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
+            -d "text=✅ swintronics: back online after security update reboot."
+
+          echo "swintronics-post-boot: done."
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Deploy post-boot failure notification script
+      copy:
+        dest: /usr/local/sbin/swintronics-post-boot-failed.sh
+        content: |
+          #!/bin/bash
+          # Send a Telegram alert if swintronics-post-boot.service fails.
+          # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+          curl -sf -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
+            -d "text=❌ swintronics: post-boot monitoring restoration FAILED. Manual intervention required."
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Deploy post-boot failure notification systemd unit
+      copy:
+        dest: /etc/systemd/system/swintronics-post-boot-failed.service
+        content: |
+          [Unit]
+          Description=Swintronics post-boot failure notification
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/swintronics-post-boot-failed.sh
+          EnvironmentFile=/etc/swintronics/monitoring.env
+        mode: '0644'
+      notify: reload systemd
+
+    - name: Deploy post-boot systemd unit
+      copy:
+        dest: /etc/systemd/system/swintronics-post-boot.service
+        content: |
+          [Unit]
+          Description=Swintronics post-boot: start Uptime Kuma and resume healthchecks.io
+          After=docker.service network-online.target
+          Wants=network-online.target
+          OnFailure=swintronics-post-boot-failed.service
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/swintronics-post-boot.sh
+          EnvironmentFile=/etc/swintronics/monitoring.env
+          RemainAfterExit=yes
+          TimeoutStartSec=120
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+      notify: reload systemd
+
+    - name: Enable pre-reboot service
+      service:
+        name: swintronics-pre-reboot
+        enabled: yes
+
+    - name: Enable post-boot service
+      service:
+        name: swintronics-post-boot
+        enabled: yes
+
+  handlers:
+    - name: restart unattended-upgrades
+      service:
+        name: unattended-upgrades
+        state: restarted
+
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
