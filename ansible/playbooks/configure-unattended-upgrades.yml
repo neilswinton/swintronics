@@ -175,7 +175,7 @@
           sleep 15
 
           echo "swintronics-post-boot: starting Traefik..."
-          docker compose -f "{{ docker_services_path }}/networking" up -d
+          docker compose -f "{{ docker_services_path }}/networking/compose.yml" up -d
 
           echo "swintronics-post-boot: waiting for Traefik to be ready on port 80..."
           timeout 60 bash -c \
