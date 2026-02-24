@@ -109,12 +109,15 @@
           KUMA_DIR="{{ docker_services_path }}/uptime-kuma"
 
           echo "swintronics-pre-reboot: pausing healthchecks.io monitor..."
-          curl -sf -X POST \
+          curl -s -X POST \
             -H "X-Api-Key: ${HEALTHCHECKS_API_KEY}" \
-            "https://healthchecks.io/api/v3/checks/${HEALTHCHECKS_KUMA_CHECK_UUID}/pause"
+            --max-time 5 \
+            --retry 2 \
+            "https://healthchecks.io/api/v3/checks/${HEALTHCHECKS_KUMA_CHECK_UUID}/pause" || \
+            echo "swintronics-pre-reboot: warning: healthchecks.io pause failed (proceeding anyway)"
 
           echo "swintronics-pre-reboot: stopping Uptime Kuma..."
-          docker compose -f "${KUMA_DIR}/compose.yml" stop
+          docker compose -f "${KUMA_DIR}/compose.yml" stop --timeout 15
 
           echo "swintronics-pre-reboot: notifying via Telegram..."
           curl -sf -X POST \
@@ -141,7 +144,7 @@
           Type=oneshot
           ExecStart=/usr/local/sbin/swintronics-pre-reboot.sh
           EnvironmentFile=/etc/swintronics/monitoring.env
-          TimeoutStartSec=30
+          TimeoutStartSec=60
 
           [Install]
           WantedBy=reboot.target halt.target shutdown.target
@@ -169,12 +172,15 @@
             'until bash -c "echo >/dev/tcp/localhost/3001" 2>/dev/null; do sleep 2; done'
 
           echo "swintronics-post-boot: waiting for Uptime Kuma to start issuing heartbeats..."
-          sleep 30
+          sleep 15
 
           echo "swintronics-post-boot: resuming healthchecks.io monitor..."
-          curl -sf -X POST \
+          curl -s -X POST \
             -H "X-Api-Key: ${HEALTHCHECKS_API_KEY}" \
-            "https://healthchecks.io/api/v3/checks/${HEALTHCHECKS_KUMA_CHECK_UUID}/resume"
+            --max-time 5 \
+            --retry 2 \
+            "https://healthchecks.io/api/v3/checks/${HEALTHCHECKS_KUMA_CHECK_UUID}/resume" || \
+            echo "swintronics-post-boot: warning: healthchecks.io resume failed (proceeding anyway)"
 
           echo "swintronics-post-boot: notifying via Telegram..."
           curl -sf -X POST \
@@ -231,7 +237,7 @@
           ExecStart=/usr/local/sbin/swintronics-post-boot.sh
           EnvironmentFile=/etc/swintronics/monitoring.env
           RemainAfterExit=yes
-          TimeoutStartSec=120
+          TimeoutStartSec=180
 
           [Install]
           WantedBy=multi-user.target
