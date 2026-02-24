@@ -158,7 +158,7 @@
         dest: /usr/local/sbin/swintronics-post-boot.sh
         content: |
           #!/bin/bash
-          # Start Uptime Kuma and resume healthchecks.io monitoring after reboot.
+          # Start Uptime Kuma and Traefik, then resume healthchecks.io monitoring after reboot.
           # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
           set -euo pipefail
 
@@ -173,6 +173,13 @@
 
           echo "swintronics-post-boot: waiting for Uptime Kuma to start issuing heartbeats..."
           sleep 15
+
+          echo "swintronics-post-boot: starting Traefik..."
+          docker compose -f "{{ docker_services_path }}/networking" up -d
+
+          echo "swintronics-post-boot: waiting for Traefik to be ready on port 80..."
+          timeout 60 bash -c \
+            'until bash -c "echo >/dev/tcp/localhost/80" 2>/dev/null; do sleep 2; done'
 
           echo "swintronics-post-boot: resuming healthchecks.io monitor..."
           curl -s -X POST \
