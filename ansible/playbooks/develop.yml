@@ -1,0 +1,67 @@
+- name: Install developer tools
+  hosts: "{{ target | default('localhost') }}"
+  become: true
+  tasks:
+    - name: Remove conflicting VSCode sources file if present
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/vscode.sources
+        state: absent
+
+    - name: Remove conflicting Microsoft GPG key if present
+      ansible.builtin.file:
+        path: /usr/share/keyrings/microsoft.gpg
+        state: absent
+
+    - name: Add Microsoft apt signing key
+      ansible.builtin.get_url:
+        url: https://packages.microsoft.com/keys/microsoft.asc
+        dest: /etc/apt/keyrings/microsoft.asc
+        mode: '0644'
+
+    - name: Add VSCode apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.asc] https://packages.microsoft.com/repos/code stable main"
+        filename: vscode
+        state: present
+
+    - name: Install VSCode
+      ansible.builtin.apt:
+        name: code
+        state: present
+        update_cache: true
+
+    - name: Add HashiCorp apt signing key
+      ansible.builtin.shell:
+        cmd: curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg
+        creates: /etc/apt/keyrings/hashicorp-archive-keyring.gpg
+
+    - name: Add HashiCorp apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+        filename: hashicorp
+        state: present
+
+    - name: Install Terraform
+      ansible.builtin.apt:
+        name: terraform
+        state: present
+        update_cache: true
+
+    - name: Install Claude Code via native installer
+      ansible.builtin.shell:
+        cmd: curl -fsSL https://claude.ai/install.sh | bash
+        creates: "{{ ansible_env.HOME }}/.local/bin/claude"
+
+    - name: Configure git user name
+      community.general.git_config:
+        name: user.name
+        value: "{{ git_user_name }}"
+        scope: global
+      become: false
+
+    - name: Configure git user email
+      community.general.git_config:
+        name: user.email
+        value: "{{ git_user_email }}"
+        scope: global
+      become: false

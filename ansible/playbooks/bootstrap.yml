@@ -1,0 +1,55 @@
+- name: Install Ansible requirements
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Install required roles and collections
+      ansible.builtin.command:
+        cmd: ansible-galaxy install -r requirements.yml
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+- hosts: localhost
+  connection: local
+  become: true
+  tasks:
+    - name: Install base packages
+      apt:
+        name: [curl, git, python3-pip]
+        state: present
+        update_cache: true
+
+    - name: Install infisicalsdk
+      ansible.builtin.pip:
+        name: infisicalsdk
+        state: present
+        extra_args: "--break-system-packages"
+
+    - name: Add GitHub CLI apt signing key
+      ansible.builtin.get_url:
+        url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+        dest: /etc/apt/keyrings/githubcli-archive-keyring.gpg
+        mode: '0644'
+
+    - name: Add GitHub CLI apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main"
+        filename: github-cli
+        state: present
+
+    - name: Install GitHub CLI
+      ansible.builtin.apt:
+        name: gh
+        state: present
+        update_cache: true
+
+    - name: Ensure the user has a NOPASSWD entry in sudoers.d
+      ansible.builtin.copy:
+        content: |
+          # Allow {{ ansible_env.SUDO_USER }} to run all commands as root without a password
+          {{ ansible_env.SUDO_USER }} ALL=(ALL) NOPASSWD: ALL
+        dest: "/etc/sudoers.d/{{ ansible_env.SUDO_USER }}"
+        owner: root
+        group: root
+  roles:
+    - role: staticdev.brave
