@@ -13,6 +13,7 @@ services:
       - stirling-pdf-pipeline:/pipeline/
     environment:
       - DISABLE_ADDITIONAL_FEATURES=false
+      - SECURITY_ENABLE_LOGIN=false
       - LANGS=en_US
       - TZ=${TZ:-America/New_York}
     restart: unless-stopped
