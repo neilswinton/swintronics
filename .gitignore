@@ -49,3 +49,11 @@ tfplayground/
 # Ansible secrets
 ansible/.env
 terraform/.env
+
+# Machine-specific playbooks (copy machines/example.yml and fill in)
+ansible/playbooks/machines/*.yml
+!ansible/playbooks/machines/example.yml
+!ansible/playbooks/machines/example-tailscale.yml
+
+# Machine-specific host vars (vars now live in machines/*.yml instead)
+ansible/inventory/host_vars/localhost.yml

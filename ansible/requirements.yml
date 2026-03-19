@@ -1,8 +1,14 @@
 ---
+roles:
+  - name: staticdev.brave
+
 collections:
+  - name: artis3n.tailscale
   - name: community.docker
     version: ">=3.0.0"
   - name: ansible.posix
     version: ">=1.0.0"
   - name: infisical.vault
     version: ">=1.2.0"
+  - name: community.general
+    version: ">=8.0.0"

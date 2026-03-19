@@ -1,0 +1,23 @@
+- hosts: "{{ target | default('localhost') }}"
+  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
+  become: true
+  tasks:
+    - name: Add Signal apt signing key
+      ansible.builtin.shell:
+        cmd: wget -qO- https://updates.signal.org/desktop/apt/keys.asc | gpg --dearmor > /usr/share/keyrings/signal-desktop-keyring.gpg
+        creates: /usr/share/keyrings/signal-desktop-keyring.gpg
+
+    - name: Add Signal apt repository
+      ansible.builtin.get_url:
+        url: https://updates.signal.org/static/desktop/apt/signal-desktop.sources
+        dest: /etc/apt/sources.list.d/signal-desktop.sources
+        mode: '0644'
+
+    - name: Install Signal
+      ansible.builtin.apt:
+        name: signal-desktop
+        state: present
+        update_cache: true
+
+  roles:
+    - role: staticdev.brave

@@ -1,0 +1,97 @@
+- name: Install Ansible requirements
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
+  gather_facts: false
+  tasks:
+    - name: Install required roles and collections
+      ansible.builtin.command:
+        cmd: ansible-galaxy install -r requirements.yml
+      args:
+        chdir: "{{ playbook_dir }}/.."
+
+- hosts: "{{ target | default('localhost') }}"
+  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
+  become: true
+  tasks:
+    - name: Install base packages
+      apt:
+        name: [curl, git, python3-pip, openssh-server]
+        state: present
+        update_cache: true
+
+    - name: Install infisicalsdk
+      ansible.builtin.pip:
+        name: infisicalsdk
+        state: present
+        extra_args: "--break-system-packages"
+
+    - name: Add GitHub CLI apt signing key
+      ansible.builtin.get_url:
+        url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+        dest: /etc/apt/keyrings/githubcli-archive-keyring.gpg
+        mode: '0644'
+
+    - name: Add GitHub CLI apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main"
+        filename: github-cli
+        state: present
+
+    - name: Install GitHub CLI
+      ansible.builtin.apt:
+        name: gh
+        state: present
+        update_cache: true
+
+    - name: Deploy Mozilla modern sshd_config
+      ansible.builtin.copy:
+        src: ../files/sshd_config
+        dest: /etc/ssh/sshd_config
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart sshd
+
+    - name: Remove weak Diffie-Hellman moduli (< 3072 bits)
+      ansible.builtin.shell:
+        cmd: awk '$5 >= 3071' /etc/ssh/moduli > /etc/ssh/moduli.tmp && mv /etc/ssh/moduli.tmp /etc/ssh/moduli
+      changed_when: false
+
+    - name: Disable sleep/suspend/hibernate targets
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        masked: true
+      loop:
+        - sleep.target
+        - suspend.target
+        - hibernate.target
+        - hybrid-sleep.target
+
+    - name: Configure logind to ignore lid close
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/logind.conf
+        regexp: "^#?{{ item.key }}="
+        line: "{{ item.key }}={{ item.value }}"
+      loop:
+        - { key: HandleLidSwitch, value: ignore }
+        - { key: HandleLidSwitchExternalPower, value: ignore }
+        - { key: HandleLidSwitchDocked, value: ignore }
+      notify: Restart systemd-logind
+
+    - name: Ensure the user has a NOPASSWD entry in sudoers.d
+      ansible.builtin.copy:
+        content: |
+          # Allow {{ ansible_env.SUDO_USER }} to run all commands as root without a password
+          {{ ansible_env.SUDO_USER }} ALL=(ALL) NOPASSWD: ALL
+        dest: "/etc/sudoers.d/{{ ansible_env.SUDO_USER }}"
+        owner: root
+        group: root
+  handlers:
+    - name: Restart sshd
+      ansible.builtin.systemd:
+        name: ssh
+        state: restarted
+
+    - name: Restart systemd-logind
+      ansible.builtin.debug:
+        msg: "logind.conf was changed — reboot when ready for lid/sleep settings to take effect"

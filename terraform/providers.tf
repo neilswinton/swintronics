@@ -44,6 +44,9 @@ provider "tailscale" {
 
 # Configure the R2 backend for terraform state storage
 # See https://developers.cloudflare.com/terraform/advanced-topics/remote-backend/ for more information
+#
+# Define AWS_SECRET_ACCESS_KEY and AWS_ACCESS_KEY_ID in the environment for terraform
+#
 terraform {
   backend "s3" {
     bucket = "swintronics-tfstate"
