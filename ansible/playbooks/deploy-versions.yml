@@ -29,9 +29,10 @@
       traefik:
         dir: networking
         files:
-          - { src: compose.yml.j2,  dest: compose.yml }
-          - { src: traefik.yml.j2,  dest: traefik.yml }
-          - { src: .env.j2,         dest: .env,               secret: true }
+          - { src: compose.yml.j2,        dest: compose.yml }
+          - { src: traefik.yml.j2,        dest: traefik.yml }
+          - { src: traefik-static.yml.j2, dest: traefik-data/traefik.yml }
+          - { src: .env.j2,               dest: .env,         secret: true }
       dozzle:
         dir: dozzle
         files:
@@ -115,6 +116,20 @@
   tasks:
     # ── Ensure service directories exist ─────────────────────────────────────
 
+    - name: Ensure docker_services_path exists
+      ansible.builtin.file:
+        path: "{{ docker_services_path }}"
+        state: directory
+        owner: "{{ admin_user }}"
+        mode: '0755'
+
+    - name: Deploy shared networks.yml
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../docker-services/networks.yml"
+        dest: "{{ docker_services_path }}/networks.yml"
+        owner: "{{ admin_user }}"
+        mode: '0644'
+
     - name: Ensure service directories exist
       ansible.builtin.file:
         path: "{{ docker_services_path }}/{{ _service_config[item].dir }}"
@@ -122,6 +137,17 @@
         owner: "{{ admin_user }}"
         mode: '0755'
       loop: "{{ _enabled_services }}"
+
+    - name: Ensure traefik-data directories exist
+      ansible.builtin.file:
+        path: "{{ docker_services_path }}/networking/{{ item }}"
+        state: directory
+        owner: "{{ admin_user }}"
+        mode: '0755'
+      loop:
+        - traefik-data
+        - traefik-data/configs
+      when: "'traefik' in _enabled_services"
 
     - name: Ensure monitoring config directory exists
       ansible.builtin.file:
@@ -141,6 +167,14 @@
         mode: "{{ '0600' if item.secret | default(false) else '0644' }}"
       loop: "{{ _deploy_files | default([]) }}"
       register: _file_results
+
+    - name: Deploy traefik TLS config
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../services/networking/traefik-data/configs/tls.yml"
+        dest: "{{ docker_services_path }}/networking/traefik-data/configs/tls.yml"
+        owner: "{{ admin_user }}"
+        mode: '0644'
+      when: "'traefik' in _enabled_services"
 
     - name: Deploy monitoring prometheus config
       ansible.builtin.copy:

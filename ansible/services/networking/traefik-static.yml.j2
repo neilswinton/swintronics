@@ -1,0 +1,77 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+api:
+  dashboard: true
+  insecure: true
+  debug: true
+
+ping: {}
+
+entryPoints:
+  web:
+    address: ":80"
+    forwardedHeaders:
+      insecure: true
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+    forwardedHeaders:
+      insecure: true
+    transport:
+      respondingTimeouts: # Increase timeouts for large uploads
+        readTimeout: 600s
+        idleTimeout: 600s
+        writeTimeout: 600s
+
+serversTransport:
+  insecureSkipVerify: true  # No cert verification between traefik and containers
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+  file:
+    directory: "/configs"
+    watch: true
+
+certificatesResolvers:
+  production:
+    acme:
+      email: cert@{{ server_domain }}
+      storage: /certs/acme-production.json
+      caServer: https://acme-v02.api.letsencrypt.org/directory
+      dnsChallenge:
+        provider: cloudflare
+        propagation:
+          delayBeforeChecks: 10
+        resolvers:
+          - "1.1.1.1:53"
+          - "1.0.0.1:53"
+  staging:
+    acme:
+      email: cert@{{ server_domain }}
+      storage: /certs/acme-staging.json
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      dnsChallenge:
+        provider: cloudflare
+        propagation:
+          delayBeforeChecks: 10
+        resolvers:
+          - "1.1.1.1:53"
+          - "1.0.0.1:53"
+
+accessLog:
+  filePath: "/logs/access.log"
+  format: common
+  fields:
+    headers:
+      defaultMode: keep
+      names:
+        User-Agent: keep
+
+log:
+  filePath: "/logs/traefik.log"
+  level: INFO
