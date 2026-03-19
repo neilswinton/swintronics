@@ -3,20 +3,94 @@
 # Edit versions.yml and run this playbook — only services whose compose file
 # or .env actually changes will be restarted.
 #
+# Services not defined in versions.yml are skipped entirely.
+# Traefik is always restarted first. Uptime Kuma is stopped before any
+# restart and started after, with healthchecks.io paused for the duration.
+#
 # Usage:
 #   ansible-playbook playbooks/deploy-versions.yml
+#   ansible-playbook playbooks/deploy-versions.yml -e target=localhost
 #
-# Dry run (shows what would change without restarting anything):
+# Dry run:
 #   ansible-playbook playbooks/deploy-versions.yml --check
 
 - name: Deploy service versions
-  hosts: "{{ target_host | default('swintronics') }}"
-  become: yes
+  hosts: "{{ target | default('swintronics') }}"
+  connection: "{{ 'local' if (target | default('swintronics')) == 'localhost' else 'ssh' }}"
+  become: true
 
   vars_files:
     - "{{ playbook_dir }}/../versions.yml"
 
+  vars:
+    # Service definitions. Each entry describes where templates live and what
+    # files to deploy. 'secret' files get mode 0600, others get 0644.
+    _service_config:
+      traefik:
+        dir: networking
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: traefik.yml.j2,  dest: traefik.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
+      dozzle:
+        dir: dozzle
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
+      immich:
+        dir: immich-app
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
+      paperless:
+        dir: paperless
+        files:
+          - { src: compose.yml.j2,        dest: compose.yml }
+          - { src: .env.j2,               dest: .env,         secret: true }
+          - { src: docker-compose.env.j2, dest: docker-compose.env, secret: true }
+      kuma:
+        dir: uptime-kuma
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
+      stirling_pdf:
+        dir: stirling-pdf
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
+      linkwarden:
+        dir: linkwarden
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
+      beszel:
+        dir: beszel
+        profiles: "{{ active_profiles | default([]) }}"
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
+      # monitoring is enabled when 'prometheus' is in versions (see pre_tasks)
+      monitoring:
+        dir: monitoring
+        profiles: "{{ active_profiles | default([]) }}"
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
+
   pre_tasks:
+    - name: Determine enabled services
+      ansible.builtin.set_fact:
+        _enabled_services: >-
+          {{ (_service_config.keys() | select('in', versions) | list)
+             + (['monitoring'] if 'prometheus' in versions else []) }}
+
+    - name: Build deploy file list for enabled services
+      ansible.builtin.set_fact:
+        _deploy_files: "{{ (_deploy_files | default([])) + (service_files) }}"
+      vars:
+        service_files: "{{ _service_config[item].files | map('combine', {'service': item}) | list }}"
+      loop: "{{ _enabled_services }}"
+
     - name: Login to Infisical
       infisical.vault.login:
         url: "https://app.infisical.com"
@@ -39,184 +113,63 @@
       check_mode: no
 
   tasks:
-    # ── Deploy compose templates ──────────────────────────────────────────────
+    # ── Ensure service directories exist ─────────────────────────────────────
 
-    - name: Deploy networking compose files
-      template:
-        src: "{{ playbook_dir }}/../services/networking/{{ item }}.j2"
-        dest: "{{ docker_services_path }}/networking/{{ item }}"
-        mode: '0644'
-      loop:
-        - compose.yml
-        - traefik.yml
-      register: networking_result
-
-    - name: Deploy uptime-kuma compose file
-      template:
-        src: "{{ playbook_dir }}/../services/uptime-kuma/compose.yml.j2"
-        dest: "{{ docker_services_path }}/uptime-kuma/compose.yml"
-        mode: '0644'
-      register: kuma_result
-
-    - name: Deploy paperless compose file
-      template:
-        src: "{{ playbook_dir }}/../services/paperless/compose.yml.j2"
-        dest: "{{ docker_services_path }}/paperless/compose.yml"
-        mode: '0644'
-      register: paperless_result
-
-    - name: Deploy stirling-pdf compose file
-      template:
-        src: "{{ playbook_dir }}/../services/stirling-pdf/compose.yml.j2"
-        dest: "{{ docker_services_path }}/stirling-pdf/compose.yml"
-        mode: '0644'
-      register: stirling_result
-
-    - name: Deploy dozzle compose file
-      template:
-        src: "{{ playbook_dir }}/../services/dozzle/compose.yml.j2"
-        dest: "{{ docker_services_path }}/dozzle/compose.yml"
-        mode: '0644'
-      register: dozzle_result
-
-    - name: Deploy immich compose file
-      template:
-        src: "{{ playbook_dir }}/../services/immich-app/compose.yml.j2"
-        dest: "{{ docker_services_path }}/immich-app/compose.yml"
-        mode: '0644'
-      register: immich_result
-
-    - name: Deploy linkwarden compose file
-      template:
-        src: "{{ playbook_dir }}/../services/linkwarden/compose.yml.j2"
-        dest: "{{ docker_services_path }}/linkwarden/compose.yml"
-        mode: '0644'
-      register: linkwarden_result
-
-    - name: Ensure beszel directory exists
-      file:
-        path: "{{ docker_services_path }}/beszel"
+    - name: Ensure service directories exist
+      ansible.builtin.file:
+        path: "{{ docker_services_path }}/{{ _service_config[item].dir }}"
         state: directory
+        owner: "{{ admin_user }}"
         mode: '0755'
+      loop: "{{ _enabled_services }}"
 
-    - name: Deploy beszel compose file
-      template:
-        src: "{{ playbook_dir }}/../services/beszel/compose.yml.j2"
-        dest: "{{ docker_services_path }}/beszel/compose.yml"
-        mode: '0644'
-      register: beszel_result
+    - name: Ensure monitoring config directory exists
+      ansible.builtin.file:
+        path: "{{ docker_services_path }}/monitoring/config"
+        state: directory
+        owner: "{{ admin_user }}"
+        mode: '0755'
+      when: "'monitoring' in _enabled_services"
 
-    - name: Deploy monitoring compose file
-      template:
-        src: "{{ playbook_dir }}/../services/monitoring/compose.yml.j2"
-        dest: "{{ docker_services_path }}/monitoring/compose.yml"
-        mode: '0644'
-      register: monitoring_result
+    # ── Deploy templates ──────────────────────────────────────────────────────
+
+    - name: Deploy service files
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../services/{{ _service_config[item.service].dir }}/{{ item.src }}"
+        dest: "{{ docker_services_path }}/{{ _service_config[item.service].dir }}/{{ item.dest }}"
+        owner: "{{ admin_user }}"
+        mode: "{{ '0600' if item.secret | default(false) else '0644' }}"
+      loop: "{{ _deploy_files | default([]) }}"
+      register: _file_results
 
     - name: Deploy monitoring prometheus config
-      copy:
+      ansible.builtin.copy:
         src: "{{ playbook_dir }}/../services/monitoring/config/prometheus.yml"
         dest: "{{ docker_services_path }}/monitoring/config/prometheus.yml"
+        owner: "{{ admin_user }}"
         mode: '0644'
-      register: monitoring_config_result
+      when: "'monitoring' in _enabled_services"
+      register: _monitoring_config_result
 
-    # ── Deploy .env files ─────────────────────────────────────────────────────
+    # ── Determine what changed ────────────────────────────────────────────────
 
-    - name: Deploy networking .env file
-      template:
-        src: "{{ playbook_dir }}/../services/networking/.env.j2"
-        dest: "{{ docker_services_path }}/networking/.env"
-        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
-        mode: '0600'
-      register: networking_env_result
+    - name: Determine changed services
+      ansible.builtin.set_fact:
+        _changed_services: >-
+          {{ (_file_results.results
+              | selectattr('changed')
+              | map(attribute='item.service')
+              | unique | list)
+             + (['monitoring'] if (_monitoring_config_result.changed | default(false)) and
+                'monitoring' not in (_file_results.results
+                                     | selectattr('changed')
+                                     | map(attribute='item.service') | list)
+                else []) }}
 
-    - name: Deploy uptime-kuma .env file
-      template:
-        src: "{{ playbook_dir }}/../services/uptime-kuma/.env.j2"
-        dest: "{{ docker_services_path }}/uptime-kuma/.env"
-        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
-        mode: '0600'
-      register: kuma_env_result
-
-    - name: Deploy paperless .env files
-      template:
-        src: "{{ playbook_dir }}/../services/paperless/{{ item }}.j2"
-        dest: "{{ docker_services_path }}/paperless/{{ item }}"
-        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
-        mode: '0600'
-      loop:
-        - .env
-        - docker-compose.env
-      register: paperless_env_result
-
-    - name: Deploy stirling-pdf .env file
-      template:
-        src: "{{ playbook_dir }}/../services/stirling-pdf/.env.j2"
-        dest: "{{ docker_services_path }}/stirling-pdf/.env"
-        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
-        mode: '0600'
-      register: stirling_env_result
-
-    - name: Deploy dozzle .env file
-      template:
-        src: "{{ playbook_dir }}/../services/dozzle/.env.j2"
-        dest: "{{ docker_services_path }}/dozzle/.env"
-        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
-        mode: '0600'
-      register: dozzle_env_result
-
-    - name: Deploy immich .env file
-      template:
-        src: "{{ playbook_dir }}/../services/immich-app/.env.j2"
-        dest: "{{ docker_services_path }}/immich-app/.env"
-        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
-        mode: '0600'
-      register: immich_env_result
-
-    - name: Deploy linkwarden .env file
-      template:
-        src: "{{ playbook_dir }}/../services/linkwarden/.env.j2"
-        dest: "{{ docker_services_path }}/linkwarden/.env"
-        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
-        mode: '0600'
-      register: linkwarden_env_result
-
-    - name: Deploy beszel .env file
-      template:
-        src: "{{ playbook_dir }}/../services/beszel/.env.j2"
-        dest: "{{ docker_services_path }}/beszel/.env"
-        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
-        mode: '0600'
-      register: beszel_env_result
-
-    - name: Deploy monitoring .env file
-      template:
-        src: "{{ playbook_dir }}/../services/monitoring/.env.j2"
-        dest: "{{ docker_services_path }}/monitoring/.env"
-        owner: "{{ infisical_secrets.secrets.SERVER_ADMIN_USERNAME }}"
-        mode: '0600'
-      register: monitoring_env_result
-
-    # ── Determine whether anything needs updating ─────────────────────────────
-
-    - name: Check if any service needs updating
-      set_fact:
-        any_changed: >-
-          {{ networking_result.changed or networking_env_result.changed or
-             kuma_result.changed or kuma_env_result.changed or
-             paperless_result.changed or paperless_env_result.changed or
-             stirling_result.changed or stirling_env_result.changed or
-             dozzle_result.changed or dozzle_env_result.changed or
-             immich_result.changed or immich_env_result.changed or
-             linkwarden_result.changed or linkwarden_env_result.changed or
-             monitoring_result.changed or monitoring_env_result.changed or
-             monitoring_config_result.changed or
-             beszel_result.changed or beszel_env_result.changed }}
-
-    - name: Skip update steps when nothing changed
-      debug:
-        msg: "All services are already at the correct versions."
-      when: not any_changed | bool
+    - name: Nothing to do
+      ansible.builtin.debug:
+        msg: "All services are up to date."
+      when: _changed_services | length == 0
 
     # ── Pull new images while services are still running ─────────────────────
 
@@ -224,186 +177,104 @@
       community.docker.docker_compose_v2:
         project_src: "{{ docker_services_path }}/networking"
         pull: always
-      when: networking_result.changed or networking_env_result.changed
+      when: "'traefik' in _changed_services"
 
-    - name: Pull paperless image
+    - name: Pull images for other changed services
       community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/paperless"
+        project_src: "{{ docker_services_path }}/{{ _service_config[item].dir }}"
         pull: always
-      when: paperless_result.changed or paperless_env_result.changed
+        profiles: "{{ _service_config[item].profiles | default(omit) }}"
+      loop: "{{ _changed_services | reject('equalto', 'traefik') | reject('equalto', 'kuma') | list }}"
+      when: _changed_services | length > 0
 
-    - name: Pull stirling-pdf image
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/stirling-pdf"
-        pull: always
-      when: stirling_result.changed or stirling_env_result.changed
+    # ── Stop Kuma and pause monitoring before restarting anything ─────────────
 
-    - name: Pull dozzle image
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/dozzle"
-        pull: always
-      when: dozzle_result.changed or dozzle_env_result.changed
-
-    - name: Pull immich image
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/immich-app"
-        pull: always
-      when: immich_result.changed or immich_env_result.changed
-
-    - name: Pull linkwarden image
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/linkwarden"
-        pull: always
-      when: linkwarden_result.changed or linkwarden_env_result.changed
-
-    - name: Pull uptime-kuma image
+    - name: Stop Uptime Kuma
       community.docker.docker_compose_v2:
         project_src: "{{ docker_services_path }}/uptime-kuma"
-        pull: always
-      when: kuma_result.changed or kuma_env_result.changed
-
-    - name: Pull beszel images
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/beszel"
-        pull: always
-        profiles: "{{ active_profiles }}"
-      when: beszel_result.changed or beszel_env_result.changed
-
-    - name: Pull monitoring images
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/monitoring"
-        pull: always
-        profiles: "{{ active_profiles }}"
-      when: monitoring_result.changed or monitoring_env_result.changed or monitoring_config_result.changed
-
-    # ── Pause monitoring and restart changed services ─────────────────────────
+        state: absent
+      when:
+        - _changed_services | length > 0
+        - "'kuma' in versions"
 
     - name: Pause healthchecks.io monitor
-      uri:
+      ansible.builtin.uri:
         url: "https://healthchecks.io/api/v3/checks/{{ infisical_secrets.secrets.HEALTHCHECKS_KUMA_CHECK_UUID }}/pause"
         method: POST
         headers:
           X-Api-Key: "{{ infisical_secrets.secrets.HEALTHCHECKS_API_KEY }}"
         status_code: 200
       delegate_to: localhost
-      when: any_changed | bool
+      when:
+        - _changed_services | length > 0
+        - "'kuma' in versions"
 
-    - name: Stop Uptime Kuma
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/uptime-kuma"
-        state: absent
-      when: any_changed | bool
+    # ── Restart changed services — traefik first ──────────────────────────────
 
     - name: Restart traefik
       community.docker.docker_compose_v2:
         project_src: "{{ docker_services_path }}/networking"
         state: present
         recreate: always
-      when: networking_result.changed or networking_env_result.changed
+      when: "'traefik' in _changed_services"
 
-    - name: Restart paperless
+    - name: Restart other changed services
       community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/paperless"
+        project_src: "{{ docker_services_path }}/{{ _service_config[item].dir }}"
         state: present
         recreate: always
-      when: paperless_result.changed or paperless_env_result.changed
+        profiles: "{{ _service_config[item].profiles | default(omit) }}"
+      loop: "{{ _changed_services | reject('equalto', 'traefik') | reject('equalto', 'kuma') | list }}"
+      when: _changed_services | length > 0
 
-    - name: Restart stirling-pdf
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/stirling-pdf"
-        state: present
-        recreate: always
-      when: stirling_result.changed or stirling_env_result.changed
-
-    - name: Restart dozzle
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/dozzle"
-        state: present
-        recreate: always
-      when: dozzle_result.changed or dozzle_env_result.changed
-
-    - name: Restart immich
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/immich-app"
-        state: present
-        recreate: always
-      when: immich_result.changed or immich_env_result.changed
-
-    - name: Restart linkwarden
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/linkwarden"
-        state: present
-        recreate: always
-      when: linkwarden_result.changed or linkwarden_env_result.changed
-
-    - name: Restart beszel
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/beszel"
-        state: present
-        recreate: always
-        profiles: "{{ active_profiles }}"
-      when: beszel_result.changed or beszel_env_result.changed
-
-    - name: Restart monitoring
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/monitoring"
-        state: present
-        recreate: always
-        profiles: "{{ active_profiles }}"
-      when: monitoring_result.changed or monitoring_env_result.changed or monitoring_config_result.changed
-
-    # ── Restart Uptime Kuma and resume monitoring ─────────────────────────────
+    # ── Restart Kuma and resume monitoring ────────────────────────────────────
 
     - name: Start Uptime Kuma
       community.docker.docker_compose_v2:
         project_src: "{{ docker_services_path }}/uptime-kuma"
         state: present
-      when: any_changed | bool
+      when:
+        - _changed_services | length > 0
+        - "'kuma' in versions"
 
     - name: Wait for Uptime Kuma to be ready
-      wait_for:
+      ansible.builtin.wait_for:
         port: 3001
         delay: 5
         timeout: 60
-      when: any_changed | bool
+      when:
+        - _changed_services | length > 0
+        - "'kuma' in versions"
 
     - name: Wait for Uptime Kuma to start issuing heartbeats
-      pause:
+      ansible.builtin.pause:
         seconds: 30
-      when: any_changed | bool
+      when:
+        - _changed_services | length > 0
+        - "'kuma' in versions"
 
     - name: Resume healthchecks.io monitor
-      uri:
+      ansible.builtin.uri:
         url: "https://healthchecks.io/api/v3/checks/{{ infisical_secrets.secrets.HEALTHCHECKS_KUMA_CHECK_UUID }}/resume"
         method: POST
         headers:
           X-Api-Key: "{{ infisical_secrets.secrets.HEALTHCHECKS_API_KEY }}"
-        status_code: [200, 409]  # 409 means already active, which is fine
+        status_code: [200, 409]
       delegate_to: localhost
-      when: any_changed | bool
+      when:
+        - _changed_services | length > 0
+        - "'kuma' in versions"
+
+    # ── Cleanup ───────────────────────────────────────────────────────────────
 
     - name: Prune unused Docker images
       community.docker.docker_prune:
         images: true
         images_filters:
           dangling: false
-      when: any_changed | bool
+      when: _changed_services | length > 0
 
     - name: Summary
-      debug:
-        msg: |
-          Updated services:
-          {% for svc, result in [
-            ('networking/traefik', networking_result),
-            ('uptime-kuma',        kuma_result),
-            ('paperless',          paperless_result),
-            ('stirling-pdf',       stirling_result),
-            ('dozzle',             dozzle_result),
-            ('immich',             immich_result),
-            ('linkwarden',         linkwarden_result),
-            ('beszel',             beszel_result),
-            ('monitoring',         monitoring_result),
-          ] %}
-          {{ '  ✓ ' + svc if result.changed else '  - ' + svc + ' (unchanged)' }}
-          {% endfor %}
-      when: any_changed | bool
+      ansible.builtin.debug:
+        msg: "Updated: {{ _changed_services | join(', ') }}"
+      when: _changed_services | length > 0
