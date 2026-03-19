@@ -22,7 +22,7 @@
       immich:     { dir: immich,       stateful: true  }
       paperless:  { dir: paperless,    stateful: true  }
       kuma:       { dir: uptime-kuma,  stateful: true  }
-      stirling_pdf: { dir: stirling-pdf, stateful: true }
+      stirling_pdf: { dir: stirling-pdf, stateful: false }
       linkwarden: { dir: linkwarden,   stateful: true  }
       prometheus: { dir: prometheus,   stateful: true  }
       grafana:    { dir: grafana,      stateful: true  }

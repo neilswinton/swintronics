@@ -9,11 +9,8 @@ services:
     container_name: stirling-pdf
     image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:{{ versions.stirling_pdf }}
     volumes:
-      - {{ data_disk_mountpoint }}/volumes/stirling-pdf/trainingData:/usr/share/tessdata # Required for extra OCR languages
-      - {{ data_disk_mountpoint }}/volumes/stirling-pdf/extraConfigs:/configs
-      - {{ data_disk_mountpoint }}/volumes/stirling-pdf/customFiles:/customFiles/
-      - {{ data_disk_mountpoint }}/logs/stirling-pdf/logs:/logs/
-      - {{ data_disk_mountpoint }}/volumes/stirling-pdf/pipeline:/pipeline/
+      - stirling-pdf-configs:/configs
+      - stirling-pdf-pipeline:/pipeline/
     environment:
       - DISABLE_ADDITIONAL_FEATURES=false
       - LANGS=en_US
@@ -24,3 +21,7 @@ services:
       traefik.http.routers.stirling-pdf.entrypoints: websecure
       traefik.http.routers.stirling-pdf.rule: Host(`stirling-pdf.${SERVER_DOMAIN}`)
       traefik.http.routers.stirling-pdf.tls.certresolver: ${CERT_RESOLVER}
+
+volumes:
+  stirling-pdf-configs:
+  stirling-pdf-pipeline:
