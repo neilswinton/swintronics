@@ -1,0 +1,12 @@
+- name: Set machine-specific variables
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - ansible.builtin.set_fact:
+        git_user_name: "Your Name"
+        git_user_email: "you@example.com"
+
+- import_playbook: ../bootstrap.yml
+- import_playbook: ../apps.yml
+- import_playbook: ../develop.yml
