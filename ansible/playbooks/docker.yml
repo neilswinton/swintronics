@@ -1,0 +1,52 @@
+- name: Install Docker
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
+  become: true
+  tasks:
+    - name: Add Docker apt signing key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Add Docker apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        filename: docker
+        state: present
+
+    - name: Install Docker CE
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: true
+
+    - name: Ensure Docker service is enabled and started
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Add admin user to docker group
+      ansible.builtin.user:
+        name: "{{ admin_user }}"
+        groups: docker
+        append: true
+
+    - name: Create docker-services directory
+      ansible.builtin.file:
+        path: "{{ docker_services_path }}"
+        state: directory
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0755'
+
+    - name: Create proxy Docker network
+      community.docker.docker_network:
+        name: proxy
+        state: present

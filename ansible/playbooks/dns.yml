@@ -1,0 +1,76 @@
+- name: Configure Cloudflare DNS
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
+  become: false
+  vars:
+    dns_domain: "{{ cluster_name }}.com"
+  pre_tasks:
+    - name: Verify dns_hostname is set
+      ansible.builtin.assert:
+        that:
+          - dns_hostname is defined
+        fail_msg: "dns_hostname must be set in the machine playbook (e.g. dns_hostname: xps13)"
+
+    - name: Login to Infisical
+      infisical.vault.login:
+        url: "https://app.infisical.com"
+        auth_method: universal_auth
+        universal_auth_client_id: "{{ infisical_client_id }}"
+        universal_auth_client_secret: "{{ infisical_client_secret }}"
+      register: infisical_login
+      delegate_to: localhost
+      check_mode: no
+
+    - name: Fetch secrets from Infisical
+      infisical.vault.read_secrets:
+        login_data: "{{ infisical_login.login_data }}"
+        project_id: "{{ infisical_project_id }}"
+        env_slug: "{{ infisical_environment }}"
+        path: "/"
+        as_dict: true
+      register: infisical_secrets
+      delegate_to: localhost
+      check_mode: no
+
+    - name: Get Tailscale IPv4
+      ansible.builtin.command: tailscale ip -4
+      register: _ts_ipv4
+      changed_when: false
+
+    - name: Get Tailscale IPv6
+      ansible.builtin.command: tailscale ip -6
+      register: _ts_ipv6
+      changed_when: false
+
+  tasks:
+    - name: Create A record for {{ dns_hostname }}.{{ dns_domain }}
+      community.general.cloudflare_dns:
+        zone: "{{ dns_domain }}"
+        record: "{{ dns_hostname }}"
+        type: A
+        value: "{{ _ts_ipv4.stdout | trim }}"
+        proxied: false
+        api_token: "{{ infisical_secrets.secrets.CF_DNS_API_TOKEN }}"
+        state: present
+
+    - name: Create AAAA record for {{ dns_hostname }}.{{ dns_domain }}
+      community.general.cloudflare_dns:
+        zone: "{{ dns_domain }}"
+        record: "{{ dns_hostname }}"
+        type: AAAA
+        value: "{{ _ts_ipv6.stdout | trim }}"
+        proxied: false
+        api_token: "{{ infisical_secrets.secrets.CF_DNS_API_TOKEN }}"
+        state: present
+
+    - name: Create CNAME records for enabled services
+      community.general.cloudflare_dns:
+        zone: "{{ dns_domain }}"
+        record: "{{ item }}"
+        type: CNAME
+        value: "{{ dns_hostname }}.{{ dns_domain }}"
+        proxied: false
+        api_token: "{{ infisical_secrets.secrets.CF_DNS_API_TOKEN }}"
+        state: present
+      loop: "{{ dns_services }}"
+      when: dns_services is defined and dns_services | length > 0
