@@ -26,6 +26,21 @@
         state: present
         update_cache: true
 
+    - name: Configure Docker log rotation
+      ansible.builtin.copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "10m",
+              "max-file": "3"
+            }
+          }
+        owner: root
+        mode: '0644'
+      notify: Restart Docker
+
     - name: Ensure Docker service is enabled and started
       ansible.builtin.systemd:
         name: docker
@@ -50,3 +65,9 @@
       community.docker.docker_network:
         name: proxy
         state: present
+
+  handlers:
+    - name: Restart Docker
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted

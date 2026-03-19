@@ -1,0 +1,12 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+{{ data_disk_mountpoint }}/logs/traefik/access.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    postrotate
+        docker kill --signal="USR1" traefik
+    endscript
+}

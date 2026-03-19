@@ -176,6 +176,14 @@
         mode: '0644'
       when: "'traefik' in _enabled_services"
 
+    - name: Deploy traefik logrotate config
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../services/networking/traefik-logrotate.j2"
+        dest: /etc/logrotate.d/traefik
+        owner: root
+        mode: '0644'
+      when: "'traefik' in _enabled_services"
+
     - name: Deploy monitoring prometheus config
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../services/monitoring/config/prometheus.yml"
