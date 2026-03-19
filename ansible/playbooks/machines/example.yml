@@ -12,6 +12,7 @@
         dns_services:
           - traefik
           - dozzle
+        data_disk_mountpoint: /docker-data
 
 - import_playbook: ../bootstrap.yml
 - import_playbook: ../apps.yml
@@ -19,3 +20,4 @@
 - import_playbook: ../tailscale.yml
 - import_playbook: ../docker.yml
 - import_playbook: ../dns.yml
+- import_playbook: ../setup-storage.yml

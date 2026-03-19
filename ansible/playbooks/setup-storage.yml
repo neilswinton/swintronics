@@ -1,102 +1,143 @@
 ---
 # Set up the data disk directory structure.
 # Run this once after provisioning before starting services.
+# Services are optional — only those with a version defined in versions.yml
+# will have directories created.
 #
 # Usage:
 #   ansible-playbook playbooks/setup-storage.yml
+#   ansible-playbook playbooks/setup-storage.yml -e target=swintronics
 
 - name: Set up data disk storage layout
-  hosts: "{{ target_host | default('swintronics') }}"
-  become: yes
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
+  become: true
+  vars:
+    # All known services and their storage directory names.
+    # stateful: true  → create a btrfs subvolume under volumes/
+    # stateful: false → stateless; only a logs directory is created
+    _service_storage:
+      traefik:    { dir: traefik,      stateful: false }
+      dozzle:     { dir: dozzle,       stateful: false }
+      immich:     { dir: immich,       stateful: true  }
+      paperless:  { dir: paperless,    stateful: true  }
+      kuma:       { dir: uptime-kuma,  stateful: true  }
+      stirling_pdf: { dir: stirling-pdf, stateful: true }
+      linkwarden: { dir: linkwarden,   stateful: true  }
+      prometheus: { dir: prometheus,   stateful: true  }
+      grafana:    { dir: grafana,      stateful: true  }
+      cadvisor:   { dir: cadvisor,     stateful: false }
+      node_exporter: { dir: node-exporter, stateful: false }
+      beszel:     { dir: beszel,       stateful: true  }
 
-  tasks:
+  pre_tasks:
+    - name: Load versions
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../versions.yml"
+
     - name: Verify data disk mountpoint exists
-      stat:
+      ansible.builtin.stat:
         path: "{{ data_disk_mountpoint }}"
       register: mountpoint_stat
 
     - name: Fail if mountpoint does not exist
-      fail:
+      ansible.builtin.fail:
         msg: "Data disk mountpoint {{ data_disk_mountpoint }} does not exist"
       when: not mountpoint_stat.stat.exists
 
     - name: Get filesystem type of data disk
-      command: findmnt -n -o FSTYPE {{ data_disk_mountpoint }}
+      ansible.builtin.command: findmnt -n -o FSTYPE {{ data_disk_mountpoint }}
       register: fstype
       changed_when: false
 
     - name: Fail if data disk is not btrfs
-      fail:
+      ansible.builtin.fail:
         msg: "{{ data_disk_mountpoint }} is {{ fstype.stdout.strip() }}, expected btrfs"
       when: fstype.stdout.strip() != 'btrfs'
 
-    - name: Create volumes directory
-      file:
-        path: "{{ data_disk_mountpoint }}/volumes"
+  tasks:
+    - name: Create top-level volumes and logs directories
+      ansible.builtin.file:
+        path: "{{ item }}"
         state: directory
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
         mode: '0755'
+      loop:
+        - "{{ data_disk_mountpoint }}/volumes"
+        - "{{ data_disk_mountpoint }}/logs"
+        - "{{ data_disk_mountpoint }}/snapshots"
 
-    - name: Create immich directory
-      file:
-        path: "{{ data_disk_mountpoint }}/volumes/immich"
+    - name: Create logs directory for each enabled service
+      ansible.builtin.file:
+        path: "{{ data_disk_mountpoint }}/logs/{{ _service_storage[item].dir }}"
         state: directory
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
         mode: '0755'
+      loop: "{{ _service_storage.keys() | list }}"
+      when: item in versions
 
-    - name: Check if immich library btrfs subvolume already exists
-      command: btrfs subvolume show {{ data_disk_mountpoint }}/volumes/immich/library
-      register: subvol_check
+    - name: Check if btrfs subvolume already exists for each enabled stateful service
+      ansible.builtin.command:
+        cmd: btrfs subvolume show {{ data_disk_mountpoint }}/volumes/{{ _service_storage[item].dir }}
+      register: _subvol_checks
+      loop: "{{ _service_storage.keys() | list }}"
+      when:
+        - item in versions
+        - _service_storage[item].stateful
       changed_when: false
       failed_when: false
 
-    - name: Create immich library btrfs subvolume
-      command: btrfs subvolume create {{ data_disk_mountpoint }}/volumes/immich/library
-      when: subvol_check.rc != 0
+    - name: Create btrfs subvolume for each enabled stateful service
+      # btrfs subvolume create makes the directory itself — do not pre-create it
+      ansible.builtin.command:
+        cmd: btrfs subvolume create {{ data_disk_mountpoint }}/volumes/{{ _service_storage[item.item].dir }}
+      loop: "{{ _subvol_checks.results }}"
+      when:
+        - item is not skipped
+        - item.rc != 0
+      loop_control:
+        label: "{{ item.item }}"
 
-    - name: Create paperless directories
-      file:
-        path: "{{ item }}"
-        state: directory
-        mode: '0755'
-      loop:
-        - "{{ data_disk_mountpoint }}/volumes/paperless/export"
-        - "{{ data_disk_mountpoint }}/volumes/paperless/consume"
+    - name: Set ownership of subvolumes to admin user
+      ansible.builtin.file:
+        path: "{{ data_disk_mountpoint }}/volumes/{{ _service_storage[item].dir }}"
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+      loop: "{{ _service_storage.keys() | list }}"
+      when:
+        - item in versions
+        - _service_storage[item].stateful
 
-    - name: Create stirling-pdf directories
-      file:
-        path: "{{ item }}"
-        state: directory
-        mode: '0755'
-      loop:
-        - "{{ data_disk_mountpoint }}/volumes/stirling-pdf/trainingData"
-        - "{{ data_disk_mountpoint }}/volumes/stirling-pdf/extraConfigs"
-        - "{{ data_disk_mountpoint }}/volumes/stirling-pdf/customFiles"
-        - "{{ data_disk_mountpoint }}/volumes/stirling-pdf/pipeline"
-        - "{{ data_disk_mountpoint }}/logs/stirling-pdf/logs"
-
-    - name: Check if uptime-kuma btrfs subvolume already exists
-      command: btrfs subvolume show {{ data_disk_mountpoint }}/volumes/uptime-kuma
-      register: kuma_subvol_check
+    - name: Check if user_subvol_rm_allowed already in fstab
+      ansible.builtin.command:
+        cmd: grep -c "user_subvol_rm_allowed" /etc/fstab
+      register: _fstab_check
       changed_when: false
       failed_when: false
 
-    - name: Create uptime-kuma btrfs subvolume
-      command: btrfs subvolume create {{ data_disk_mountpoint }}/volumes/uptime-kuma
-      when: kuma_subvol_check.rc != 0
+    - name: Add user_subvol_rm_allowed to btrfs mount options in fstab
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '^(\S+\s+{{ data_disk_mountpoint }}\s+btrfs\s+)(\S+)(\s+.*)$'
+        replace: '\1\2,user_subvol_rm_allowed\3'
+        backup: true
+      register: _fstab_change
+      when: _fstab_check.stdout | int == 0
 
-    - name: Create uptime-kuma data directory
-      file:
-        path: "{{ data_disk_mountpoint }}/volumes/uptime-kuma/data"
-        state: directory
-        mode: '0755'
+    - name: Remount data disk to apply new mount options
+      ansible.builtin.command: mount -o remount {{ data_disk_mountpoint }}
+      when: _fstab_change.changed
 
-    - name: Create grafana directory
-      file:
-        path: "{{ data_disk_mountpoint }}/volumes/grafana"
-        state: directory
-        mode: '0755'
-
-    - name: Create traefik log directory
-      file:
-        path: "{{ data_disk_mountpoint }}/logs/traefik"
-        state: directory
-        mode: '0755'
+    - name: Allow admin user to create btrfs snapshots without password
+      ansible.builtin.copy:
+        content: |
+          # Allow {{ admin_user }} to create btrfs snapshots
+          # (deletion is handled without sudo via user_subvol_rm_allowed mount option)
+          {{ admin_user }} ALL=(root) NOPASSWD: /usr/bin/btrfs subvolume snapshot *
+        dest: /etc/sudoers.d/btrfs-snapshots
+        owner: root
+        group: root
+        mode: '0440'
+        validate: visudo -cf %s
