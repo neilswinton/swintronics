@@ -50,7 +50,7 @@
           ) | join(' ') }}"
 
   roles:
-    - role: artis3n.tailscale
+    - role: artis3n.tailscale.machine
       vars:
         tailscale_authkey: "{{ infisical_secrets.secrets[tailscale_authkey_secret] }}"
         tailscale_args: "{{ _tailscale_args }}"
