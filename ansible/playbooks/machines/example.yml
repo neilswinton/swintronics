@@ -6,6 +6,8 @@
     - ansible.builtin.set_fact:
         git_user_name: "Your Name"
         git_user_email: "you@example.com"
+        tailscale_tag: "tag:workstation"  # or tag:server, etc.
+        tailscale_config_file: "machinename-tailscale.yml"  # copy from example-tailscale.yml
 
 - import_playbook: ../bootstrap.yml
 - import_playbook: ../apps.yml
