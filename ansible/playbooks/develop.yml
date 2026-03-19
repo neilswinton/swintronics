@@ -48,6 +48,12 @@
         state: present
         update_cache: true
 
+    - name: Install ansible-lint
+      ansible.builtin.pip:
+        name: ansible-lint
+        state: present
+        extra_args: "--break-system-packages"
+
     - name: Install Claude Code via native installer
       ansible.builtin.shell:
         cmd: curl -fsSL https://claude.ai/install.sh | bash
