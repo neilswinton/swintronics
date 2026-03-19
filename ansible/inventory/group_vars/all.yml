@@ -6,6 +6,9 @@ infisical_client_secret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') }}"
 infisical_project_id: "{{ lookup('env', 'INFISICAL_PROJECT_ID') }}"
 infisical_environment: "dev"
 
+# Timezone (override per machine if needed)
+timezone: "America/New_York"
+
 # Cluster identity
 cluster_name: swintronics
 admin_user: "{{ ansible_env.SUDO_USER | default(ansible_user_id) }}"

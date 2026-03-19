@@ -15,7 +15,42 @@
   tasks:
     - name: Install base packages
       apt:
-        name: [curl, git, python3-pip, openssh-server]
+        name:
+          - apt-transport-https
+          - apache2-utils
+          - ca-certificates
+          - curl
+          - git
+          - gnupg
+          - gnupg-agent
+          - jq
+          - openssh-server
+          - python3-pip
+          - restic
+          - shellcheck
+          - software-properties-common
+        state: present
+        update_cache: true
+
+    - name: Set timezone
+      community.general.timezone:
+        name: "{{ timezone | default('America/New_York') }}"
+
+    - name: Enable IPv4 forwarding
+      ansible.posix.sysctl:
+        name: net.ipv4.conf.all.forwarding
+        value: '1'
+        sysctl_file: /etc/sysctl.d/99-enable-ipv4-forwarding.conf
+        reload: true
+
+    - name: Add Infisical CLI apt signing key
+      ansible.builtin.shell:
+        cmd: curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash -
+        creates: /etc/apt/sources.list.d/infisical.list
+
+    - name: Install Infisical CLI
+      ansible.builtin.apt:
+        name: infisical
         state: present
         update_cache: true
 
