@@ -1,5 +1,5 @@
-- hosts: localhost
-  connection: local
+- hosts: "{{ target | default('localhost') }}"
+  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
   become: true
   tasks:
     - name: Add Signal apt signing key

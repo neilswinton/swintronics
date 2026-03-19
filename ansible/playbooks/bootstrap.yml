@@ -1,6 +1,6 @@
 - name: Install Ansible requirements
-  hosts: localhost
-  connection: local
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
   gather_facts: false
   tasks:
     - name: Install required roles and collections
@@ -9,8 +9,8 @@
       args:
         chdir: "{{ playbook_dir }}/.."
 
-- hosts: localhost
-  connection: local
+- hosts: "{{ target | default('localhost') }}"
+  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
   become: true
   tasks:
     - name: Install base packages
