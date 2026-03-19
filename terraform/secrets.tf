@@ -88,6 +88,15 @@ resource "infisical_secret" "tailscale_auth_key" {
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"
 }
+
+resource "infisical_secret" "tailscale_xps13_auth_key" {
+  name         = "TS_XPS13_AUTH_KEY"
+  value        = tailscale_tailnet_key.xps13_auth.key
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
 resource "infisical_secret" "cloudflare_runtime" {
   for_each     = toset(["CF_API_EMAIL", "CF_DNS_API_TOKEN"])
   name         = each.key

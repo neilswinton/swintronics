@@ -12,3 +12,10 @@ resource "tailscale_tailnet_key" "swintronics_auth" {
   expiry        = 7776000 # 90 days
 }
 
+resource "tailscale_tailnet_key" "xps13_auth" {
+  reusable      = true
+  ephemeral     = false
+  preauthorized = true
+  tags          = [local.tailscale_server_tag]
+  expiry        = 7776000 # 90 days
+}
