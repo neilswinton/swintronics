@@ -76,6 +76,3 @@
     - name: Restart systemd-logind
       ansible.builtin.debug:
         msg: "logind.conf was changed — reboot when ready for lid/sleep settings to take effect"
-
-  roles:
-    - role: staticdev.brave
