@@ -15,7 +15,7 @@
   tasks:
     - name: Install base packages
       apt:
-        name: [curl, git, python3-pip]
+        name: [curl, git, python3-pip, openssh-server]
         state: present
         update_cache: true
 
@@ -42,6 +42,20 @@
         name: gh
         state: present
         update_cache: true
+
+    - name: Deploy Mozilla modern sshd_config
+      ansible.builtin.copy:
+        src: ../files/sshd_config
+        dest: /etc/ssh/sshd_config
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart sshd
+
+    - name: Remove weak Diffie-Hellman moduli (< 3072 bits)
+      ansible.builtin.shell:
+        cmd: awk '$5 >= 3071' /etc/ssh/moduli > /etc/ssh/moduli.tmp && mv /etc/ssh/moduli.tmp /etc/ssh/moduli
+      changed_when: false
 
     - name: Disable sleep/suspend/hibernate targets
       ansible.builtin.systemd:
@@ -73,6 +87,11 @@
         owner: root
         group: root
   handlers:
+    - name: Restart sshd
+      ansible.builtin.systemd:
+        name: ssh
+        state: restarted
+
     - name: Restart systemd-logind
       ansible.builtin.debug:
         msg: "logind.conf was changed — reboot when ready for lid/sleep settings to take effect"
