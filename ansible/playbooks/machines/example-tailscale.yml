@@ -1,7 +1,0 @@
-# Tailscale config for this machine.
-# tailscale_authkey_secret is the name of the secret in Infisical that holds the auth key.
-# tailscale_subnet and tailscale_exit_node are optional.
-
-tailscale_authkey_secret: "TAILSCALE_MACHINE_AUTHKEY"
-# tailscale_subnet: "192.168.1.0/24"
-# tailscale_exit_node: true

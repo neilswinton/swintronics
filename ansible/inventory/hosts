@@ -1,3 +1,6 @@
+[local]
+localhost ansible_connection=local
+
 [swintronics]
 swintronics-1 ansible_host=ts.swintronics.com
 

@@ -3,22 +3,12 @@
   connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
   become: true
   pre_tasks:
-    - name: Verify tailscale_config_file and tailscale_tag are set
+    - name: Verify required Tailscale vars are set
       ansible.builtin.assert:
         that:
-          - tailscale_config_file is defined
           - tailscale_tag is defined
-        fail_msg: "tailscale_config_file and tailscale_tag must be set (e.g. from the machine playbook)"
-
-    - name: Load tailscale config file
-      ansible.builtin.include_vars:
-        file: "{{ playbook_dir }}/machines/{{ tailscale_config_file }}"
-
-    - name: Verify tailscale_authkey_secret is set in config file
-      ansible.builtin.assert:
-        that:
           - tailscale_authkey_secret is defined
-        fail_msg: "tailscale_authkey_secret must be set in {{ tailscale_config_file }}"
+        fail_msg: "tailscale_tag and tailscale_authkey_secret must be set in host_vars"
 
     - name: Login to Infisical
       infisical.vault.login:
