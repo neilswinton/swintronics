@@ -78,21 +78,11 @@
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
-      # monitoring is enabled when 'prometheus' is in versions (see pre_tasks)
-      monitoring:
-        dir: monitoring
-        dns_names: [monitoring, prometheus, cadvisor]
-        profiles: "{{ active_profiles | default([]) }}"
-        files:
-          - { src: compose.yml.j2,  dest: compose.yml }
-          - { src: .env.j2,         dest: .env,               secret: true }
 
   pre_tasks:
     - name: Determine enabled services
       ansible.builtin.set_fact:
-        _enabled_services: >-
-          {{ (_service_config.keys() | select('in', versions) | list)
-             + (['monitoring'] if 'prometheus' in versions else []) }}
+        _enabled_services: "{{ _service_config.keys() | select('in', versions) | list }}"
 
     - name: Build deploy file list for enabled services
       ansible.builtin.set_fact:
@@ -158,14 +148,6 @@
         - traefik-data/configs
       when: "'traefik' in _enabled_services"
 
-    - name: Ensure monitoring config directory exists
-      ansible.builtin.file:
-        path: "{{ docker_services_path }}/monitoring/config"
-        state: directory
-        owner: "{{ admin_user }}"
-        mode: '0755'
-      when: "'monitoring' in _enabled_services"
-
     # ── Deploy templates ──────────────────────────────────────────────────────
 
     - name: Deploy service files
@@ -193,29 +175,15 @@
         mode: '0644'
       when: "'traefik' in _enabled_services"
 
-    - name: Deploy monitoring prometheus config
-      ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../services/monitoring/config/prometheus.yml"
-        dest: "{{ docker_services_path }}/monitoring/config/prometheus.yml"
-        owner: "{{ admin_user }}"
-        mode: '0644'
-      when: "'monitoring' in _enabled_services"
-      register: _monitoring_config_result
-
     # ── Determine what changed ────────────────────────────────────────────────
 
     - name: Determine changed services
       ansible.builtin.set_fact:
         _changed_services: >-
-          {{ (_file_results.results
-              | selectattr('changed')
-              | map(attribute='item.service')
-              | unique | list)
-             + (['monitoring'] if (_monitoring_config_result.changed | default(false)) and
-                'monitoring' not in (_file_results.results
-                                     | selectattr('changed')
-                                     | map(attribute='item.service') | list)
-                else []) }}
+          {{ _file_results.results
+             | selectattr('changed')
+             | map(attribute='item.service')
+             | unique | list }}
 
     - name: Nothing to do
       ansible.builtin.debug:
