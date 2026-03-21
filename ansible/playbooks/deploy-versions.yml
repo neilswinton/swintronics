@@ -28,6 +28,7 @@
     _service_config:
       traefik:
         dir: networking
+        dns_names: [traefik]
         files:
           - { src: compose.yml.j2,        dest: compose.yml }
           - { src: traefik.yml.j2,        dest: traefik.yml }
@@ -35,37 +36,44 @@
           - { src: .env.j2,               dest: .env,         secret: true }
       dozzle:
         dir: dozzle
+        dns_names: [logs]
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
       immich:
         dir: immich-app
+        dns_names: [photos]
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
       paperless:
         dir: paperless
+        dns_names: [paperless]
         files:
           - { src: compose.yml.j2,        dest: compose.yml }
           - { src: .env.j2,               dest: .env,         secret: true }
           - { src: docker-compose.env.j2, dest: docker-compose.env, secret: true }
       kuma:
         dir: uptime-kuma
+        dns_names: [status, status-admin]
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
       stirling_pdf:
         dir: stirling-pdf
+        dns_names: [stirling-pdf]
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
       linkwarden:
         dir: linkwarden
+        dns_names: [linkwarden]
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
       beszel:
         dir: beszel
+        dns_names: [beszel]
         profiles: "{{ active_profiles | default([]) }}"
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
@@ -73,6 +81,7 @@
       # monitoring is enabled when 'prometheus' is in versions (see pre_tasks)
       monitoring:
         dir: monitoring
+        dns_names: [monitoring, prometheus, cadvisor]
         profiles: "{{ active_profiles | default([]) }}"
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
@@ -225,7 +234,7 @@
       community.docker.docker_compose_v2:
         project_src: "{{ docker_services_path }}/{{ _service_config[item].dir }}"
         pull: always
-        profiles: "{{ _service_config[item].profiles | default(omit) }}"
+        profiles: "{{ _service_config[item].profiles if (_service_config[item].profiles | default([]) | length > 0) else omit }}"
       loop: "{{ _changed_services | reject('equalto', 'traefik') | reject('equalto', 'kuma') | list }}"
       when: _changed_services | length > 0
 
@@ -265,7 +274,7 @@
         project_src: "{{ docker_services_path }}/{{ _service_config[item].dir }}"
         state: present
         recreate: always
-        profiles: "{{ _service_config[item].profiles | default(omit) }}"
+        profiles: "{{ _service_config[item].profiles if (_service_config[item].profiles | default([]) | length > 0) else omit }}"
       loop: "{{ _changed_services | reject('equalto', 'traefik') | reject('equalto', 'kuma') | list }}"
       when: _changed_services | length > 0
 
@@ -320,3 +329,27 @@
       ansible.builtin.debug:
         msg: "Updated: {{ _changed_services | join(', ') }}"
       when: _changed_services | length > 0
+
+    # ── Ensure DNS CNAME records exist for all enabled services ──────────────
+
+    - name: Collect DNS names for enabled services
+      ansible.builtin.set_fact:
+        _service_dns_names: >-
+          {{ _enabled_services
+             | map('extract', _service_config)
+             | selectattr('dns_names', 'defined')
+             | map(attribute='dns_names')
+             | flatten | unique | list }}
+
+    - name: Ensure CNAME records exist for enabled services
+      community.general.cloudflare_dns:
+        zone: "{{ server_domain }}"
+        record: "{{ item }}"
+        type: CNAME
+        value: "{{ dns_hostname }}.{{ server_domain }}"
+        proxied: false
+        api_token: "{{ infisical_secrets.secrets.CF_DNS_API_TOKEN }}"
+        state: present
+      loop: "{{ _service_dns_names }}"
+      delegate_to: localhost
+      when: _service_dns_names | length > 0

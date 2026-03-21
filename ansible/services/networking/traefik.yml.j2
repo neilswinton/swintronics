@@ -24,7 +24,7 @@ services:
     labels:
         - "traefik.http.services.dummy.loadbalancer.server.port=8080"
         - "traefik.enable=true"
-        - "traefik.http.routers.traefik.rule=Host(`traefik.${SERVER_DOMAIN}`)"
+        - "traefik.http.routers.traefik.rule=Host(`{{ _service_config.traefik.dns_names[0] }}.{{ server_domain }}`)"
         - "traefik.http.routers.traefik.entrypoints=websecure"
         - "traefik.http.routers.traefik.service=api@internal"
         - "traefik.http.routers.traefik.tls.certresolver=${CERT_RESOLVER}"

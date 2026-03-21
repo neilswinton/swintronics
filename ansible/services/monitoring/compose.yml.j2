@@ -41,7 +41,7 @@ services:
     labels:
       traefik.enable: true
       traefik.http.routers.cadvisor.entrypoints: websecure
-      traefik.http.routers.cadvisor.rule: Host(`cadvisor.${SERVER_DOMAIN}`)
+      traefik.http.routers.cadvisor.rule: Host(`{{ _service_config.monitoring.dns_names[2] }}.{{ server_domain }}`)
       traefik.http.routers.cadvisor.tls.certresolver: ${CERT_RESOLVER}
 
   prometheus:
@@ -63,7 +63,7 @@ services:
     labels:
       traefik.enable: true
       traefik.http.routers.prometheus.entrypoints: websecure
-      traefik.http.routers.prometheus.rule: Host(`prometheus.${SERVER_DOMAIN}`)
+      traefik.http.routers.prometheus.rule: Host(`{{ _service_config.monitoring.dns_names[1] }}.{{ server_domain }}`)
       traefik.http.routers.prometheus.tls.certresolver: ${CERT_RESOLVER}
 
   grafana:
@@ -78,5 +78,5 @@ services:
     labels:
       traefik.enable: true
       traefik.http.routers.grafana.entrypoints: websecure
-      traefik.http.routers.grafana.rule: Host(`monitoring.${SERVER_DOMAIN}`)
+      traefik.http.routers.grafana.rule: Host(`{{ _service_config.monitoring.dns_names[0] }}.{{ server_domain }}`)
       traefik.http.routers.grafana.tls.certresolver: ${CERT_RESOLVER}

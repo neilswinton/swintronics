@@ -22,7 +22,7 @@ services:
     labels:
       traefik.enable: true
       traefik.http.routers.beszel.entrypoints: websecure
-      traefik.http.routers.beszel.rule: Host(`beszel.${SERVER_DOMAIN}`)
+      traefik.http.routers.beszel.rule: Host(`{{ _service_config.beszel.dns_names[0] }}.{{ server_domain }}`)
       traefik.http.routers.beszel.tls.certresolver: ${CERT_RESOLVER}
       traefik.http.services.beszel.loadbalancer.server.port: 8090
 

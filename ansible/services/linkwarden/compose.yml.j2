@@ -28,7 +28,7 @@ services:
     labels:
       traefik.enable: true
       traefik.http.routers.linkwarden.entrypoints: websecure
-      traefik.http.routers.linkwarden.rule: Host(`linkwarden.${SERVER_DOMAIN}`)
+      traefik.http.routers.linkwarden.rule: Host(`{{ _service_config.linkwarden.dns_names[0] }}.{{ server_domain }}`)
       traefik.http.routers.linkwarden.tls.certresolver: ${CERT_RESOLVER}
   meilisearch:
     image: getmeili/meilisearch:v1.12.8

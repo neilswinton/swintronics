@@ -63,14 +63,4 @@
         api_token: "{{ infisical_secrets.secrets.CF_DNS_API_TOKEN }}"
         state: present
 
-    - name: Create CNAME records for enabled services
-      community.general.cloudflare_dns:
-        zone: "{{ dns_domain }}"
-        record: "{{ item }}"
-        type: CNAME
-        value: "{{ dns_hostname }}.{{ dns_domain }}"
-        proxied: false
-        api_token: "{{ infisical_secrets.secrets.CF_DNS_API_TOKEN }}"
-        state: present
-      loop: "{{ dns_services }}"
-      when: dns_services is defined and dns_services | length > 0
+    # Service CNAME records are managed by deploy-versions.yml (dns_names in _service_config)

@@ -24,18 +24,18 @@ services:
 
       # Uptime Kuma Status Page Router
       traefik.http.routers.uptime-kuma.entrypoints: websecure
-      traefik.http.routers.uptime-kuma.rule: Host(`status.${SERVER_DOMAIN}`)
+      traefik.http.routers.uptime-kuma.rule: Host(`{{ _service_config.kuma.dns_names[0] }}.{{ server_domain }}`)
       traefik.http.routers.uptime-kuma.tls.certresolver: ${CERT_RESOLVER}
       traefik.http.routers.uptime-kuma.service: kuma-service
       traefik.http.routers.uptime-kuma.middlewares: redirect-status
 
       # Uptime Kuma Admin Interface Router
       traefik.http.routers.status-admin.entrypoints: websecure
-      traefik.http.routers.status-admin.rule: Host(`status-admin.${SERVER_DOMAIN}`)
+      traefik.http.routers.status-admin.rule: Host(`{{ _service_config.kuma.dns_names[1] }}.{{ server_domain }}`)
       traefik.http.routers.status-admin.tls.certresolver: ${CERT_RESOLVER}
       traefik.http.routers.status-admin.service: kuma-service
 
       # Middleware to redirect to /status/default
-      traefik.http.middlewares.redirect-status.redirectregex.regex: "^https://status\\.[^/]+/?$"
-      traefik.http.middlewares.redirect-status.redirectregex.replacement: "https://status.${SERVER_DOMAIN}/status/default"
+      traefik.http.middlewares.redirect-status.redirectregex.regex: "^https://{{ _service_config.kuma.dns_names[0] }}\\.[^/]+/?$"
+      traefik.http.middlewares.redirect-status.redirectregex.replacement: "https://{{ _service_config.kuma.dns_names[0] }}.{{ server_domain }}/status/default"
       traefik.http.middlewares.redirect-status.redirectregex.permanent: true

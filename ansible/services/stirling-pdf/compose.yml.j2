@@ -20,7 +20,7 @@ services:
     labels:
       traefik.enable: true
       traefik.http.routers.stirling-pdf.entrypoints: websecure
-      traefik.http.routers.stirling-pdf.rule: Host(`stirling-pdf.${SERVER_DOMAIN}`)
+      traefik.http.routers.stirling-pdf.rule: Host(`{{ _service_config.stirling_pdf.dns_names[0] }}.{{ server_domain }}`)
       traefik.http.routers.stirling-pdf.tls.certresolver: ${CERT_RESOLVER}
 
 volumes:
