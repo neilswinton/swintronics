@@ -148,5 +148,8 @@ The Hetzner Cloud swintronics server is being decommissioned (too expensive). Al
 - Switched to production cert resolver
 
 #### What's Next
-- Complete Beszel bootstrap: log into hub, get agent key, add to `localhost.yml`, re-deploy
 - Continue migrating remaining services from Hetzner (immich, paperless, kuma)
+- **Immich:** i5-7200U (dual-core, 2016 mobile) may struggle with ML indexing. Options:
+  - Try OpenVINO variant of `immich-machine-learning` (Intel HD 620 iGPU) — add `-openvino` suffix to image tag and pass through `/dev/dri`
+  - Or disable `immich-machine-learning` entirely (loses smart search + face recognition)
+- **Add Vikunja** (task manager) as a new service

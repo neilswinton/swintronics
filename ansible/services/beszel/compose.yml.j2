@@ -12,7 +12,6 @@ services:
     env_file: .env
     volumes:
       - {{ data_disk_mountpoint }}/volumes/beszel/beszel_data:/beszel_data
-      - {{ data_disk_mountpoint }}/volumes/beszel/beszel_socket:/beszel_socket
     labels:
       traefik.enable: true
       traefik.http.routers.beszel.entrypoints: websecure
@@ -30,11 +29,12 @@ services:
       test: ['CMD', '/agent', 'health']
       interval: 120s
     volumes:
-      - {{ data_disk_mountpoint }}/volumes/beszel/beszel_agent_data:/var/lib/beszel_agent
-      - {{ data_disk_mountpoint }}/volumes/beszel/beszel_socket:/beszel_socket
+      - {{ data_disk_mountpoint }}/volumes/beszel/beszel_agent_data:/var/lib/beszel-agent
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - {{ data_disk_mountpoint }}:/extra-filesystems/sdb1__DockerData-1:ro
     environment:
-      LISTEN: /beszel_socket/beszel.sock
+      LISTEN: 45876
       KEY: "{{ beszel_agent_key }}"
+      TOKEN: "{{ beszel_agent_token }}"
+      HUB_URL: "https://{{ _service_config.beszel.dns_names[0] }}.{{ server_domain }}"
 {% endif %}

@@ -15,6 +15,10 @@ tailscale_exit_node: false            # advertise as exit node
 
 # DNS
 dns_hostname: "machinename"           # <dns_hostname>.swintronics.com A/AAAA records
-dns_services:                         # CNAMEs pointing to dns_hostname
-  - traefik
-  - dozzle
+
+# TLS
+cert_resolver: "production"           # or "staging" for Let's Encrypt staging
+
+# Beszel agent — set after logging into hub and adding a system (TCP mode, port 45876)
+# beszel_agent_key: "ssh-ed25519 ..."
+# beszel_agent_token: "..."
