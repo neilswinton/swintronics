@@ -234,9 +234,11 @@
       community.docker.docker_compose_v2:
         project_src: "{{ docker_services_path }}/{{ _service_config[item].dir }}"
         pull: always
-        profiles: "{{ _service_config[item].profiles if (_service_config[item].profiles | default([]) | length > 0) else omit }}"
+        profiles: "{{ _service_config[item].profiles | default(omit) }}"
       loop: "{{ _changed_services | reject('equalto', 'traefik') | reject('equalto', 'kuma') | list }}"
-      when: _changed_services | length > 0
+      when:
+        - _changed_services | length > 0
+        - (_service_config[item].profiles is not defined) or (_service_config[item].profiles | length > 0)
 
     # ── Stop Kuma and pause monitoring before restarting anything ─────────────
 
@@ -274,9 +276,11 @@
         project_src: "{{ docker_services_path }}/{{ _service_config[item].dir }}"
         state: present
         recreate: always
-        profiles: "{{ _service_config[item].profiles if (_service_config[item].profiles | default([]) | length > 0) else omit }}"
+        profiles: "{{ _service_config[item].profiles | default(omit) }}"
       loop: "{{ _changed_services | reject('equalto', 'traefik') | reject('equalto', 'kuma') | list }}"
-      when: _changed_services | length > 0
+      when:
+        - _changed_services | length > 0
+        - (_service_config[item].profiles is not defined) or (_service_config[item].profiles | length > 0)
 
     # ── Restart Kuma and resume monitoring ────────────────────────────────────
 
