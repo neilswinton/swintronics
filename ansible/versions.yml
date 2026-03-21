@@ -22,7 +22,7 @@ versions:
   stirling_pdf: "2.5.2"
 
   # https://github.com/linkwarden/linkwarden/releases
-  # linkwarden: "latest"
+  linkwarden: "v2.13.5"
 
   # https://github.com/prometheus/prometheus/releases
   # prometheus: "v3.1.0"
