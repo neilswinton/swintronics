@@ -114,6 +114,19 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 
 Restic-based backup scripts in `server-scripts/` are installed as cron jobs (`neil.crontab`). Each stateful service (Immich, Paperless, Grafana, Uptime Kuma) has its own backup script with healthchecks.io pings.
 
+### Beszel Agent Bootstrap
+
+Beszel hub and agent communicate over a Unix socket. The agent requires the hub's public key (`KEY`) to authenticate. This key is only available after the hub is running and a system has been added in the UI.
+
+**First-time setup on a new machine:**
+1. Run `deploy-versions.yml` — hub starts, agent is absent (key not set yet)
+2. Log into the Beszel UI at `https://beszel.<server_domain>`
+3. Add a system — copy the public key shown
+4. Add `beszel_agent_key: "<key>"` to `ansible/inventory/host_vars/localhost.yml`
+5. Run `deploy-versions.yml` again — agent service is now rendered and started
+
+**Subsequent deploys:** key is already in `localhost.yml`, agent deploys normally.
+
 ## Current Work In Progress
 
 ### Context: Migration from Hetzner to XPS13
@@ -127,32 +140,13 @@ The Hetzner Cloud swintronics server is being decommissioned (too expensive). Al
 ### Branch: `feature/migrate-services`
 
 #### Done
-- Added 1Password desktop + CLI installation to `ansible/playbooks/apps.yml` (committed)
-- Linkwarden compose template and version entry added (`ansible/services/linkwarden/compose.yml.j2`, `ansible/versions.yml`) — not yet committed
-
-#### DNS Redesign (not yet implemented)
-
-**Problem:** `dns_services` in `ansible/inventory/host_vars/localhost.yml` is a hand-maintained list of service subdomains that must be kept in sync with Traefik Host labels in compose templates. Runs separately via `dns.yml`. Two lists, manual step.
-
-**Decision:** Embed `dns_names` in each service's entry in `_service_config` (in `deploy-versions.yml`). Add a DNS task block at the end of `deploy-versions.yml` that ensures Cloudflare CNAME records exist for all enabled services on every run. `dns.yml` is simplified to only manage host A/AAAA records.
-
-**Files to change:**
-1. `ansible/inventory/host_vars/localhost.yml` — remove `dns_services`
-2. `ansible/playbooks/deploy-versions.yml` — add `dns_names` to each `_service_config` entry; add DNS task block at end
-3. `ansible/playbooks/dns.yml` — remove the CNAME task (service CNAMEs now owned by `deploy-versions.yml`)
-
-**DNS name mapping** (Traefik subdomain → service key):
-- `traefik` → traefik
-- `logs` → dozzle
-- `photos` → immich
-- `paperless` → paperless
-- `status`, `status-admin` → kuma
-- `stirling-pdf` → stirling_pdf
-- `linkwarden` → linkwarden
-- `beszel` → beszel
-- `monitoring`, `prometheus`, `cadvisor` → monitoring
+- Added 1Password desktop + CLI to `ansible/playbooks/apps.yml`
+- Added linkwarden service
+- DNS redesign: `dns_names` in `_service_config` is now the single source of truth; `deploy-versions.yml` ensures Cloudflare CNAMEs on every run; Traefik Host labels in compose templates reference `_service_config` instead of hardcoded subdomains
+- Removed monitoring stack (Prometheus/Grafana/cAdvisor) in favour of Beszel
+- Beszel agent gated on `beszel_agent_key` in `localhost.yml` — see bootstrap steps above
+- Switched to production cert resolver
 
 #### What's Next
-1. Commit linkwarden changes
-2. Implement DNS redesign (changes above)
-3. Test with `ansible-playbook playbooks/deploy-versions.yml --check -e target=localhost`
+- Complete Beszel bootstrap: log into hub, get agent key, add to `localhost.yml`, re-deploy
+- Continue migrating remaining services from Hetzner (immich, paperless, kuma)
