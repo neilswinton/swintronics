@@ -17,18 +17,15 @@
     # stateful: true  → create a btrfs subvolume under volumes/
     # stateful: false → stateless; only a logs directory is created
     _service_storage:
-      traefik:    { dir: traefik,      stateful: false }
-      dozzle:     { dir: dozzle,       stateful: false }
-      immich:     { dir: immich,       stateful: true  }
-      paperless:  { dir: paperless,    stateful: true  }
-      kuma:       { dir: uptime-kuma,  stateful: true  }
+      traefik:     { dir: traefik,      stateful: false }
+      dozzle:      { dir: dozzle,       stateful: false }
+      immich:      { dir: immich,       stateful: true, subvol_path: "immich/library" }
+      paperless:   { dir: paperless,    stateful: true  }
+      kuma:        { dir: uptime-kuma,  stateful: true  }
       stirling_pdf: { dir: stirling-pdf, stateful: false }
-      linkwarden: { dir: linkwarden,   stateful: true  }
-      prometheus: { dir: prometheus,   stateful: true  }
-      grafana:    { dir: grafana,      stateful: true  }
-      cadvisor:   { dir: cadvisor,     stateful: false }
-      node_exporter: { dir: node-exporter, stateful: false }
-      beszel:     { dir: beszel,       stateful: true  }
+      linkwarden:  { dir: linkwarden,   stateful: true  }
+      beszel:      { dir: beszel,       stateful: true  }
+      vikunja:     { dir: vikunja,      stateful: true  }
 
   pre_tasks:
     - name: Load versions
@@ -78,9 +75,22 @@
       loop: "{{ _service_storage.keys() | list }}"
       when: item in versions
 
+    - name: Create parent directory for services with a nested subvolume
+      ansible.builtin.file:
+        path: "{{ data_disk_mountpoint }}/volumes/{{ _service_storage[item].dir }}"
+        state: directory
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0755'
+      loop: "{{ _service_storage.keys() | list }}"
+      when:
+        - item in versions
+        - _service_storage[item].stateful
+        - _service_storage[item].subvol_path is defined
+
     - name: Check if btrfs subvolume already exists for each enabled stateful service
       ansible.builtin.command:
-        cmd: btrfs subvolume show {{ data_disk_mountpoint }}/volumes/{{ _service_storage[item].dir }}
+        cmd: btrfs subvolume show {{ data_disk_mountpoint }}/volumes/{{ _service_storage[item].subvol_path | default(_service_storage[item].dir) }}
       register: _subvol_checks
       loop: "{{ _service_storage.keys() | list }}"
       when:
@@ -92,7 +102,7 @@
     - name: Create btrfs subvolume for each enabled stateful service
       # btrfs subvolume create makes the directory itself — do not pre-create it
       ansible.builtin.command:
-        cmd: btrfs subvolume create {{ data_disk_mountpoint }}/volumes/{{ _service_storage[item.item].dir }}
+        cmd: btrfs subvolume create {{ data_disk_mountpoint }}/volumes/{{ _service_storage[item.item].subvol_path | default(_service_storage[item.item].dir) }}
       loop: "{{ _subvol_checks.results }}"
       when:
         - item is not skipped
@@ -102,7 +112,7 @@
 
     - name: Set ownership of subvolumes to admin user
       ansible.builtin.file:
-        path: "{{ data_disk_mountpoint }}/volumes/{{ _service_storage[item].dir }}"
+        path: "{{ data_disk_mountpoint }}/volumes/{{ _service_storage[item].subvol_path | default(_service_storage[item].dir) }}"
         owner: "{{ admin_user }}"
         group: "{{ admin_user }}"
       loop: "{{ _service_storage.keys() | list }}"
