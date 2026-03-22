@@ -36,10 +36,9 @@ services:
       traefik.http.routers.status-admin.service: kuma-service
       traefik.http.routers.status-admin.middlewares: kuma-headers
 
-      # WebSocket support — Kuma requires these headers for WS upgrades through a reverse proxy
+      # Kuma needs X-Forwarded-Proto so it knows it's behind HTTPS and accepts WS upgrades
+      # Traefik handles the Upgrade/Connection headers natively — don't override them
       traefik.http.middlewares.kuma-headers.headers.customrequestheaders.X-Forwarded-Proto: https
-      traefik.http.middlewares.kuma-headers.headers.customrequestheaders.Upgrade: websocket
-      traefik.http.middlewares.kuma-headers.headers.customrequestheaders.Connection: Upgrade
 
       # Middleware to redirect to /status/default
       traefik.http.middlewares.redirect-status.redirectregex.regex: "^https://{{ _service_config.kuma.dns_names[0] }}\\.[^/]+/?$"
