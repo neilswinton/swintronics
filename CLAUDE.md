@@ -114,6 +114,29 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 
 Restic-based backup scripts in `server-scripts/` are installed as cron jobs (`neil.crontab`). Each stateful service (Immich, Paperless, Grafana, Uptime Kuma) has its own backup script with healthchecks.io pings.
 
+### Uptime Kuma Setup
+
+Kuma configuration is manual (no API automation). Use SQLite (the default) — no external DB needed.
+
+**First-time setup on a new machine:**
+1. Run `deploy-versions.yml` — Kuma starts with a fresh SQLite database
+2. Log into the admin UI at `https://status-admin.<server_domain>`
+3. Create an account (first user becomes admin)
+4. Add a **Telegram** notification channel: Settings → Notifications → Add → Telegram
+   - Bot token and chat ID are in Infisical
+   - Test before saving
+5. Add **HTTP monitors** for each service — interval: 5 minutes, retries: 3:
+   - `https://photos.<domain>` — Immich
+   - `https://paperless.<domain>` — Paperless
+   - `https://linkwarden.<domain>` — Linkwarden
+   - `https://stirling-pdf.<domain>` — Stirling PDF
+   - `https://logs.<domain>` — Dozzle
+   - `https://beszel.<domain>` — Beszel
+   - `https://status-admin.<domain>` — Kuma itself
+   - healthchecks.io ping URL (from Infisical as `HC_KUMA_PING_URL`) — confirms Kuma is alive
+
+**Subsequent deploys:** Kuma data persists in `/docker-data/volumes/uptime-kuma/data` (SQLite file).
+
 ### Beszel Agent Bootstrap
 
 Beszel hub and agent communicate over a Unix socket. The agent requires the hub's public key (`KEY`) to authenticate. This key is only available after the hub is running and a system has been added in the UI.
