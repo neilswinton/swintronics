@@ -113,3 +113,66 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 ### Backup
 
 Restic-based backup scripts in `server-scripts/` are installed as cron jobs (`neil.crontab`). Each stateful service (Immich, Paperless, Grafana, Uptime Kuma) has its own backup script with healthchecks.io pings.
+
+### Uptime Kuma Setup
+
+Kuma configuration is manual (no API automation). Use SQLite (the default) — no external DB needed.
+
+**First-time setup on a new machine:**
+1. Run `deploy-versions.yml` — Kuma starts with a fresh SQLite database
+2. Log into the admin UI at `https://status-admin.<server_domain>`
+3. Create an account (first user becomes admin)
+4. Add a **Telegram** notification channel: Settings → Notifications → Add → Telegram
+   - Bot token and chat ID are in Infisical
+   - Test before saving
+5. Add **HTTP monitors** for each service — interval: 5 minutes, retries: 3:
+   - `https://photos.<domain>` — Immich
+   - `https://paperless.<domain>` — Paperless
+   - `https://linkwarden.<domain>` — Linkwarden
+   - `https://stirling-pdf.<domain>` — Stirling PDF
+   - `https://logs.<domain>` — Dozzle
+   - `https://beszel.<domain>` — Beszel
+   - `https://status-admin.<domain>` — Kuma itself
+   - healthchecks.io ping URL (from Infisical as `HC_KUMA_PING_URL`) — confirms Kuma is alive
+
+**Subsequent deploys:** Kuma data persists in `/docker-data/volumes/uptime-kuma/data` (SQLite file).
+
+### Beszel Agent Bootstrap
+
+Beszel hub and agent communicate over a Unix socket. The agent requires the hub's public key (`KEY`) to authenticate. This key is only available after the hub is running and a system has been added in the UI.
+
+**First-time setup on a new machine:**
+1. Run `deploy-versions.yml` — hub starts, agent is absent (key not set yet)
+2. Log into the Beszel UI at `https://beszel.<server_domain>`
+3. Add a system — copy the public key shown
+4. Add `beszel_agent_key: "<key>"` to `ansible/inventory/host_vars/localhost.yml`
+5. Run `deploy-versions.yml` again — agent service is now rendered and started
+
+**Subsequent deploys:** key is already in `localhost.yml`, agent deploys normally.
+
+## Current Work In Progress
+
+### Context: Migration from Hetzner to XPS13
+
+The Hetzner Cloud swintronics server is being decommissioned (too expensive). All Docker workloads are being migrated to the Dell XPS13 (`localhost`). When migration is complete, the XPS13 will become the permanent "swintronics" server. The `swintronics` group in Ansible inventory still points to the Hetzner server but is being retired.
+
+`deploy-versions.yml` defaults to target `swintronics` (Hetzner). During migration, run it with `-e target=localhost` to deploy to the XPS13 instead.
+
+`localhost.yml` has `dns_hostname: xps13` — this will change to `swintronics` once migration is complete and the Hetzner server is shut down.
+
+### Branch: `feature/migrate-services`
+
+#### Done
+- Added 1Password desktop + CLI to `ansible/playbooks/apps.yml`
+- Added linkwarden service
+- DNS redesign: `dns_names` in `_service_config` is now the single source of truth; `deploy-versions.yml` ensures Cloudflare CNAMEs on every run; Traefik Host labels in compose templates reference `_service_config` instead of hardcoded subdomains
+- Removed monitoring stack (Prometheus/Grafana/cAdvisor) in favour of Beszel
+- Beszel agent gated on `beszel_agent_key` in `localhost.yml` — see bootstrap steps above
+- Switched to production cert resolver
+
+#### What's Next
+- Continue migrating remaining services from Hetzner (immich, paperless, kuma)
+- **Immich:** i5-7200U (dual-core, 2016 mobile) may struggle with ML indexing. Options:
+  - Try OpenVINO variant of `immich-machine-learning` (Intel HD 620 iGPU) — add `-openvino` suffix to image tag and pass through `/dev/dri`
+  - Or disable `immich-machine-learning` entirely (loses smart search + face recognition)
+- **Add Vikunja** (task manager) as a new service

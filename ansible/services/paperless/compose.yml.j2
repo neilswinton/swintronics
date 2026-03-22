@@ -41,7 +41,8 @@ services:
     labels:
       traefik.enable: true
       traefik.http.routers.paperless.entrypoints: websecure
-      traefik.http.routers.paperless.rule: Host(`paperless.${SERVER_DOMAIN}`)
+      traefik.http.routers.paperless.rule: Host(`{{ _service_config.paperless.dns_names[0] }}.{{ server_domain }}`)
+      traefik.http.services.paperless.loadbalancer.server.port: 8000
       traefik.http.routers.paperless.tls.certresolver: ${CERT_RESOLVER}
 
 volumes:
