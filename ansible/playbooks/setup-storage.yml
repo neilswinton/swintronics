@@ -25,7 +25,6 @@
       stirling_pdf: { dir: stirling-pdf, stateful: false }
       linkwarden:  { dir: linkwarden,   stateful: true  }
       beszel:      { dir: beszel,       stateful: true  }
-      vikunja:     { dir: vikunja,      stateful: true,  subdirs: [files, db] }
 
   pre_tasks:
     - name: Load versions

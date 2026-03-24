@@ -162,12 +162,11 @@ TODO: update `dns_hostname` in `localhost.yml` from `xps13` to `swintronics` onc
 
 #### Done (this session)
 - Migrated immich (OpenVINO ML), paperless, and kuma from Hetzner — all restored from backup
-- Added Vikunja v2.2.0 (task manager) at `todo.<domain>` — fresh install, SQLite backend
+- Evaluated Vikunja v2.2.0 — removed (poor UI and Android app)
 - Fixed Traefik WebSocket routing for Kuma (`X-Forwarded-Proto: https` middleware)
 - Fixed bind-mount subdirectory ownership: `setup-storage.yml` now pre-creates `subdirs` listed in storage config
 
 #### TODOs
-- **Vikunja JWT secret**: currently using the upstream example value — generate a proper random secret with `openssl rand -hex 32` and update `VIKUNJA_JWT_SECRET` in Infisical
 - Decommission Hetzner server once confident everything is stable on XPS13
 - Update Kuma monitors: add all services, Telegram notifications, healthchecks.io ping
 - Consider Renovate bot for automatic Docker image version PRs
