@@ -10,7 +10,7 @@ versions:
   dozzle: "v10.2.0"
 
   # https://github.com/immich-app/immich/releases
-  immich: "v2.6.1"
+  immich: "v2.6.2"
 
   # https://github.com/paperless-ngx/paperless-ngx/releases
   paperless: "2.20.13"
