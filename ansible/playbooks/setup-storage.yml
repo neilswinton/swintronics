@@ -25,6 +25,7 @@
       stirling_pdf: { dir: stirling-pdf, stateful: false }
       linkwarden:  { dir: linkwarden,   stateful: true  }
       beszel:      { dir: beszel,       stateful: true  }
+      semaphore:   { dir: semaphore,    stateful: true,  subdirs: [data, tmp] }
 
   pre_tasks:
     - name: Load versions

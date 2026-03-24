@@ -191,6 +191,32 @@ resource "infisical_secret" "linkwarden_passwords" {
   folder_path  = "/"
 }
 
+# Semaphore
+resource "random_password" "semaphore_admin_password" {
+  length  = 16
+  special = false
+}
+
+resource "random_id" "semaphore_access_key_encryption" {
+  byte_length = 32
+}
+
+resource "infisical_secret" "semaphore_admin_password" {
+  name         = "SEMAPHORE_ADMIN_PASSWORD"
+  value        = random_password.semaphore_admin_password.result
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
+resource "infisical_secret" "semaphore_access_key_encryption" {
+  name         = "SEMAPHORE_ACCESS_KEY_ENCRYPTION"
+  value        = random_id.semaphore_access_key_encryption.b64_std
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
 # Monitoring
 resource "random_password" "monitoring_passwords" {
   for_each = toset(["GRAFANA_ADMIN_PASSWORD"])

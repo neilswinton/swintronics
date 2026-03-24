@@ -158,15 +158,20 @@ Migration is complete. All services are running on the Dell XPS13 (`localhost`).
 
 TODO: update `dns_hostname` in `localhost.yml` from `xps13` to `swintronics` once Hetzner is shut down.
 
-### Branch: `feature/vikunja`
+### Branch: `feature/semaphore`
 
 #### Done (this session)
 - Migrated immich (OpenVINO ML), paperless, and kuma from Hetzner — all restored from backup
 - Evaluated Vikunja v2.2.0 — removed (poor UI and Android app)
 - Fixed Traefik WebSocket routing for Kuma (`X-Forwarded-Proto: https` middleware)
 - Fixed bind-mount subdirectory ownership: `setup-storage.yml` now pre-creates `subdirs` listed in storage config
+- Added Semaphore v2.17.28 (Ansible UI) at `semaphore.<domain>`
+
+#### Upstream Compose File Convention
+Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich.
 
 #### TODOs
 - Decommission Hetzner server once confident everything is stable on XPS13
 - Update Kuma monitors: add all services, Telegram notifications, healthchecks.io ping
+- Install backup scripts (`server-scripts/`) and cron jobs (`neil.crontab`) on XPS13
 - Consider Renovate bot for automatic Docker image version PRs

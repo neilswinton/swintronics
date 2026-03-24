@@ -26,3 +26,6 @@ versions:
 
   # https://github.com/henrygd/beszel/releases
   beszel: "0.18.4"
+
+  # https://github.com/semaphoreui/semaphore/releases
+  semaphore: "v2.17.28"
