@@ -154,25 +154,24 @@ Beszel hub and agent communicate over a Unix socket. The agent requires the hub'
 
 ### Context: Migration from Hetzner to XPS13
 
-The Hetzner Cloud swintronics server is being decommissioned (too expensive). All Docker workloads are being migrated to the Dell XPS13 (`localhost`). When migration is complete, the XPS13 will become the permanent "swintronics" server. The `swintronics` group in Ansible inventory still points to the Hetzner server but is being retired.
+Migration is complete. All services are running on the Dell XPS13 (`localhost`). The Hetzner server is pending decommission.
 
-`deploy-versions.yml` defaults to target `swintronics` (Hetzner). During migration, run it with `-e target=localhost` to deploy to the XPS13 instead.
+TODO: update `dns_hostname` in `localhost.yml` from `xps13` to `swintronics` once Hetzner is shut down.
 
-`localhost.yml` has `dns_hostname: xps13` — this will change to `swintronics` once migration is complete and the Hetzner server is shut down.
+### Branch: `feature/semaphore`
 
-### Branch: `feature/migrate-services`
+#### Done (this session)
+- Migrated immich (OpenVINO ML), paperless, and kuma from Hetzner — all restored from backup
+- Evaluated Vikunja v2.2.0 — removed (poor UI and Android app)
+- Fixed Traefik WebSocket routing for Kuma (`X-Forwarded-Proto: https` middleware)
+- Fixed bind-mount subdirectory ownership: `setup-storage.yml` now pre-creates `subdirs` listed in storage config
+- Added Semaphore v2.17.28 (Ansible UI) at `semaphore.<domain>`
 
-#### Done
-- Added 1Password desktop + CLI to `ansible/playbooks/apps.yml`
-- Added linkwarden service
-- DNS redesign: `dns_names` in `_service_config` is now the single source of truth; `deploy-versions.yml` ensures Cloudflare CNAMEs on every run; Traefik Host labels in compose templates reference `_service_config` instead of hardcoded subdomains
-- Removed monitoring stack (Prometheus/Grafana/cAdvisor) in favour of Beszel
-- Beszel agent gated on `beszel_agent_key` in `localhost.yml` — see bootstrap steps above
-- Switched to production cert resolver
+#### Upstream Compose File Convention
+Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich.
 
-#### What's Next
-- Continue migrating remaining services from Hetzner (immich, paperless, kuma)
-- **Immich:** i5-7200U (dual-core, 2016 mobile) may struggle with ML indexing. Options:
-  - Try OpenVINO variant of `immich-machine-learning` (Intel HD 620 iGPU) — add `-openvino` suffix to image tag and pass through `/dev/dri`
-  - Or disable `immich-machine-learning` entirely (loses smart search + face recognition)
-- **Add Vikunja** (task manager) as a new service
+#### TODOs
+- Decommission Hetzner server once confident everything is stable on XPS13
+- Update Kuma monitors: add all services, Telegram notifications, healthchecks.io ping
+- Install backup scripts (`server-scripts/`) and cron jobs (`neil.crontab`) on XPS13
+- Consider Renovate bot for automatic Docker image version PRs

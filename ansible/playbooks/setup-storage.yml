@@ -25,7 +25,7 @@
       stirling_pdf: { dir: stirling-pdf, stateful: false }
       linkwarden:  { dir: linkwarden,   stateful: true  }
       beszel:      { dir: beszel,       stateful: true  }
-      vikunja:     { dir: vikunja,      stateful: true  }
+      semaphore:   { dir: semaphore,    stateful: true,  subdirs: [data, tmp] }
 
   pre_tasks:
     - name: Load versions
@@ -119,6 +119,19 @@
       when:
         - item in versions
         - _service_storage[item].stateful
+
+    - name: Create subdirectories within subvolumes
+      ansible.builtin.file:
+        path: "{{ data_disk_mountpoint }}/volumes/{{ item.0.value.dir }}/{{ item.1 }}"
+        state: directory
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0755'
+      with_subelements:
+        - "{{ _service_storage | dict2items | selectattr('key', 'in', versions) | selectattr('value.subdirs', 'defined') | list }}"
+        - value.subdirs
+      loop_control:
+        label: "{{ item.0.value.dir }}/{{ item.1 }}"
 
     - name: Check if user_subvol_rm_allowed already in fstab
       ansible.builtin.command:

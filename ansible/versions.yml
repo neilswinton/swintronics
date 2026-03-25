@@ -7,10 +7,10 @@ versions:
   traefik: "3.6.11"
 
   # https://github.com/amir20/dozzle/releases
-  dozzle: "v10.1.2"
+  dozzle: "v10.2.0"
 
   # https://github.com/immich-app/immich/releases
-  immich: "v2.6.1"
+  immich: "v2.6.2"
 
   # https://github.com/paperless-ngx/paperless-ngx/releases
   paperless: "2.20.13"
@@ -26,3 +26,6 @@ versions:
 
   # https://github.com/henrygd/beszel/releases
   beszel: "0.18.4"
+
+  # https://github.com/semaphoreui/semaphore/releases
+  semaphore: "v2.17.28"
