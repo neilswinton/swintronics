@@ -10,7 +10,7 @@ data "cloudflare_ip_ranges" "whitelist" {
 resource "cloudflare_dns_record" "ssh" {
   name    = "ssh"
   count   = 0
-  content = hcloud_server.server[0].ipv4_address
+  content = var.enable_hetzner ? hcloud_server.server[0].ipv4_address : "0.0.0.0"
   proxied = false
   ttl     = 1
   type    = "A"
@@ -24,7 +24,8 @@ resource "cloudflare_dns_record" "ssh" {
 }
 
 resource "cloudflare_dns_record" "root" {
-  name = "@"
+  count = var.enable_hetzner ? 1 : 0
+  name  = "@"
 
   content = hcloud_server.server[0].ipv4_address
   proxied = false

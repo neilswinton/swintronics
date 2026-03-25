@@ -36,6 +36,12 @@ variable "volume_delete_protection" {
   description = "If set to true is going to protect volume from deletion."
 }
 
+variable "enable_hetzner" {
+  type        = bool
+  default     = false
+  description = "Set to true to provision Hetzner Cloud resources."
+}
+
 variable "timezone" {
   type        = string
   description = "The timezone which the server will be configured."
