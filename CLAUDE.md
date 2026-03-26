@@ -154,9 +154,7 @@ Beszel hub and agent communicate over a Unix socket. The agent requires the hub'
 
 ### Context: Migration from Hetzner to XPS13
 
-Migration is complete. All services are running on the Dell XPS13 (`localhost`). The Hetzner server is pending decommission.
-
-TODO: update `dns_hostname` in `localhost.yml` from `xps13` to `swintronics` once Hetzner is shut down.
+Migration is complete. All services are running on the Dell XPS13 (`localhost`). The Hetzner server has been decommissioned. `dns_hostname: xps13` in `localhost.yml` is intentional — machine-specific names allow for future multi-node setups.
 
 ### Branch: `feature/terraform-restructure`
 
