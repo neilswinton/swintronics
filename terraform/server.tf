@@ -18,13 +18,13 @@ locals {
 
 resource "hcloud_server" "server" {
 
-  count        = length(var.server_types)
+  count        = min(var.enable_hetzner ? 1 : 0, length(var.server_types))
   name         = "${var.project_name}-${count.index}"
   image        = var.image
-  server_type  = lower(var.server_types[count.index])
+  server_type  = lower(var.server_types[0])
   location     = var.region
-  firewall_ids = [hcloud_firewall.cluster.id]
-  ssh_keys     = [hcloud_ssh_key.server_public_key.name]
+  firewall_ids = [hcloud_firewall.cluster[0].id]
+  ssh_keys     = [hcloud_ssh_key.server_public_key[0].name]
 
   user_data = local.user_data
 
@@ -40,7 +40,7 @@ resource "hcloud_server" "server" {
 }
 
 resource "hcloud_volume" "server_disk" {
-  count             = length(var.server_types)
+  count             = var.enable_hetzner ? 1 : 0
   name              = "${var.project_name}-${count.index}-data"
   size              = var.volume_size
   location          = var.region
@@ -50,7 +50,7 @@ resource "hcloud_volume" "server_disk" {
 }
 
 resource "hcloud_volume_attachment" "server" {
-  count = length(var.server_types)
+  count = var.enable_hetzner ? 1 : 0
 
   volume_id = hcloud_volume.server_disk[count.index].id
   server_id = hcloud_server.server[count.index].id

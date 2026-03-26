@@ -154,24 +154,31 @@ Beszel hub and agent communicate over a Unix socket. The agent requires the hub'
 
 ### Context: Migration from Hetzner to XPS13
 
-Migration is complete. All services are running on the Dell XPS13 (`localhost`). The Hetzner server is pending decommission.
+Migration is complete. All services are running on the Dell XPS13 (`localhost`). The Hetzner server has been decommissioned. `dns_hostname: xps13` in `localhost.yml` is intentional — machine-specific names allow for future multi-node setups.
 
-TODO: update `dns_hostname` in `localhost.yml` from `xps13` to `swintronics` once Hetzner is shut down.
+### Branch: `feature/terraform-restructure`
 
-### Branch: `feature/semaphore`
+#### Goal
+Gate all `hcloud_*` resources behind `var.enable_hetzner` (default `false`) so `terraform apply` destroys the Hetzner instance cleanly. Module extraction deferred until a new cloud instance is needed.
 
-#### Done (this session)
-- Migrated immich (OpenVINO ML), paperless, and kuma from Hetzner — all restored from backup
-- Evaluated Vikunja v2.2.0 — removed (poor UI and Android app)
-- Fixed Traefik WebSocket routing for Kuma (`X-Forwarded-Proto: https` middleware)
-- Fixed bind-mount subdirectory ownership: `setup-storage.yml` now pre-creates `subdirs` listed in storage config
-- Added Semaphore v2.17.28 (Ansible UI) at `semaphore.<domain>`
+#### Done
+- Added `variable "enable_hetzner"` (default `false`) to `variables.tf`
+- `hcloud_server`: `count = min(var.enable_hetzner ? 1 : 0, length(var.server_types))`
+- `hcloud_volume`, `hcloud_volume_attachment`: `count = var.enable_hetzner ? 1 : 0`
+- `hcloud_network`, `hcloud_network_subnet`, `hcloud_server_network`: count gated; refs updated to `[0]` index
+- `hcloud_firewall`: count gated; `server.tf` refs updated to `[0]`
+- `hcloud_ssh_key`: count gated; `server.tf` refs updated to `[0]`
+- `cloudflare_dns_record.root`: `count = var.enable_hetzner ? 1 : 0`
+- `cloudflare_dns_record.ssh` (already count=0): content uses conditional to avoid out-of-bounds ref
 
-#### Upstream Compose File Convention
-Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich.
+#### Next Step
+Run `terraform plan` to confirm plan shows destruction of all hcloud_* resources and `cloudflare_dns_record.root`, then `terraform apply` to decommission. The `webservices` wildcard (Tailscale) and all secrets/auth resources should be unchanged.
 
-#### TODOs
-- Decommission Hetzner server once confident everything is stable on XPS13
+#### After Hetzner decommission
+- Update `dns_hostname` in `ansible/inventory/host_vars/localhost.yml` from `xps13` to `swintronics`
 - Update Kuma monitors: add all services, Telegram notifications, healthchecks.io ping
 - Install backup scripts (`server-scripts/`) and cron jobs (`neil.crontab`) on XPS13
 - Consider Renovate bot for automatic Docker image version PRs
+
+### Upstream Compose File Convention
+Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich.
