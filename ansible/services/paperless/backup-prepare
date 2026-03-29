@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+# Export paperless documents while services are running.
+echo "Exporting Paperless documents..."
+docker compose exec -T webserver document_exporter ../export

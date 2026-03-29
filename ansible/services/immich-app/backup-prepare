@@ -1,0 +1,4 @@
+#!/bin/bash
+set -euo pipefail
+# Save image versions to library volume for audit trail (services running)
+docker compose images > "${DATA_MOUNTPOINT:-/mnt/docker-data}/volumes/immich/library/immich_docker_images.txt"

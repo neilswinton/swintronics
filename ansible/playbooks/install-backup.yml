@@ -1,0 +1,39 @@
+---
+# Install the backup orchestrator script and cron job.
+#
+# Service-specific backup hooks (backup-prepare, backup-execute, backup-remote)
+# are deployed by deploy-versions.yml as part of normal service deployment.
+#
+# Usage:
+#   ansible-playbook playbooks/install-backup.yml
+#   ansible-playbook playbooks/install-backup.yml -e target=localhost
+
+- name: Install backup orchestrator and cron job
+  hosts: "{{ target | default('swintronics') }}"
+  connection: "{{ 'local' if (target | default('swintronics')) == 'localhost' else 'ssh' }}"
+  become: true
+
+  tasks:
+    - name: Create backup log directory
+      ansible.builtin.file:
+        path: "{{ data_disk_mountpoint }}/logs/cron"
+        state: directory
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0755'
+
+    - name: Deploy backup orchestrator
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../docker-services/backup.sh"
+        dest: "{{ docker_services_path }}/backup.sh"
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0755'
+
+    - name: Install backup cron job
+      ansible.builtin.cron:
+        name: "docker services backup"
+        minute: "0"
+        hour: "4"
+        job: "{{ docker_services_path }}/backup.sh"
+        user: "{{ admin_user }}"
