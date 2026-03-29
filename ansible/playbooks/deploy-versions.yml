@@ -46,6 +46,9 @@
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
+          - { src: backup-prepare,  dest: backup-prepare,     executable: true }
+          - { src: backup-execute,  dest: backup-execute,     executable: true }
+          - { src: backup-remote,   dest: backup-remote,      executable: true }
       paperless:
         dir: paperless
         dns_names: [paperless]
@@ -53,12 +56,16 @@
           - { src: compose.yml.j2,        dest: compose.yml }
           - { src: .env.j2,               dest: .env,         secret: true }
           - { src: docker-compose.env.j2, dest: docker-compose.env, secret: true }
+          - { src: backup-prepare,        dest: backup-prepare, executable: true }
+          - { src: backup-remote,         dest: backup-remote,  executable: true }
       kuma:
         dir: uptime-kuma
         dns_names: [status, status-admin]
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
+          - { src: backup-execute,  dest: backup-execute,     executable: true }
+          - { src: backup-remote,   dest: backup-remote,      executable: true }
       stirling_pdf:
         dir: stirling-pdf
         dns_names: [stirling-pdf]
@@ -71,6 +78,8 @@
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
+          - { src: backup-execute,  dest: backup-execute,     executable: true }
+          - { src: backup-remote,   dest: backup-remote,      executable: true }
       beszel:
         dir: beszel
         dns_names: [beszel]
@@ -160,7 +169,7 @@
         src: "{{ playbook_dir }}/../services/{{ _service_config[item.service].dir }}/{{ item.src }}"
         dest: "{{ docker_services_path }}/{{ _service_config[item.service].dir }}/{{ item.dest }}"
         owner: "{{ admin_user }}"
-        mode: "{{ '0600' if item.secret | default(false) else '0644' }}"
+        mode: "{{ '0755' if item.executable | default(false) else ('0600' if item.secret | default(false) else '0644') }}"
       loop: "{{ _deploy_files | default([]) }}"
       register: _file_results
 

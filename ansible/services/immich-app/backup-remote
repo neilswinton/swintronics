@@ -1,0 +1,24 @@
+#!/bin/bash
+set -euo pipefail
+# Upload immich snapshot to restic and ping monitoring endpoints.
+
+DATA="${DATA_MOUNTPOINT:-/mnt/docker-data}"
+SNAP_DIR="${DATA}/snapshots/immich/library/backup"
+ARCHIVE_DIR="${DATA}/snapshots/immich/library/${DAY:-$(date +%A)}"
+
+echo "Uploading immich snapshot to restic..."
+sudo -E restic backup --tag immich --tag "${DATE:-$(date +%F_%H-%M)}" "${SNAP_DIR}"
+sudo -E restic forget --tag immich --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+sudo -E restic check
+
+# Rotate snapshot: rename backup → day-of-week, removing last week's
+if [ "$(stat --format=%i "${ARCHIVE_DIR}" 2>/dev/null)" = "256" ]; then
+    sudo btrfs property set "${ARCHIVE_DIR}" ro false
+    sudo btrfs subvolume delete "${ARCHIVE_DIR}"
+fi
+if [ -e "${ARCHIVE_DIR}" ]; then
+    echo "ERROR: could not remove previous archive at ${ARCHIVE_DIR}" >&2; exit 1
+fi
+mv "${SNAP_DIR}" "${ARCHIVE_DIR}"
+
+[ -n "${KUMA_PHOTO_PUSH_URL:-}" ] && curl -fsS -o /dev/null --retry 3 "${KUMA_PHOTO_PUSH_URL}" || true

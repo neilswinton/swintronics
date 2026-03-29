@@ -1,0 +1,27 @@
+#!/bin/bash
+set -euo pipefail
+# Stop linkwarden, snapshot volume, restart.
+
+DATA="${DATA_MOUNTPOINT:-/mnt/docker-data}"
+SOURCE="${DATA}/volumes/linkwarden"
+SNAP_DIR="${DATA}/snapshots/linkwarden/nightly"
+
+mkdir -p "$(dirname "${SNAP_DIR}")"
+
+# Clean up previous snapshot
+if [ "$(stat --format=%i "${SNAP_DIR}" 2>/dev/null)" = "256" ]; then
+    sudo btrfs property set "${SNAP_DIR}" ro false
+    sudo btrfs subvolume delete "${SNAP_DIR}"
+fi
+if [ -e "${SNAP_DIR}" ]; then
+    echo "ERROR: could not remove previous snapshot at ${SNAP_DIR}" >&2; exit 1
+fi
+
+echo "Stopping Linkwarden..."
+docker compose stop
+
+echo "Creating btrfs snapshot at ${SNAP_DIR}..."
+sudo btrfs subvolume snapshot -r "${SOURCE}" "${SNAP_DIR}"
+
+echo "Starting Linkwarden..."
+docker compose start

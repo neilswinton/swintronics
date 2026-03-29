@@ -1,0 +1,12 @@
+#!/bin/bash
+set -euo pipefail
+# Upload paperless export to restic and ping monitoring.
+
+EXPORT_PATH="${DATA_MOUNTPOINT:-/mnt/docker-data}/volumes/paperless/export"
+
+echo "Uploading paperless export to restic..."
+sudo -E restic backup --tag paperless --tag "${DATE:-$(date +%F_%H-%M)}" "${EXPORT_PATH}"
+sudo -E restic forget --tag paperless --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+sudo -E restic check
+
+[ -n "${KUMA_PAPERLESS_PUSH_URL:-}" ] && curl -fsS -o /dev/null --retry 3 "${KUMA_PAPERLESS_PUSH_URL}" || true

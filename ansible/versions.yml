@@ -4,13 +4,13 @@
 
 versions:
   # https://github.com/traefik/traefik/releases
-  traefik: "3.6.11"
+  traefik: "3.6.12"
 
   # https://github.com/amir20/dozzle/releases
-  dozzle: "v10.2.0"
+  dozzle: "v10.2.1"
 
   # https://github.com/immich-app/immich/releases
-  immich: "v2.6.2"
+  immich: "v2.6.3"
 
   # https://github.com/paperless-ngx/paperless-ngx/releases
   paperless: "2.20.13"
@@ -22,10 +22,10 @@ versions:
   stirling_pdf: "2.7.3"
 
   # https://github.com/linkwarden/linkwarden/releases
-  linkwarden: "v2.13.5"
+  linkwarden: "v2.14.0"
 
   # https://github.com/henrygd/beszel/releases
-  beszel: "0.18.4"
+  beszel: "0.18.6"
 
   # https://github.com/semaphoreui/semaphore/releases
   semaphore: "v2.17.28"
