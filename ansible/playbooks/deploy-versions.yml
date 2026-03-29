@@ -86,6 +86,12 @@
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
+      dockhand:
+        dir: dockhand
+        dns_names: [dockhand]
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
       semaphore:
         dir: semaphore
         dns_names: [semaphore]

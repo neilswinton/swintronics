@@ -179,6 +179,8 @@ Run `terraform plan` to confirm plan shows destruction of all hcloud_* resources
 - Update Kuma monitors: add all services, Telegram notifications, healthchecks.io ping
 - Install backup scripts (`server-scripts/`) and cron jobs (`neil.crontab`) on XPS13
 - Consider Renovate bot for automatic Docker image version PRs
+- Add nginx autoindex service to serve `data_disk_mountpoint/logs` over HTTPS (for viewing cron/backup logs from browser/phone)
+- Long-term: phone-friendly server management — expose remaining service UIs, document mobile access patterns
 
 ### Upstream Compose File Convention
 Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich.
