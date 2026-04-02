@@ -191,6 +191,19 @@ resource "infisical_secret" "linkwarden_passwords" {
   folder_path  = "/"
 }
 
+# Dockhand
+resource "random_id" "dockhand_encryption_key" {
+  byte_length = 32
+}
+
+resource "infisical_secret" "dockhand_encryption_key" {
+  name         = "DOCKHAND_ENCRYPTION_KEY"
+  value        = random_id.dockhand_encryption_key.b64_std
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
 # Semaphore
 resource "random_password" "semaphore_admin_password" {
   length  = 16

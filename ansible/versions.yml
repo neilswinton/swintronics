@@ -29,3 +29,6 @@ versions:
 
   # https://github.com/semaphoreui/semaphore/releases
   semaphore: "v2.17.28"
+
+  # https://github.com/fnsys/dockhand/releases
+  dockhand: "v1.0.22"

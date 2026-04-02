@@ -11,7 +11,7 @@ timezone: "America/New_York"
 
 # Cluster identity
 cluster_name: swintronics
-admin_user: "{{ ansible_env.SUDO_USER | default(ansible_user_id) }}"
+admin_user: "{{ ansible_facts['env']['SUDO_USER'] | default(ansible_facts['user_id']) }}"
 docker_services_path: "/home/{{ admin_user }}/{{ cluster_name }}/docker-services"
 
 # Service configuration (override per machine or group if needed)

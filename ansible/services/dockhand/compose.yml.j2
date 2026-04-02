@@ -1,0 +1,23 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+
+name: dockhand
+include:
+  - ../networks.yml
+
+services:
+  dockhand:
+    image: fnsys/dockhand:{{ versions.dockhand }}
+    container_name: dockhand
+    restart: unless-stopped
+    env_file: .env
+    group_add:
+      - "{{ docker_gid }}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - {{ data_disk_mountpoint }}/volumes/dockhand:/app/data
+    labels:
+      traefik.enable: true
+      traefik.http.routers.dockhand.entrypoints: websecure
+      traefik.http.routers.dockhand.rule: Host(`{{ _service_config.dockhand.dns_names[0] }}.{{ server_domain }}`)
+      traefik.http.routers.dockhand.tls.certresolver: ${CERT_RESOLVER}
+      traefik.http.services.dockhand.loadbalancer.server.port: 3000

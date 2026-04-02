@@ -38,7 +38,7 @@
 
     - name: Add HashiCorp apt repository
       ansible.builtin.apt_repository:
-        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ ansible_facts['distribution_release'] }} main"
         filename: hashicorp
         state: present
 
@@ -57,7 +57,7 @@
     - name: Install Claude Code via native installer
       ansible.builtin.shell:
         cmd: curl -fsSL https://claude.ai/install.sh | bash
-        creates: "{{ ansible_env.HOME }}/.local/bin/claude"
+        creates: "{{ ansible_facts['env']['HOME'] }}/.local/bin/claude"
 
     - name: Configure git user name
       community.general.git_config:

@@ -29,6 +29,7 @@
           - restic
           - shellcheck
           - software-properties-common
+          - tmux
         state: present
         update_cache: true
 
@@ -116,9 +117,9 @@
     - name: Ensure the user has a NOPASSWD entry in sudoers.d
       ansible.builtin.copy:
         content: |
-          # Allow {{ ansible_env.SUDO_USER }} to run all commands as root without a password
-          {{ ansible_env.SUDO_USER }} ALL=(ALL) NOPASSWD: ALL
-        dest: "/etc/sudoers.d/{{ ansible_env.SUDO_USER }}"
+          # Allow {{ ansible_facts['env']['SUDO_USER'] }} to run all commands as root without a password
+          {{ ansible_facts['env']['SUDO_USER'] }} ALL=(ALL) NOPASSWD: ALL
+        dest: "/etc/sudoers.d/{{ ansible_facts['env']['SUDO_USER'] }}"
         owner: root
         group: root
   handlers:

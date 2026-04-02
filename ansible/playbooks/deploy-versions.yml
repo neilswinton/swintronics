@@ -35,6 +35,7 @@
           - { src: traefik-static.yml.j2, dest: traefik-data/traefik.yml }
           - { src: .env.j2,               dest: .env,         secret: true }
       dozzle:
+        enabled: false
         dir: dozzle
         dns_names: [logs]
         files:
@@ -86,7 +87,14 @@
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
+      dockhand:
+        dir: dockhand
+        dns_names: [dockhand]
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
       semaphore:
+        enabled: false
         dir: semaphore
         dns_names: [semaphore]
         files:
@@ -94,9 +102,23 @@
           - { src: .env.j2,         dest: .env,               secret: true }
 
   pre_tasks:
+    - name: Determine disabled services
+      ansible.builtin.set_fact:
+        _disabled_services: >-
+          {{ _service_config
+             | dict2items
+             | selectattr('value.enabled', 'defined')
+             | selectattr('value.enabled', 'equalto', false)
+             | map(attribute='key')
+             | list }}
+
     - name: Determine enabled services
       ansible.builtin.set_fact:
-        _enabled_services: "{{ _service_config.keys() | select('in', versions) | list }}"
+        _enabled_services: >-
+          {{ _service_config.keys()
+             | reject('in', _disabled_services)
+             | select('in', versions)
+             | list }}
 
     - name: Build deploy file list for enabled services
       ansible.builtin.set_fact:
@@ -135,6 +157,22 @@
         state: directory
         owner: "{{ admin_user }}"
         mode: '0755'
+
+    # ── Stop disabled services ────────────────────────────────────────────────
+
+    - name: Check if disabled service directories exist
+      ansible.builtin.stat:
+        path: "{{ docker_services_path }}/{{ _service_config[item].dir }}"
+      loop: "{{ _disabled_services }}"
+      register: _disabled_dirs
+
+    - name: Stop disabled services
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/{{ _service_config[item.item].dir }}"
+        state: absent
+      loop: "{{ _disabled_dirs.results | selectattr('stat.exists') | list }}"
+      loop_control:
+        label: "{{ item.item }}"
 
     - name: Deploy shared networks.yml
       ansible.builtin.copy:
