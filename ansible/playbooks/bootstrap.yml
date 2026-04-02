@@ -29,6 +29,7 @@
           - restic
           - shellcheck
           - software-properties-common
+          - tmux
         state: present
         update_cache: true
 
