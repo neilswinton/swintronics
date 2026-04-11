@@ -1,15 +1,7 @@
 ---
-# Server admin username — must match the OS user on the server
-server_admin_username: neil
-
-# Docker services base path
-docker_services_path: /home/{{ server_admin_username }}/swintronics/docker-services
-
-# Server configuration
-tz: "America/New_York"
-server_domain: "swintronics.com"
-cert_resolver: "production"
+# Docker services base path (uses cluster_name and server_admin_username from host_vars)
+docker_services_path: /home/{{ server_admin_username }}/{{ cluster_name }}/docker-services
 
 # Data disk
-data_disk_mountpoint: /swintronics-data
+data_disk_mountpoint: /docker-data
 immich_data_location: "{{ data_disk_mountpoint }}/volumes/immich"
