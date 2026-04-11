@@ -185,8 +185,8 @@ The host name must match the `host_vars` filename.
 ```bash
 cd terraform
 terraform init
-terraform plan -var enable_oci=true
-terraform apply -var enable_oci=true
+terraform plan -var='cloud_provider=oci'
+terraform apply -var='cloud_provider=oci'
 ```
 
 This creates: OCI instance, VCN, security list, DNS records, Tailscale auth key.

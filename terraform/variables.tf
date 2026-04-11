@@ -36,10 +36,14 @@ variable "volume_delete_protection" {
   description = "If set to true is going to protect volume from deletion."
 }
 
-variable "enable_hetzner" {
-  type        = bool
-  default     = false
-  description = "Set to true to provision Hetzner Cloud resources."
+variable "cloud_provider" {
+  type        = string
+  default     = null
+  description = "Cloud provider to provision: 'hetzner', 'oci', or null for local-only."
+  validation {
+    condition     = var.cloud_provider == null || contains(["hetzner", "oci"], var.cloud_provider)
+    error_message = "cloud_provider must be null, 'hetzner', or 'oci'."
+  }
 }
 
 variable "timezone" {
@@ -79,12 +83,6 @@ variable "infisical_project_user_username" {
   description = "Username or email for Infisical project user"
   type        = string
   default     = "" # empty to skip inviting user -- unneeded for admins
-}
-
-variable "source_repo" {
-  type        = string
-  default     = "https://github.com/neilswinton/swintronics.git"
-  description = "Repository to clone on cloud instance"
 }
 
 variable "data_disk_mountpoint" {

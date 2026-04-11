@@ -88,7 +88,7 @@ infisical_project_id    = ""   # Infisical project UUID (from Project Settings �
 timezone                = "America/New_York"
 domain_name             = "example.com"
 
-# Hetzner (only needed if enable_hetzner = true):
+# Hetzner (only needed if cloud_provider = "hetzner"):
 # server_types = ["cx22"]
 # volume_size  = 50
 ```
@@ -161,7 +161,7 @@ Terraform reads from the **Terraform project** (existing, pre-created):
 | `/terraform` | `TS_MS_PROVIDER_OAUTH_CLIENT_SECRET` | Tailscale OAuth client secret |
 | `/terraform` | `CLOUDFLARE_API_TOKEN` | Cloudflare API token |
 | `/terraform` | `CLOUDFLARE_ZONE_ID` | Cloudflare zone ID |
-| `/terraform` | `HETZNER_TOKEN` | Hetzner API token (only if `enable_hetzner = true`) |
+| `/terraform` | `HETZNER_TOKEN` | Hetzner API token (only if `cloud_provider = "hetzner"`) |
 | `/` | `username` | Server admin username |
 | `/` | `CF_API_EMAIL` | Cloudflare account email |
 | `/` | `CF_DNS_API_TOKEN` | Cloudflare DNS token (copied to runtime project by Terraform) |
@@ -206,9 +206,9 @@ The restore procedure is not yet automated. Manual steps:
 
 ### Provisioning Flow
 
-1. **Terraform** creates Hetzner server + networking, injects `cloud-init.yml`
-2. **Cloud-init** installs Docker and Infisical CLI, clones this repo to `/home/neil/swintronics/`
-3. **Manual steps** remain: copy `.env` files and run `cluster.sh --up`
+1. **Terraform** creates cloud server + networking, injects `cloud-init.yml`
+2. **Cloud-init** creates the admin user with SSH key and `mkdir`s the data disk mountpoint
+3. **Ansible** runs sequentially: `bootstrap.yml` → `docker.yml` → `tailscale.yml` → `setup-storage.yml` (formats + mounts disk, creates directory structure) → `deploy-versions.yml`
 
 ### Secrets
 
@@ -318,7 +318,7 @@ Restructure flat `terraform/` into reusable modules:
 ```
 terraform/
 ├── main.tf           # renders cloud-init, calls modules, wires DNS + Tailscale
-├── variables.tf      # enable_hetzner, enable_oci, shared vars
+├── variables.tf      # cloud_provider, shared vars
 ├── providers.tf
 ├── cloudflare.tf     # iterates active servers → DNS CNAMEs
 ├── tailscale.tf      # one auth key per active server
@@ -370,7 +370,7 @@ inventory/
 A fresh server with no prior data. The normal case for OCI experimentation or adding a new node.
 
 ```bash
-terraform apply -var enable_oci=true
+terraform apply -var='cloud_provider=oci'
 # wait ~2 min for cloud-init (user creation only)
 ansible-playbook playbooks/bootstrap.yml -e target=oci-main
 ansible-playbook playbooks/docker.yml -e target=oci-main
@@ -392,7 +392,7 @@ A different flow — documented here for reference, not the current focus. Requi
 - Matching volume layout (`/docker-data/volumes/` structure)
 
 ```bash
-terraform apply -var enable_hetzner=true
+terraform apply -var='cloud_provider=hetzner'
 # run Scenario A deployment steps with target=hetzner-main
 # then restore data before starting services:
 restic restore latest --target /docker-data/volumes/
