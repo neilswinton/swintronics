@@ -15,7 +15,7 @@ resource "local_file" "server_public_key" {
 }
 
 resource "hcloud_ssh_key" "server_public_key" {
-  count      = var.enable_hetzner ? 1 : 0
+  count      = var.cloud_provider == "hetzner" ? 1 : 0
   name       = "${var.project_name}-key"
   public_key = tls_private_key.root.public_key_openssh
 }
