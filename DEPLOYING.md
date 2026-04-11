@@ -20,10 +20,12 @@ Before starting, you need accounts with:
 | Service | Purpose | Notes |
 |---------|---------|-------|
 | [Oracle Cloud (OCI)](https://oracle.com/cloud/free) | Server (free tier) | See Step 1 |
-| [Cloudflare](https://cloudflare.com) | DNS + TLS certs | Must manage your domain |
+| [Cloudflare](https://cloudflare.com) | DNS + TLS certs | Must manage your domain — See Step 2 |
 | [Infisical](https://infisical.com) | Secrets management | Create a project per deployment |
 | [Tailscale](https://tailscale.com) | VPN / Ansible connectivity | Free for personal use |
 | [Healthchecks.io](https://healthchecks.io) | Backup monitoring pings | Free tier sufficient |
+| [SMTP2Go](https://www.smtp2go.com) | Outbound email (Paperless, alerts) | Free tier: 1000 emails/month |
+| [Telegram](https://telegram.org) | Push notifications (Uptime Kuma) | Free; requires a bot token + chat ID |
 
 ---
 
@@ -54,6 +56,9 @@ ansible-galaxy collection install -r ansible/requirements.yml
    - OCI reclaims "idle" free-tier instances after approximately 7 days of low activity
    - Upgrading to PAYG keeps Always Free resources permanently; you are not charged for them
    - Billing → Upgrade → Pay As You Go
+   - **Note:** OCI will issue a $100 authorization hold when upgrading — this is a verification
+     charge that is immediately reversed and not actually collected. Use a card with a limit
+     above $100; a virtual card with a low limit (e.g. $20/month) will cause the upgrade to fail.
 
 3. Generate an API signing key
    - Profile (top right) → My Profile → API Keys → Add API Key
@@ -68,7 +73,32 @@ ansible-galaxy collection install -r ansible/requirements.yml
 
 ---
 
-## Step 2 — Infisical Project Setup 📋
+## Step 2 — Cloudflare Account and Domain Setup 📋
+
+1. Sign up at [cloudflare.com](https://cloudflare.com) if you don't have an account
+
+2. Add your domain to Cloudflare
+   - Dashboard → Add a domain → enter your domain name → Continue
+   - Select the **Free** plan
+   - Cloudflare will scan for existing DNS records — review and confirm
+   - Copy the two Cloudflare nameservers shown (e.g. `xxx.ns.cloudflare.com`)
+   - Log in to your domain registrar and replace the existing nameservers with the Cloudflare ones
+   - Back in Cloudflare, click **Done, check nameservers** — propagation can take minutes to hours
+
+3. Get your Zone ID
+   - Dashboard → click your domain → **Overview** tab
+   - Scroll down on the right sidebar — copy the **Zone ID**
+
+4. Create a scoped API token
+   - My Profile (top right) → **API Tokens** → **Create Token**
+   - Use the **Edit zone DNS** template
+   - Under **Zone Resources**: Include → Specific zone → select your domain
+   - Click **Continue to summary** → **Create Token**
+   - **Copy the token immediately** — it is only shown once
+
+---
+
+## Step 3 — Infisical Project Setup 📋
 
 Create a new Infisical project for this deployment (do not reuse another project's secrets).
 
@@ -86,8 +116,8 @@ Add the following secrets to the project (environment: `dev`):
 ### Cloudflare
 | Secret name | Value |
 |-------------|-------|
-| `CF_DNS_API_TOKEN` | Cloudflare API token with DNS edit on your domain |
-| `CF_ZONE_ID` | Zone ID for your domain (from Cloudflare dashboard) |
+| `CF_DNS_API_TOKEN` | API token from Step 2 |
+| `CF_ZONE_ID` | Zone ID from Step 2 |
 
 ### Tailscale
 | Secret name | Value |
@@ -99,25 +129,26 @@ Add the following secrets to the project (environment: `dev`):
 |-------------|-------|
 | `username` | OS user to create on the server (e.g. `neil`) |
 
-### Service secrets
-_TODO: document per-service secrets as services are deployed and tested_
+### SMTP2Go
+| Secret name | Value |
+|-------------|-------|
+| `SMTP_HOST` | `mail.smtp2go.com` |
+| `SMTP_PORT` | `587` |
+| `SMTP_USERNAME` | SMTP2Go sender username (from Senders → Verified Senders) |
+| `SMTP_PASSWORD` | SMTP2Go API key or SMTP password |
+| `SMTP_FROM` | From address (e.g. `alerts@cactus-cantina.com`) |
+
+### Telegram
+| Secret name | Value |
+|-------------|-------|
+| `TELEGRAM_BOT_TOKEN` | Bot token from BotFather (see Step 4) |
+| `TELEGRAM_CHAT_ID` | Chat ID of recipient (see Step 4) |
 
 ### Healthchecks.io
 | Secret name | Value |
 |-------------|-------|
 | `HEALTHCHECKS_API_KEY` | from healthchecks.io account |
 | `HEALTHCHECKS_KUMA_CHECK_UUID` | UUID of the Uptime Kuma heartbeat check |
-
----
-
-## Step 3 — Cloudflare Domain Setup 📋
-
-1. Add your domain to Cloudflare and point nameservers as instructed
-2. Note the Zone ID (Cloudflare dashboard → your domain → Overview, right sidebar)
-3. Create an API token: My Profile → API Tokens → Create Token
-   - Template: **Edit zone DNS**
-   - Scope: your domain's zone
-4. Store both in Infisical (see Step 2)
 
 ---
 
@@ -130,7 +161,47 @@ _TODO: document per-service secrets as services are deployed and tested_
 
 ---
 
-## Step 5 — Configure Ansible Credentials 📋
+## Step 5 — SMTP2Go Setup 📋
+
+1. Sign up at [smtp2go.com](https://www.smtp2go.com)
+
+2. Add and verify a sender domain or address
+   - Senders → Verified Senders → Add Sender Domain
+   - Follow the DNS verification steps (adds TXT/CNAME records in Cloudflare)
+
+3. Get SMTP credentials
+   - Settings → SMTP Users → Add SMTP User
+   - Copy the username and password shown
+
+4. Store in Infisical:
+   - `SMTP_HOST` = `mail.smtp2go.com`
+   - `SMTP_PORT` = `587`
+   - `SMTP_USERNAME` = the username from above
+   - `SMTP_PASSWORD` = the password from above
+   - `SMTP_FROM` = your verified sender address
+
+---
+
+## Step 6 — Telegram Bot Setup 📋
+
+1. Open Telegram and search for **@BotFather**
+
+2. Create a new bot
+   - Send `/newbot` and follow the prompts
+   - Copy the **bot token** (format: `123456:ABC-DEF...`)
+
+3. Get your chat ID
+   - Start a conversation with your new bot (send it any message)
+   - Fetch `https://api.telegram.org/bot<TOKEN>/getUpdates` in a browser
+   - Copy the `id` field from `message.chat` in the response
+
+4. Store in Infisical:
+   - `TELEGRAM_BOT_TOKEN` = bot token from BotFather
+   - `TELEGRAM_CHAT_ID` = your chat ID
+
+---
+
+## Step 7 — Configure Ansible Credentials 📋
 
 Copy the Ansible env file and fill in your Infisical credentials:
 
@@ -147,7 +218,7 @@ and grant it read access to the project.
 
 ---
 
-## Step 6 — Create host_vars for the New Server 📋
+## Step 8 — Create host_vars for the New Server 📋
 
 Copy the example and fill in values:
 
@@ -167,7 +238,7 @@ Key values to set:
 
 ---
 
-## Step 7 — Add Server to Ansible Inventory 📋
+## Step 9 — Add Server to Ansible Inventory 📋
 
 Edit `ansible/inventory/hosts` to add the new host under `[oci]` or `[hetzner]`:
 
@@ -180,7 +251,7 @@ The host name must match the `host_vars` filename.
 
 ---
 
-## Step 8 — Terraform: Provision the Server 📋
+## Step 10 — Terraform: Provision the Server 📋
 
 ```bash
 cd terraform
@@ -198,7 +269,7 @@ _TODO: document .auto.tfvars required variables once Terraform modules are built
 
 ---
 
-## Step 9 — Ansible: Initial Server Configuration 📋
+## Step 11 — Ansible: Initial Server Configuration 📋
 
 Run from the `ansible/` directory with credentials loaded:
 
@@ -220,7 +291,7 @@ if you used the public IP initially.
 
 ---
 
-## Step 10 — Ansible: Storage and Services 📋
+## Step 12 — Ansible: Storage and Services 📋
 
 ```bash
 # Create /docker-data directory structure
@@ -232,7 +303,7 @@ ansible-playbook playbooks/deploy-versions.yml -e target=oci-main
 
 ---
 
-## Step 11 — Ansible: Maintenance Configuration 📋
+## Step 13 — Ansible: Maintenance Configuration 📋
 
 ```bash
 # Configure unattended-upgrades with pre/post-reboot hooks
@@ -244,7 +315,7 @@ ansible-playbook playbooks/install-backup.yml -e target=oci-main
 
 ---
 
-## Step 12 — Manual: Uptime Kuma 📋
+## Step 14 — Manual: Uptime Kuma 📋
 
 _See the Uptime Kuma Setup section in CLAUDE.md for full instructions._
 
@@ -256,7 +327,7 @@ _See the Uptime Kuma Setup section in CLAUDE.md for full instructions._
 
 ---
 
-## Step 13 — Manual: Beszel Agent Bootstrap 📋
+## Step 15 — Manual: Beszel Agent Bootstrap 📋
 
 _See the Beszel Agent Bootstrap section in CLAUDE.md for full instructions._
 
