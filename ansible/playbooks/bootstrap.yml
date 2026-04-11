@@ -93,27 +93,6 @@
         cmd: awk '$5 >= 3071' /etc/ssh/moduli > /etc/ssh/moduli.tmp && mv /etc/ssh/moduli.tmp /etc/ssh/moduli
       changed_when: false
 
-    - name: Disable sleep/suspend/hibernate targets
-      ansible.builtin.systemd:
-        name: "{{ item }}"
-        masked: true
-      loop:
-        - sleep.target
-        - suspend.target
-        - hibernate.target
-        - hybrid-sleep.target
-
-    - name: Configure logind to ignore lid close
-      ansible.builtin.lineinfile:
-        path: /etc/systemd/logind.conf
-        regexp: "^#?{{ item.key }}="
-        line: "{{ item.key }}={{ item.value }}"
-      loop:
-        - { key: HandleLidSwitch, value: ignore }
-        - { key: HandleLidSwitchExternalPower, value: ignore }
-        - { key: HandleLidSwitchDocked, value: ignore }
-      notify: Restart systemd-logind
-
     - name: Ensure the user has a NOPASSWD entry in sudoers.d
       ansible.builtin.copy:
         content: |
@@ -128,6 +107,3 @@
         name: ssh
         state: restarted
 
-    - name: Restart systemd-logind
-      ansible.builtin.debug:
-        msg: "logind.conf was changed — reboot when ready for lid/sleep settings to take effect"

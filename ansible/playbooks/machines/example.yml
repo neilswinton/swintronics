@@ -8,6 +8,7 @@
 #   ansible-playbook playbooks/docker.yml -e target=localhost
 
 - import_playbook: ../bootstrap.yml
+- import_playbook: ../laptop.yml
 - import_playbook: ../apps.yml
 - import_playbook: ../develop.yml
 - import_playbook: ../tailscale.yml
