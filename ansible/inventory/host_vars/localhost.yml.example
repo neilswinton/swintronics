@@ -1,4 +1,9 @@
 ---
+# Host identity
+server_admin_username: "your-name"    # OS user on this server
+tz: "America/New_York"                # timezone (e.g. America/New_York, Europe/Berlin)
+server_domain: "example.com"          # domain for this deployment
+
 # Git identity
 git_user_name: "Your Name"
 git_user_email: "you@example.com"
