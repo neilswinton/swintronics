@@ -1,0 +1,37 @@
+---
+# Laptop-specific configuration. Run after bootstrap.yml on physical laptop hosts.
+# Prevents the machine from sleeping when the lid is closed or power button is pressed.
+#
+# Usage:
+#   ansible-playbook playbooks/laptop.yml
+#   ansible-playbook playbooks/laptop.yml -e target=localhost
+
+- hosts: "{{ target | default('localhost') }}"
+  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
+  become: true
+  tasks:
+    - name: Disable sleep/suspend/hibernate targets
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        masked: true
+      loop:
+        - sleep.target
+        - suspend.target
+        - hibernate.target
+        - hybrid-sleep.target
+
+    - name: Configure logind to ignore lid close
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/logind.conf
+        regexp: "^#?{{ item.key }}="
+        line: "{{ item.key }}={{ item.value }}"
+      loop:
+        - { key: HandleLidSwitch, value: ignore }
+        - { key: HandleLidSwitchExternalPower, value: ignore }
+        - { key: HandleLidSwitchDocked, value: ignore }
+      notify: Restart systemd-logind
+
+  handlers:
+    - name: Restart systemd-logind
+      ansible.builtin.debug:
+        msg: "logind.conf was changed — reboot when ready for lid/sleep settings to take effect"
