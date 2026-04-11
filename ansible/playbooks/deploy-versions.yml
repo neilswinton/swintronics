@@ -15,8 +15,8 @@
 #   ansible-playbook playbooks/deploy-versions.yml --check
 
 - name: Deploy service versions
-  hosts: "{{ target | default('swintronics') }}"
-  connection: "{{ 'local' if (target | default('swintronics')) == 'localhost' else 'ssh' }}"
+  hosts: "{{ target | default('servers') }}"
+  connection: "{{ 'local' if (target | default('servers')) == 'localhost' else 'ssh' }}"
   become: true
 
   vars_files:

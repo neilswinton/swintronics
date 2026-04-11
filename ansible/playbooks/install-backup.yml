@@ -9,8 +9,8 @@
 #   ansible-playbook playbooks/install-backup.yml -e target=localhost
 
 - name: Install backup orchestrator and cron job
-  hosts: "{{ target | default('swintronics') }}"
-  connection: "{{ 'local' if (target | default('swintronics')) == 'localhost' else 'ssh' }}"
+  hosts: "{{ target | default('servers') }}"
+  connection: "{{ 'local' if (target | default('servers')) == 'localhost' else 'ssh' }}"
   become: true
 
   tasks:

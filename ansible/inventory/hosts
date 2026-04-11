@@ -1,10 +1,10 @@
 [local]
 localhost ansible_connection=local
 
-[swintronics]
+[servers]
 swintronics-1 ansible_host=ts.swintronics.com
 
-[swintronics:vars]
+[servers:vars]
 ansible_user={{ server_admin_username }}
 ansible_python_interpreter=/usr/bin/python3
 # Tailscale SSH handles authentication automatically

@@ -8,7 +8,7 @@
 #   ansible-playbook playbooks/configure-unattended-upgrades.yml
 
 - name: Configure unattended security updates
-  hosts: "{{ target_host | default('swintronics') }}"
+  hosts: "{{ target_host | default('servers') }}"
   become: yes
 
   pre_tasks:
