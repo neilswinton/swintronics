@@ -1,0 +1,26 @@
+# Upstream same-system docker-compose.yml from beszel v0.18.7
+# Source: https://github.com/henrygd/beszel/blob/v0.18.7/supplemental/docker/same-system/docker-compose.yml
+# Saved for diffing against compose.yml.j2
+
+services:
+  beszel:
+    image: 'henrygd/beszel'
+    container_name: 'beszel'
+    restart: unless-stopped
+    ports:
+      - '8090:8090'
+    volumes:
+      - ./beszel_data:/beszel_data
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+  beszel-agent:
+    image: 'henrygd/beszel-agent'
+    container_name: 'beszel-agent'
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      PORT: 45876
+      KEY: '...'

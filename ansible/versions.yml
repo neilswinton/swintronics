@@ -4,13 +4,13 @@
 
 versions:
   # https://github.com/traefik/traefik/releases
-  traefik: "3.6.12"
+  traefik: "3.6.13"
 
   # https://github.com/amir20/dozzle/releases
   dozzle: "v10.2.1"
 
   # https://github.com/immich-app/immich/releases
-  immich: "v2.6.3"
+  immich: "v2.7.4"
 
   # https://github.com/paperless-ngx/paperless-ngx/releases
   paperless: "2.20.13"
@@ -25,10 +25,10 @@ versions:
   linkwarden: "v2.14.0"
 
   # https://github.com/henrygd/beszel/releases
-  beszel: "0.18.6"
+  beszel: "0.18.7"
 
   # https://github.com/semaphoreui/semaphore/releases
   semaphore: "v2.17.28"
 
   # https://github.com/fnsys/dockhand/releases
-  dockhand: "v1.0.22"
+  dockhand: "v1.0.24"

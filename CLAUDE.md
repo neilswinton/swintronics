@@ -296,4 +296,4 @@ Beszel hub and agent communicate over a Unix socket. The agent requires the hub'
 - Long-term: phone-friendly server management — expose remaining service UIs, document mobile access patterns
 
 ### Upstream Compose File Convention
-Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich.
+Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, linkwarden, uptime-kuma, beszel, semaphore. Not tracked: networking/traefik (fully custom), dozzle, dockhand (single-container, written from scratch), stirling-pdf (upstream repo only has build-from-source compose files, no runtime compose).
