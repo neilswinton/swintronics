@@ -32,6 +32,10 @@ Before starting, you need accounts with:
 ## Local Tools Required
 
 ```bash
+# Clone this repository
+git clone https://github.com/neilswinton/swintronics.git
+cd swintronics
+
 # Terraform
 brew install terraform       # macOS
 # or: https://developer.hashicorp.com/terraform/downloads
