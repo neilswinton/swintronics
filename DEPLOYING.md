@@ -19,13 +19,13 @@ Before starting, you need accounts with:
 
 | Service | Purpose | Notes |
 |---------|---------|-------|
-| [Oracle Cloud (OCI)](https://oracle.com/cloud/free) | Server (free tier) | See Step 1 |
-| [Cloudflare](https://cloudflare.com) | DNS + TLS certs | Must manage your domain — See Step 2 |
-| [Infisical](https://infisical.com) | Secrets management | Create a project per deployment |
-| [Tailscale](https://tailscale.com) | VPN / Ansible connectivity | Free for personal use |
+| [Infisical](https://infisical.com) | Secrets management | Create a project per deployment — See Step 1 |
+| [Oracle Cloud (OCI)](https://oracle.com/cloud/free) | Server (free tier) | See Step 2 |
+| [Cloudflare](https://cloudflare.com) | DNS + TLS certs | Must manage your domain — See Step 3 |
+| [Tailscale](https://tailscale.com) | VPN / Ansible connectivity | Free for personal use — See Step 6 |
+| [SMTP2Go](https://www.smtp2go.com) | Outbound email (Paperless, alerts) | Free tier: 1000 emails/month — See Step 8 |
+| [Telegram](https://telegram.org) | Push notifications (Uptime Kuma) | Free; requires a bot token + chat ID — See Step 9 |
 | [Healthchecks.io](https://healthchecks.io) | Backup monitoring pings | Free tier sufficient |
-| [SMTP2Go](https://www.smtp2go.com) | Outbound email (Paperless, alerts) | Free tier: 1000 emails/month |
-| [Telegram](https://telegram.org) | Push notifications (Uptime Kuma) | Free; requires a bot token + chat ID |
 
 ---
 
