@@ -135,13 +135,7 @@ is in Step 13 — verify everything is in place before running Terraform.
    |-------------|-------|
    | `CF_API_EMAIL` | Your Cloudflare account email |
    | `CF_DNS_API_TOKEN` | API token from above |
-
-6. Add to Infisical (folder `/terraform`, environment `dev`):
-
-   | Secret name | Value |
-   |-------------|-------|
-   | `CLOUDFLARE_API_TOKEN` | Same API token as above |
-   | `CLOUDFLARE_ZONE_ID` | Zone ID from above |
+   | `CF_ZONE_ID` | Zone ID from above |
 
 ---
 
@@ -384,6 +378,7 @@ project (environment: `dev`). Use the Infisical dashboard to check each folder.
 | `OCI_REGION` | Step 2 |
 | `CF_API_EMAIL` | Step 3 |
 | `CF_DNS_API_TOKEN` | Step 3 |
+| `CF_ZONE_ID` | Step 3 |
 | `TS_SERVER_AUTH_KEY` | Step 7 |
 | `SMTP_HOST` | Step 8 |
 | `SMTP_PORT` | Step 8 |
@@ -394,8 +389,6 @@ project (environment: `dev`). Use the Infisical dashboard to check each folder.
 ### Folder `/terraform`
 | Secret name | Added in |
 |-------------|----------|
-| `CLOUDFLARE_API_TOKEN` | Step 3 |
-| `CLOUDFLARE_ZONE_ID` | Step 3 |
 | `TS_MS_PROVIDER_OAUTH_CLIENT_ID` | Step 6 |
 | `TS_MS_PROVIDER_OAUTH_CLIENT_SECRET` | Step 6 |
 

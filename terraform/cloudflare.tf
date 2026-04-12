@@ -1,6 +1,6 @@
 
 provider "cloudflare" {
-  api_token = ephemeral.infisical_secret.cloudflare_api_token.value
+  api_token = try(data.infisical_secrets.root_secrets.secrets["CF_DNS_API_TOKEN"].value, "")
 }
 
 resource "cloudflare_dns_record" "root" {
@@ -10,7 +10,7 @@ resource "cloudflare_dns_record" "root" {
   proxied = false
   ttl     = 1
   type    = "A"
-  zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
+  zone_id = data.infisical_secrets.root_secrets.secrets["CF_ZONE_ID"].value
   comment = "Deployed ${timestamp()} root for ${var.project_name}"
   lifecycle {
     ignore_changes = [comment]
@@ -43,7 +43,7 @@ resource "cloudflare_dns_record" "webservices" {
   proxied = false
   ttl     = 1
   type    = "A"
-  zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
+  zone_id = data.infisical_secrets.root_secrets.secrets["CF_ZONE_ID"].value
   comment = "Deployed ${timestamp()} webservices wildcard for ${var.project_name}"
   lifecycle {
     ignore_changes = [comment]

@@ -99,21 +99,6 @@ resource "infisical_secret" "cloudflare_runtime" {
 }
 
 
-# Cloudflare secrets
-
-ephemeral "infisical_secret" "cloudflare_api_token" {
-  name         = "CLOUDFLARE_API_TOKEN"
-  env_slug     = "dev"
-  workspace_id = var.infisical_project_id
-  folder_path  = "/terraform"
-}
-
-ephemeral "infisical_secret" "cloudflare_zone_id" {
-  name         = "CLOUDFLARE_ZONE_ID"
-  env_slug     = "dev"
-  workspace_id = var.infisical_project_id
-  folder_path  = "/terraform"
-}
 
 
 data "infisical_secrets" "root_secrets" {
