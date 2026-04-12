@@ -87,10 +87,20 @@ infisical_client_secret = ""   # Terraform Machine Identity client secret
 infisical_project_id    = ""   # Infisical project UUID (from Project Settings → General)
 timezone                = "America/New_York"
 domain_name             = "example.com"
+cloud_provider          = "oci"  # "hetzner", "oci", or omit for local-only
 
-# Hetzner (only needed if cloud_provider = "hetzner"):
-# server_types = ["cx22"]
-# volume_size  = 50
+# Hetzner — only needed if cloud_provider = "hetzner". All fields have defaults.
+# hetzner = {
+#   server_type    = "CPX11"
+#   volume_size_gb = 40
+# }
+
+# OCI — only needed if cloud_provider = "oci". All fields have defaults.
+# oci = {
+#   region        = "us-ashburn-1"
+#   ocpus         = 1
+#   memory_in_gbs = 6
+# }
 ```
 
 #### `ansible/.env`
