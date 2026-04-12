@@ -35,11 +35,11 @@ module "hetzner" {
   admin_public_key         = local.admin_public_key
   hcloud_public_key        = trimspace(tls_private_key.root.public_key_openssh)
   user_data                = local.user_data
-  region                   = var.region
-  server_type              = var.server_type
-  image                    = var.image
-  volume_size_gb           = var.volume_size
-  volume_delete_protection = var.volume_delete_protection
+  region                   = var.hetzner.region
+  server_type              = var.hetzner.server_type
+  image                    = var.hetzner.image
+  volume_size_gb           = var.hetzner.volume_size_gb
+  volume_delete_protection = var.hetzner.volume_delete_protection
   my_ip                    = local.my_ip
 }
 
@@ -50,7 +50,9 @@ module "oci" {
   project_name     = var.project_name
   admin_public_key = local.admin_public_key
   user_data        = local.user_data
-  region           = var.region
+  region           = var.oci.region
+  ocpus            = var.oci.ocpus
+  memory_in_gbs    = var.oci.memory_in_gbs
   compartment_ocid = coalesce(
     try(data.infisical_secrets.root_secrets.secrets["OCI_COMPARTMENT_OCID"].value, ""),
     try(data.infisical_secrets.root_secrets.secrets["OCI_TENANCY_OCID"].value, ""),

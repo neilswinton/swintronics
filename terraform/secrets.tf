@@ -1,13 +1,5 @@
 # Secrets from key vault (currently Infisical)
 
-locals {
-  infisical_project_slug = "swintronics-kwhf"
-}
-# 
-data "infisical_projects" "server" {
-  slug = local.infisical_project_slug
-}
-
 data "infisical_identity_details" "details" {
 }
 
@@ -36,14 +28,14 @@ ephemeral "infisical_secret" "tailscale_provider_oauth_client" {
   # The "container" tag must exist and be assigned to the devices:core scope
   name         = "TS_MS_PROVIDER_OAUTH_CLIENT_ID"
   env_slug     = "dev"
-  workspace_id = data.infisical_projects.server.id
+  workspace_id = var.infisical_project_id
   folder_path  = "/terraform"
 }
 
 ephemeral "infisical_secret" "tailscale_provider_oauth_client_secret" {
   name         = "TS_MS_PROVIDER_OAUTH_CLIENT_SECRET"
   env_slug     = "dev"
-  workspace_id = data.infisical_projects.server.id
+  workspace_id = var.infisical_project_id
   folder_path  = "/terraform"
 }
 
@@ -112,7 +104,7 @@ resource "infisical_secret" "cloudflare_runtime" {
 ephemeral "infisical_secret" "cloudflare_api_token" {
   name         = "CLOUDFLARE_API_TOKEN"
   env_slug     = "dev"
-  workspace_id = data.infisical_projects.server.id
+  workspace_id = var.infisical_project_id
   folder_path  = "/terraform"
 }
 

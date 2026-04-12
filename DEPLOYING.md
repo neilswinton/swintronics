@@ -46,7 +46,26 @@ ansible-galaxy collection install -r ansible/requirements.yml
 
 ---
 
-## Step 1 — OCI Account Setup 📋
+## Step 1 — Infisical Project Setup 📋
+
+1. Sign up or log in at [infisical.com](https://infisical.com)
+
+2. Create a new project for this deployment — do not reuse an existing project's secrets
+   - Note the **project ID** (Project Settings → General) — you'll need it for `terraform/.auto.tfvars`
+
+3. Add the server admin username now — this is needed by Terraform before any other
+   steps are complete. Add to folder `/`, environment `dev`:
+
+   | Secret name | Value |
+   |-------------|-------|
+   | `username` | OS user to create on the server (e.g. `neil`) |
+
+Remaining secrets are added as you complete each account setup step. A full checklist
+is in Step 13 — verify everything is in place before running Terraform.
+
+---
+
+## Step 2 — OCI Account Setup 📋
 
 1. Sign up at [oracle.com/cloud/free](https://oracle.com/cloud/free)
    - Select **US East (Ashburn)** as your home region — this cannot be changed later
@@ -71,9 +90,19 @@ ansible-galaxy collection install -r ansible/requirements.yml
    - **Private key** — the PEM file you downloaded
    - **Region** — `us-ashburn-1`
 
+5. Add to Infisical (folder `/`, environment `dev`):
+
+   | Secret name | Value |
+   |-------------|-------|
+   | `OCI_TENANCY_OCID` | Tenancy OCID |
+   | `OCI_USER_OCID` | User OCID |
+   | `OCI_FINGERPRINT` | API key fingerprint |
+   | `OCI_PRIVATE_KEY` | Full PEM file contents |
+   | `OCI_REGION` | `us-ashburn-1` |
+
 ---
 
-## Step 2 — Cloudflare Account and Domain Setup 📋
+## Step 3 — Cloudflare Account and Domain Setup 📋
 
 1. Sign up at [cloudflare.com](https://cloudflare.com) if you don't have an account
 
@@ -96,72 +125,150 @@ ansible-galaxy collection install -r ansible/requirements.yml
    - Click **Continue to summary** → **Create Token**
    - **Copy the token immediately** — it is only shown once
 
----
+5. Add to Infisical (folder `/`, environment `dev`):
 
-## Step 3 — Infisical Project Setup 📋
+   | Secret name | Value |
+   |-------------|-------|
+   | `CF_API_EMAIL` | Your Cloudflare account email |
+   | `CF_DNS_API_TOKEN` | API token from above |
 
-Create a new Infisical project for this deployment (do not reuse another project's secrets).
+6. Add to Infisical (folder `/terraform`, environment `dev`):
 
-Add the following secrets to the project (environment: `dev`):
-
-### OCI credentials
-| Secret name | Value |
-|-------------|-------|
-| `OCI_TENANCY_OCID` | from Step 1 |
-| `OCI_USER_OCID` | from Step 1 |
-| `OCI_FINGERPRINT` | from Step 1 |
-| `OCI_PRIVATE_KEY` | full PEM contents |
-| `OCI_REGION` | `us-ashburn-1` |
-
-### Cloudflare
-| Secret name | Value |
-|-------------|-------|
-| `CF_DNS_API_TOKEN` | API token from Step 2 |
-| `CF_ZONE_ID` | Zone ID from Step 2 |
-
-### Tailscale
-| Secret name | Value |
-|-------------|-------|
-| `TS_SERVER_AUTH_KEY` | Reusable auth key from Tailscale admin → Settings → Keys |
-
-### Server credentials
-| Secret name | Value |
-|-------------|-------|
-| `username` | OS user to create on the server (e.g. `neil`) |
-
-### SMTP2Go
-| Secret name | Value |
-|-------------|-------|
-| `SMTP_HOST` | `mail.smtp2go.com` |
-| `SMTP_PORT` | `587` |
-| `SMTP_USERNAME` | SMTP2Go sender username (from Senders → Verified Senders) |
-| `SMTP_PASSWORD` | SMTP2Go API key or SMTP password |
-| `SMTP_FROM` | From address (e.g. `alerts@cactus-cantina.com`) |
-
-### Telegram
-| Secret name | Value |
-|-------------|-------|
-| `TELEGRAM_BOT_TOKEN` | Bot token from BotFather (see Step 4) |
-| `TELEGRAM_CHAT_ID` | Chat ID of recipient (see Step 4) |
-
-### Healthchecks.io
-| Secret name | Value |
-|-------------|-------|
-| `HEALTHCHECKS_API_KEY` | from healthchecks.io account |
-| `HEALTHCHECKS_KUMA_CHECK_UUID` | UUID of the Uptime Kuma heartbeat check |
+   | Secret name | Value |
+   |-------------|-------|
+   | `CLOUDFLARE_API_TOKEN` | Same API token as above |
+   | `CLOUDFLARE_ZONE_ID` | Zone ID from above |
 
 ---
 
-## Step 4 — Tailscale Auth Key 📋
+## Step 4 — Infisical Machine Identity for Terraform 📋
+
+Terraform needs a Machine Identity with enough privilege to read secrets from your
+source project, create the runtime project, populate it with generated secrets, and
+create the `docker_deploy` identity that Ansible uses.
+
+1. Infisical → **Organization Settings** → Access Control → Machine Identities → **Add Identity**
+   - Name: `terraform`
+   - Organization role: **Admin** (required to create projects and new identities)
+
+2. Add authentication to the identity
+   - Click the identity → Authentication → **Add Universal Auth**
+   - Copy the **Client ID**; click **Generate** to create a Client Secret
+   - **Copy the client secret immediately** — it is only shown once
+
+3. Grant the identity access to your source project
+   - Go to your source Infisical project → Settings → Access Control → Machine Identities
+   - Add the `terraform` identity with **Admin** role
+
+4. Note your source project's slug and ID
+   - Project Settings → General → copy the **Project ID** (UUID) and **Slug**
+   - The slug must match `local.infisical_project_slug` in `terraform/secrets.tf` — update
+     that value if it differs from the default
+
+5. Store credentials in `terraform/.auto.tfvars`:
+   ```hcl
+   infisical_client_id     = "<client-id>"
+   infisical_client_secret = "<client-secret>"
+   infisical_project_id    = "<source-project-id>"
+   ```
+
+---
+
+## Step 5 — Terraform State Backend (Cloudflare R2) 📋
+
+Terraform state is stored in a Cloudflare R2 bucket. Each deployment needs its own
+bucket (or at minimum a unique key path within a shared bucket) so deployments don't
+overwrite each other's state.
+
+1. Create an R2 bucket
+   - Cloudflare dashboard → **R2 Object Storage** → **Create bucket**
+   - Name it something like `cantina-tfstate`
+   - Note your **Account ID** shown on the R2 overview page
+
+2. Create an R2 API token
+   - R2 → **Manage R2 API Tokens** → **Create API Token**
+   - Permissions: **Object Read & Write**
+   - Scope: limit to the bucket you just created
+   - Copy the **Access Key ID** and **Secret Access Key** — shown only once
+
+3. Create `terraform/backend.hcl` from the example:
+   ```bash
+   cp terraform/backend.hcl.example terraform/backend.hcl
+   ```
+   Fill in:
+   ```hcl
+   bucket = "cantina-tfstate"
+   key    = "cantina/terraform.tfstate"
+   endpoints = {
+     s3 = "https://<account-id>.r2.cloudflarestorage.com"
+   }
+   ```
+
+4. Export R2 credentials before running Terraform:
+   ```bash
+   export AWS_ACCESS_KEY_ID=<access-key-id>
+   export AWS_SECRET_ACCESS_KEY=<secret-access-key>
+   ```
+   Or store them in a local env file (gitignored) and `source` it before each session.
+
+---
+
+## Step 6 — Tailscale Account Setup 📋
+
+1. Sign up at [tailscale.com](https://tailscale.com)
+
+2. **Choose an identity provider** — Tailscale requires an IdP for login:
+   - **Social login (recommended)** — Google, GitHub, Microsoft, or Apple. Easiest
+     option; anyone who needs access to the tailnet can use a shared account or be
+     invited individually.
+   - **Azure AD** — works but complex to configure without prior Azure experience.
+   - **Zitadel** — open source IdP with a free cloud tier; good middle ground if you
+     want your own IdP without the Azure complexity.
+
+3. Once logged in, note your **tailnet name** (shown in the top left of the admin
+   console, e.g. `your-name.ts.net`)
+
+4. Create the `server` tag — tags are required for the Terraform OAuth provider and
+   for issuing auth keys to servers:
+   - Admin console → **Access Controls** → edit the ACL JSON
+   - Add to the `tagOwners` section:
+     ```json
+     "tagOwners": {
+       "tag:server": ["autogroup:admin"]
+     }
+     ```
+   - Save the ACL
+
+5. Create an OAuth client for Terraform
+   - Admin console → Settings → **OAuth Clients** → **Generate OAuth Client**
+   - Scopes: `auth_keys`, `devices:core`, `dns:read`, `oauth_keys`
+   - Tag: `tag:server`
+   - Copy the **Client ID** and **Client Secret** — shown only once
+
+6. Add to Infisical (folder `/terraform`, environment `dev`):
+
+   | Secret name | Value |
+   |-------------|-------|
+   | `TS_MS_PROVIDER_OAUTH_CLIENT_ID` | OAuth Client ID from above |
+   | `TS_MS_PROVIDER_OAUTH_CLIENT_SECRET` | OAuth Client Secret from above |
+
+---
+
+## Step 7 — Tailscale Auth Key 📋
 
 1. Tailscale admin console → Settings → Keys → Generate auth key
 2. Check **Reusable** (so Ansible can use it for initial join)
 3. Set an appropriate expiry
-4. Store in Infisical as `TS_SERVER_AUTH_KEY`
+
+4. Add to Infisical (folder `/`, environment `dev`):
+
+   | Secret name | Value |
+   |-------------|-------|
+   | `TS_SERVER_AUTH_KEY` | Auth key from above |
 
 ---
 
-## Step 5 — SMTP2Go Setup 📋
+## Step 8 — SMTP2Go Setup 📋
 
 1. Sign up at [smtp2go.com](https://www.smtp2go.com)
 
@@ -173,16 +280,19 @@ Add the following secrets to the project (environment: `dev`):
    - Settings → SMTP Users → Add SMTP User
    - Copy the username and password shown
 
-4. Store in Infisical:
-   - `SMTP_HOST` = `mail.smtp2go.com`
-   - `SMTP_PORT` = `587`
-   - `SMTP_USERNAME` = the username from above
-   - `SMTP_PASSWORD` = the password from above
-   - `SMTP_FROM` = your verified sender address
+4. Add to Infisical (folder `/`, environment `dev`):
+
+   | Secret name | Value |
+   |-------------|-------|
+   | `SMTP_HOST` | `mail.smtp2go.com` |
+   | `SMTP_PORT` | `587` |
+   | `SMTP_USERNAME` | SMTP user from above |
+   | `SMTP_PASSWORD` | SMTP password from above |
+   | `SMTP_FROM` | Your verified sender address |
 
 ---
 
-## Step 6 — Telegram Bot Setup 📋
+## Step 9 — Telegram Bot Setup 📋
 
 1. Open Telegram and search for **@BotFather**
 
@@ -195,13 +305,16 @@ Add the following secrets to the project (environment: `dev`):
    - Fetch `https://api.telegram.org/bot<TOKEN>/getUpdates` in a browser
    - Copy the `id` field from `message.chat` in the response
 
-4. Store in Infisical:
-   - `TELEGRAM_BOT_TOKEN` = bot token from BotFather
-   - `TELEGRAM_CHAT_ID` = your chat ID
+4. Add to Infisical (folder `/server`, environment `dev`):
+
+   | Secret name | Value |
+   |-------------|-------|
+   | `TELEGRAM_BOT_TOKEN` | Bot token from BotFather |
+   | `TELEGRAM_CHAT_ID` | Chat ID from above |
 
 ---
 
-## Step 7 — Configure Ansible Credentials 📋
+## Step 10 — Configure Ansible Credentials 📋
 
 Copy the Ansible env file and fill in your Infisical credentials:
 
@@ -218,7 +331,7 @@ and grant it read access to the project.
 
 ---
 
-## Step 8 — Create host_vars for the New Server 📋
+## Step 11 — Create host_vars for the New Server 📋
 
 Copy the example and fill in values:
 
@@ -238,7 +351,7 @@ Key values to set:
 
 ---
 
-## Step 9 — Add Server to Ansible Inventory 📋
+## Step 12 — Add Server to Ansible Inventory 📋
 
 Edit `ansible/inventory/hosts` to add the new host under `[oci]` or `[hetzner]`:
 
@@ -251,25 +364,67 @@ The host name must match the `host_vars` filename.
 
 ---
 
-## Step 10 — Terraform: Provision the Server 📋
+## Step 13 — Validate Infisical Secrets 📋
+
+Before running Terraform, verify all required secrets are present in your Infisical
+project (environment: `dev`). Use the Infisical dashboard to check each folder.
+
+### Folder `/`
+| Secret name | Added in |
+|-------------|----------|
+| `username` | Step 1 |
+| `OCI_TENANCY_OCID` | Step 2 |
+| `OCI_USER_OCID` | Step 2 |
+| `OCI_FINGERPRINT` | Step 2 |
+| `OCI_PRIVATE_KEY` | Step 2 |
+| `OCI_REGION` | Step 2 |
+| `CF_API_EMAIL` | Step 3 |
+| `CF_DNS_API_TOKEN` | Step 3 |
+| `TS_SERVER_AUTH_KEY` | Step 7 |
+| `SMTP_HOST` | Step 8 |
+| `SMTP_PORT` | Step 8 |
+| `SMTP_USERNAME` | Step 8 |
+| `SMTP_PASSWORD` | Step 8 |
+| `SMTP_FROM` | Step 8 |
+
+### Folder `/terraform`
+| Secret name | Added in |
+|-------------|----------|
+| `CLOUDFLARE_API_TOKEN` | Step 3 |
+| `CLOUDFLARE_ZONE_ID` | Step 3 |
+| `TS_MS_PROVIDER_OAUTH_CLIENT_ID` | Step 6 |
+| `TS_MS_PROVIDER_OAUTH_CLIENT_SECRET` | Step 6 |
+
+### Folder `/server`
+| Secret name | Added in |
+|-------------|----------|
+| `TELEGRAM_BOT_TOKEN` | Step 9 |
+| `TELEGRAM_CHAT_ID` | Step 9 |
+
+_Healthchecks.io secrets (`HEALTHCHECKS_API_KEY`, `HEALTHCHECKS_KUMA_CHECK_UUID`) can
+be added to `/server` after services are running — they are not needed for initial
+Terraform provisioning._
+
+---
+
+## Step 14 — Terraform: Provision the Server 📋
 
 ```bash
 cd terraform
-terraform init
+terraform init -backend-config=backend.hcl
 terraform plan -var='cloud_provider=oci'
 terraform apply -var='cloud_provider=oci'
 ```
 
-This creates: OCI instance, VCN, security list, DNS records, Tailscale auth key.
+This creates: OCI instance, VCN, security list, DNS records, Tailscale auth key,
+and a runtime Infisical project populated with generated service secrets.
 
 Note the server's public IP from the output. Cloud-init will run on first boot — wait
 approximately 2 minutes before proceeding.
 
-_TODO: document .auto.tfvars required variables once Terraform modules are built_
-
 ---
 
-## Step 11 — Ansible: Initial Server Configuration 📋
+## Step 15 — Ansible: Initial Server Configuration 📋
 
 Run from the `ansible/` directory with credentials loaded:
 
@@ -291,7 +446,7 @@ if you used the public IP initially.
 
 ---
 
-## Step 12 — Ansible: Storage and Services 📋
+## Step 16 — Ansible: Storage and Services 📋
 
 ```bash
 # Create /docker-data directory structure
@@ -303,7 +458,7 @@ ansible-playbook playbooks/deploy-versions.yml -e target=oci-main
 
 ---
 
-## Step 13 — Ansible: Maintenance Configuration 📋
+## Step 17 — Ansible: Maintenance Configuration 📋
 
 ```bash
 # Configure unattended-upgrades with pre/post-reboot hooks
@@ -315,7 +470,7 @@ ansible-playbook playbooks/install-backup.yml -e target=oci-main
 
 ---
 
-## Step 14 — Manual: Uptime Kuma 📋
+## Step 18 — Manual: Uptime Kuma 📋
 
 _See the Uptime Kuma Setup section in CLAUDE.md for full instructions._
 
@@ -327,7 +482,7 @@ _See the Uptime Kuma Setup section in CLAUDE.md for full instructions._
 
 ---
 
-## Step 15 — Manual: Beszel Agent Bootstrap 📋
+## Step 19 — Manual: Beszel Agent Bootstrap 📋
 
 _See the Beszel Agent Bootstrap section in CLAUDE.md for full instructions._
 
