@@ -13,6 +13,10 @@ terraform {
       source  = "infisical/infisical"
       version = "~> 0.15"
     }
+    oci = {
+      source  = "oracle/oci"
+      version = "~> 6"
+    }
     tailscale = {
       source  = "tailscale/tailscale"
       version = "~> 0.21"
@@ -32,7 +36,15 @@ provider "infisical" {
 
 # Configure the Hetzner Cloud Provider
 provider "hcloud" {
-  token = ephemeral.infisical_secret.hetzner_token.value
+  token = try(data.infisical_secrets.terraform_secrets.secrets["HETZNER_TOKEN"].value, "")
+}
+
+provider "oci" {
+  tenancy_ocid = try(data.infisical_secrets.root_secrets.secrets["OCI_TENANCY_OCID"].value, "")
+  user_ocid    = try(data.infisical_secrets.root_secrets.secrets["OCI_USER_OCID"].value, "")
+  fingerprint  = try(data.infisical_secrets.root_secrets.secrets["OCI_FINGERPRINT"].value, "")
+  private_key  = try(data.infisical_secrets.root_secrets.secrets["OCI_PRIVATE_KEY"].value, "")
+  region       = try(data.infisical_secrets.root_secrets.secrets["OCI_REGION"].value, var.region)
 }
 
 # Provider for tailscale using provisioning client id

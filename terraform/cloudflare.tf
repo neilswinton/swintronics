@@ -3,49 +3,25 @@ provider "cloudflare" {
   api_token = ephemeral.infisical_secret.cloudflare_api_token.value
 }
 
-data "cloudflare_ip_ranges" "whitelist" {
-
-}
-
-resource "cloudflare_dns_record" "ssh" {
-  name    = "ssh"
-  count   = 0
-  content = var.cloud_provider == "hetzner" ? hcloud_server.server[0].ipv4_address : "0.0.0.0"
-  proxied = false
-  ttl     = 1
-  type    = "A"
-  zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
-  comment = "Deployed ${timestamp()} ssh for ${var.project_name}"
-  lifecycle {
-    ignore_changes = [
-      comment
-    ]
-  }
-}
-
 resource "cloudflare_dns_record" "root" {
-  count = var.cloud_provider == "hetzner" ? 1 : 0
-  name  = "@"
-
-  content = hcloud_server.server[0].ipv4_address
+  count   = local.server_ip != null ? 1 : 0
+  name    = "@"
+  content = local.server_ip
   proxied = false
   ttl     = 1
   type    = "A"
   zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
   comment = "Deployed ${timestamp()} root for ${var.project_name}"
   lifecycle {
-    ignore_changes = [
-      comment
-    ]
+    ignore_changes = [comment]
   }
 }
 
-# Get the tailscale devices that could be our docker container
+# Get Tailscale devices matching the project name for wildcard DNS
 data "tailscale_devices" "container" {
   name_prefix = var.project_name
 }
 
-# Get the IPv4 address for the matching containers -- there should be just one
 locals {
   container_devices = {
     for device in data.tailscale_devices.container.devices :
@@ -58,7 +34,7 @@ locals {
   }
 }
 
-# Register a wildcard DNS record for the tailscale container's IP
+# Wildcard DNS record pointing at the server's Tailscale IP
 resource "cloudflare_dns_record" "webservices" {
   name     = "*"
   for_each = local.container_devices
@@ -70,9 +46,6 @@ resource "cloudflare_dns_record" "webservices" {
   zone_id = data.infisical_secrets.terraform_secrets.secrets["CLOUDFLARE_ZONE_ID"].value
   comment = "Deployed ${timestamp()} webservices wildcard for ${var.project_name}"
   lifecycle {
-    ignore_changes = [
-      comment
-    ]
+    ignore_changes = [comment]
   }
-
 }
