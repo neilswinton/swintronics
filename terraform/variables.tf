@@ -16,13 +16,10 @@ variable "image" {
   description = "The image the server is created from."
 }
 
-variable "server_types" {
-  type        = list(string)
-  description = "A list of Hetzner server types to deploy."
-  validation {
-    condition     = length(var.server_types) > 0 && length(var.server_types) <= 8 && alltrue([for server_type in var.server_types : contains(local.hetzner_server_types, server_type)])
-    error_message = "List must be 1-8 entries long.  Each entry must be one of:  ${join(", ", local.hetzner_server_types)}."
-  }
+variable "server_type" {
+  type        = string
+  default     = "CPX11"
+  description = "Hetzner server type (e.g. CPX11, CPX21). Only used when cloud_provider = 'hetzner'."
 }
 
 variable "volume_size" {
