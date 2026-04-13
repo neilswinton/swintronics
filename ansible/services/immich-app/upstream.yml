@@ -1,6 +1,15 @@
-# Upstream docker-compose.yml from immich v2.6.1
+# Upstream docker-compose.yml from immich v2.7.5
 # Source: https://github.com/immich-app/immich/releases/latest/download/docker-compose.yml
 # Saved for diffing against compose.yml.j2
+
+#
+# WARNING: To install Immich, follow our guide: https://docs.immich.app/install/docker-compose
+#
+# Make sure to use the docker-compose.yml of the current release:
+#
+# https://github.com/immich-app/immich/releases/latest/download/docker-compose.yml
+#
+# The compose file on main may not be compatible with the latest release.
 
 name: immich
 
@@ -44,7 +53,7 @@ services:
 
   redis:
     container_name: immich_redis
-    image: docker.io/valkey/valkey:9@sha256:3eeb09785cd61ec8e3be35f8804c8892080f3ca21934d628abc24ee4ed1698f6
+    image: docker.io/valkey/valkey:9@sha256:3b55fbaa0cd93cf0d9d961f405e4dfcc70efe325e2d84da207a0a8e6d8fde4f9
     healthcheck:
       test: redis-cli ping || exit 1
     restart: always
