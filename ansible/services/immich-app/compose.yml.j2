@@ -52,6 +52,8 @@ services:
     healthcheck:
       disable: false
       timeout: 90s
+      interval: 60s
+      start_period: 5m
 
   redis:
     container_name: immich_redis
