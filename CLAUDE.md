@@ -170,14 +170,17 @@ Terraform reads from the **Terraform project** (existing, pre-created):
 
 | Path | Key | Description |
 |------|-----|-------------|
-| `/terraform` | `TS_MS_PROVIDER_OAUTH_CLIENT_ID` | Tailscale OAuth client ID |
-| `/terraform` | `TS_MS_PROVIDER_OAUTH_CLIENT_SECRET` | Tailscale OAuth client secret |
-| `/terraform` | `CLOUDFLARE_API_TOKEN` | Cloudflare API token |
-| `/terraform` | `CLOUDFLARE_ZONE_ID` | Cloudflare zone ID |
-| `/terraform` | `HETZNER_TOKEN` | Hetzner API token (only if `cloud_provider = "hetzner"`) |
-| `/` | `username` | Server admin username |
 | `/` | `CF_API_EMAIL` | Cloudflare account email |
 | `/` | `CF_DNS_API_TOKEN` | Cloudflare DNS token (copied to runtime project by Terraform) |
+| `/` | `CF_ZONE_ID` | Cloudflare zone ID |
+| `/terraform` | `TS_MS_PROVIDER_OAUTH_CLIENT_ID` | Tailscale OAuth client ID |
+| `/terraform` | `TS_MS_PROVIDER_OAUTH_CLIENT_SECRET` | Tailscale OAuth client secret |
+| `/terraform` | `HETZNER_TOKEN` | Hetzner API token (only if `cloud_provider = "hetzner"`) |
+| `/terraform` | `OCI_TENANCY_OCID` | OCI tenancy OCID (only if `cloud_provider = "oci"`) |
+| `/terraform` | `OCI_USER_OCID` | OCI user OCID |
+| `/terraform` | `OCI_FINGERPRINT` | OCI API key fingerprint |
+| `/terraform` | `OCI_PRIVATE_KEY` | OCI API signing key (PEM) |
+| `/terraform` | `OCI_REGION` | OCI region identifier |
 | `/server` | `TELEGRAM_BOT_TOKEN` | Telegram bot token for Kuma notifications |
 | `/server` | `TELEGRAM_CHAT_ID` | Telegram chat ID |
 

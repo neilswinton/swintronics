@@ -40,11 +40,11 @@ provider "hcloud" {
 }
 
 provider "oci" {
-  tenancy_ocid = try(data.infisical_secrets.root_secrets.secrets["OCI_TENANCY_OCID"].value, "")
-  user_ocid    = try(data.infisical_secrets.root_secrets.secrets["OCI_USER_OCID"].value, "")
-  fingerprint  = try(data.infisical_secrets.root_secrets.secrets["OCI_FINGERPRINT"].value, "")
-  private_key  = try(data.infisical_secrets.root_secrets.secrets["OCI_PRIVATE_KEY"].value, "")
-  region       = try(data.infisical_secrets.root_secrets.secrets["OCI_REGION"].value, var.region)
+  tenancy_ocid = try(data.infisical_secrets.terraform_secrets.secrets["OCI_TENANCY_OCID"].value, "")
+  user_ocid    = try(data.infisical_secrets.terraform_secrets.secrets["OCI_USER_OCID"].value, "")
+  fingerprint  = try(data.infisical_secrets.terraform_secrets.secrets["OCI_FINGERPRINT"].value, "")
+  private_key  = try(data.infisical_secrets.terraform_secrets.secrets["OCI_PRIVATE_KEY"].value, "")
+  region       = try(data.infisical_secrets.terraform_secrets.secrets["OCI_REGION"].value, "")
 }
 
 # Provider for tailscale using provisioning client id

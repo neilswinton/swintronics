@@ -56,8 +56,8 @@ module "oci" {
   boot_volume_size_gb = var.oci.boot_volume_size_gb
   data_volume_size_gb = var.oci.data_volume_size_gb
   compartment_ocid = coalesce(
-    try(data.infisical_secrets.root_secrets.secrets["OCI_COMPARTMENT_OCID"].value, ""),
-    try(data.infisical_secrets.root_secrets.secrets["OCI_TENANCY_OCID"].value, ""),
+    try(data.infisical_secrets.terraform_secrets.secrets["OCI_COMPARTMENT_OCID"].value, ""),
+    try(data.infisical_secrets.terraform_secrets.secrets["OCI_TENANCY_OCID"].value, ""),
   )
   my_ip = local.my_ip
 }

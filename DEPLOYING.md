@@ -87,7 +87,7 @@ is in Step 13 — verify everything is in place before running Terraform.
    - **Private key** — the PEM file you downloaded
    - **Region** — `us-ashburn-1`
 
-5. Add to Infisical (folder `/`, environment `dev`):
+5. Add to Infisical (folder `/terraform`, environment `dev`):
 
    | Secret name | Value |
    |-------------|-------|
@@ -362,11 +362,6 @@ project (environment: `dev`). Use the Infisical dashboard to check each folder.
 ### Folder `/`
 | Secret name | Added in |
 |-------------|----------|
-| `OCI_TENANCY_OCID` | Step 2 |
-| `OCI_USER_OCID` | Step 2 |
-| `OCI_FINGERPRINT` | Step 2 |
-| `OCI_PRIVATE_KEY` | Step 2 |
-| `OCI_REGION` | Step 2 |
 | `CF_API_EMAIL` | Step 3 |
 | `CF_DNS_API_TOKEN` | Step 3 |
 | `CF_ZONE_ID` | Step 3 |
@@ -380,6 +375,11 @@ project (environment: `dev`). Use the Infisical dashboard to check each folder.
 ### Folder `/terraform`
 | Secret name | Added in |
 |-------------|----------|
+| `OCI_TENANCY_OCID` | Step 2 |
+| `OCI_USER_OCID` | Step 2 |
+| `OCI_FINGERPRINT` | Step 2 |
+| `OCI_PRIVATE_KEY` | Step 2 |
+| `OCI_REGION` | Step 2 |
 | `TS_MS_PROVIDER_OAUTH_CLIENT_ID` | Step 6 |
 | `TS_MS_PROVIDER_OAUTH_CLIENT_SECRET` | Step 6 |
 
