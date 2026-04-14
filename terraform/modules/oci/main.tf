@@ -92,8 +92,9 @@ resource "oci_core_instance" "server" {
   }
 
   source_details {
-    source_type = "image"
-    source_id   = data.oci_core_images.ubuntu_arm.images[0].id
+    source_type             = "image"
+    source_id               = data.oci_core_images.ubuntu_arm.images[0].id
+    boot_volume_size_in_gbs = var.boot_volume_size_gb
   }
 
   create_vnic_details {
@@ -109,4 +110,20 @@ resource "oci_core_instance" "server" {
   lifecycle {
     ignore_changes = [source_details, metadata]
   }
+}
+
+resource "oci_core_volume" "data" {
+  count               = var.data_volume_size_gb > 0 ? 1 : 0
+  compartment_id      = var.compartment_ocid
+  availability_domain = data.oci_identity_availability_domain.ad.name
+  display_name        = "${var.project_name}-data"
+  size_in_gbs         = var.data_volume_size_gb
+}
+
+resource "oci_core_volume_attachment" "data" {
+  count           = var.data_volume_size_gb > 0 ? 1 : 0
+  attachment_type = "paravirtualized"
+  instance_id     = oci_core_instance.server.id
+  volume_id       = oci_core_volume.data[0].id
+  display_name    = "${var.project_name}-data-attachment"
 }

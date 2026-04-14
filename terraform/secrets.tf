@@ -214,10 +214,3 @@ resource "infisical_secret" "monitoring_passwords" {
   folder_path  = "/"
 }
 
-resource "infisical_secret" "server_admin_username" {
-  name         = "SERVER_ADMIN_USERNAME"
-  value        = data.infisical_secrets.root_secrets.secrets["username"].value
-  env_slug     = "dev"
-  workspace_id = infisical_project.runtime_secrets.id
-  folder_path  = "/"
-}

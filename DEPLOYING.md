@@ -57,13 +57,6 @@ ansible-galaxy collection install -r ansible/requirements.yml
 2. Create a new project for this deployment — do not reuse an existing project's secrets
    - Note the **project ID** (Project Settings → General) — you'll need it for `terraform/.auto.tfvars`
 
-3. Add the server admin username now — this is needed by Terraform before any other
-   steps are complete. Add to folder `/`, environment `dev`:
-
-   | Secret name | Value |
-   |-------------|-------|
-   | `username` | OS user to create on the server (e.g. `neil`) |
-
 Remaining secrets are added as you complete each account setup step. A full checklist
 is in Step 13 — verify everything is in place before running Terraform.
 
@@ -158,16 +151,15 @@ create the `docker_deploy` identity that Ansible uses.
    - Go to your source Infisical project → Settings → Access Control → Machine Identities
    - Add the `terraform` identity with **Admin** role
 
-4. Note your source project's slug and ID
-   - Project Settings → General → copy the **Project ID** (UUID) and **Slug**
-   - The slug must match `local.infisical_project_slug` in `terraform/secrets.tf` — update
-     that value if it differs from the default
+4. Note your source project ID
+   - Project Settings → General → copy the **Project ID** (UUID)
 
 5. Store credentials in `terraform/.auto.tfvars`:
    ```hcl
    infisical_client_id     = "<client-id>"
    infisical_client_secret = "<client-secret>"
    infisical_project_id    = "<source-project-id>"
+   admin_user              = "<your-username>"   # OS user created on provisioned servers
    ```
 
 ---
@@ -370,7 +362,6 @@ project (environment: `dev`). Use the Infisical dashboard to check each folder.
 ### Folder `/`
 | Secret name | Added in |
 |-------------|----------|
-| `username` | Step 1 |
 | `OCI_TENANCY_OCID` | Step 2 |
 | `OCI_USER_OCID` | Step 2 |
 | `OCI_FINGERPRINT` | Step 2 |

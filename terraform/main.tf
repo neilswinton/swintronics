@@ -8,7 +8,7 @@ data "http" "myip" {
 locals {
   my_ip            = chomp(data.http.myip.response_body)
   admin_public_key = trimspace(tls_private_key.admin.public_key_openssh)
-  admin_user       = nonsensitive(data.infisical_secrets.root_secrets.secrets["username"].value)
+  admin_user       = var.admin_user
 
   user_data = templatefile("${path.module}/scripts/cloud-init.yml", {
     admin_public_key = local.admin_public_key
@@ -47,12 +47,14 @@ module "oci" {
   count  = var.cloud_provider == "oci" ? 1 : 0
   source = "./modules/oci"
 
-  project_name     = var.project_name
-  admin_public_key = local.admin_public_key
-  user_data        = local.user_data
-  region           = var.oci.region
-  ocpus            = var.oci.ocpus
-  memory_in_gbs    = var.oci.memory_in_gbs
+  project_name        = var.project_name
+  admin_public_key    = local.admin_public_key
+  user_data           = local.user_data
+  region              = var.oci.region
+  ocpus               = var.oci.ocpus
+  memory_in_gbs       = var.oci.memory_in_gbs
+  boot_volume_size_gb = var.oci.boot_volume_size_gb
+  data_volume_size_gb = var.oci.data_volume_size_gb
   compartment_ocid = coalesce(
     try(data.infisical_secrets.root_secrets.secrets["OCI_COMPARTMENT_OCID"].value, ""),
     try(data.infisical_secrets.root_secrets.secrets["OCI_TENANCY_OCID"].value, ""),

@@ -1,7 +1,11 @@
 variable "project_name" {
   type        = string
-  default     = "swintronics"
   description = "Name used for resources across all providers."
+}
+
+variable "admin_user" {
+  type        = string
+  description = "OS username to create on provisioned servers (used in cloud-init)."
 }
 
 variable "cloud_provider" {
@@ -46,12 +50,14 @@ variable "hetzner" {
 # OCI-specific configuration — only used when cloud_provider = "oci"
 variable "oci" {
   type = object({
-    region        = optional(string, "us-ashburn-1")
-    ocpus         = optional(number, 1)
-    memory_in_gbs = optional(number, 6)
+    region              = optional(string, "us-ashburn-1")
+    ocpus               = optional(number, 1)
+    memory_in_gbs       = optional(number, 6)
+    boot_volume_size_gb = optional(number, 50)
+    data_volume_size_gb = optional(number, 60)
   })
   default     = {}
-  description = "Oracle Cloud configuration. Defaults to a single A1.Flex instance within the free tier."
+  description = "Oracle Cloud configuration. Defaults to a single A1.Flex instance within the free tier (200 GiB total block storage)."
 }
 
 # Infisical

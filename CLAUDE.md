@@ -85,6 +85,7 @@ These files must be created manually — they are never committed.
 infisical_client_id     = ""   # Terraform Machine Identity client ID
 infisical_client_secret = ""   # Terraform Machine Identity client secret
 infisical_project_id    = ""   # Infisical project UUID (from Project Settings → General)
+admin_user              = ""   # OS username to create on provisioned servers
 timezone                = "America/New_York"
 domain_name             = "example.com"
 cloud_provider          = "oci"  # "hetzner", "oci", or omit for local-only
@@ -97,9 +98,11 @@ cloud_provider          = "oci"  # "hetzner", "oci", or omit for local-only
 
 # OCI — only needed if cloud_provider = "oci". All fields have defaults.
 # oci = {
-#   region        = "us-ashburn-1"
-#   ocpus         = 1
-#   memory_in_gbs = 6
+#   region              = "us-ashburn-1"
+#   ocpus               = 1
+#   memory_in_gbs       = 6
+#   boot_volume_size_gb = 50
+#   data_volume_size_gb = 60
 # }
 ```
 
@@ -307,7 +310,7 @@ All services run on the Dell XPS13 (`localhost`), using `swintronics.com` as the
 
 **DR path:** If the XPS13 fails, spin up a Hetzner server, run Ansible, restore from Restic backups, flip DNS — back online. Hetzner is the DR target because it has a proper btrfs data disk matching the XPS13 layout.
 
-**OCI:** Oracle Cloud (free tier, ARM A1.Flex, `us-ashburn-1`) is for experimentation. It runs the same services but without a separate data disk (no btrfs). Not the DR target.
+**OCI:** Oracle Cloud (free tier, ARM A1.Flex, `us-ashburn-1`) is for experimentation. It runs the same services with a btrfs data disk (60 GiB by default; free tier allows 200 GiB total block storage). Not the DR target.
 
 **Domain:** New deployments use `cactus-cantina.com`. XPS13 continues on `swintronics.com` for now.
 
@@ -338,7 +341,7 @@ terraform/
 └── modules/
     ├── hetzner/      # server + btrfs volume + network + firewall + ssh_key
     └── oci/          # instance (A1.Flex) + VCN + IGW + route table +
-                      #   security list — no data disk
+                      #   security list + block volume + attachment
 ```
 
 Both modules accept: `project_name`, `admin_user`, `admin_public_key`, `user_data`, `region`.
@@ -361,7 +364,7 @@ inventory/
 │   └── servers.yml      # remote server defaults
 └── host_vars/
     ├── localhost.yml           # XPS13: swintronics.com, use_btrfs=true
-    └── oci-main.yml            # OCI: cactus-cantina.com, use_btrfs=false
+    └── oci-main.yml            # OCI: cactus-cantina.com, use_btrfs=true
 ```
 
 ### Phase 4 — OCI deployment prerequisites (user actions)
