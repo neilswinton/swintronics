@@ -8,7 +8,7 @@ services:
   postgres:
     image: postgres:16-alpine
     env_file: .env
-    restart: unless-stopped
+    restart: always
     volumes:
       - {{ data_disk_mountpoint }}/volumes/linkwarden/pgdata:/var/lib/postgresql/data
   linkwarden:
@@ -16,7 +16,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
       - TZ=${TZ:-America/New_York}
-    restart: unless-stopped
+    restart: always
     image: ghcr.io/linkwarden/linkwarden:{{ versions.linkwarden }}
     ports:
       - 3000:3000
@@ -32,7 +32,7 @@ services:
       traefik.http.routers.linkwarden.tls.certresolver: ${CERT_RESOLVER}
   meilisearch:
     image: getmeili/meilisearch:v1.12.8
-    restart: unless-stopped
+    restart: always
     env_file:
       - .env
     volumes:

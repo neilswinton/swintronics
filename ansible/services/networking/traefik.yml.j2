@@ -6,7 +6,7 @@ services:
   traefik:
     image: traefik:{{ versions.traefik }}
     container_name: traefik
-    restart: unless-stopped
+    restart: always
     security_opt:
       - no-new-privileges:true
     environment:
@@ -39,7 +39,7 @@ services:
   whoami:
     container_name: simple-service
     image: traefik/whoami
-    restart: unless-stopped
+    restart: always
     labels:
         - "traefik.enable=true"
         - "traefik.http.routers.whoami.rule=Host(`whoami.${SERVER_DOMAIN}`)"

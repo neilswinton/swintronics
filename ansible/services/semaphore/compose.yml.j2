@@ -21,7 +21,7 @@ services:
     volumes:
       - {{ data_disk_mountpoint }}/volumes/semaphore/data:/data
       - {{ data_disk_mountpoint }}/volumes/semaphore/tmp:/tmp/semaphore
-    restart: unless-stopped
+    restart: always
     labels:
       traefik.enable: true
       traefik.http.routers.semaphore.entrypoints: websecure
