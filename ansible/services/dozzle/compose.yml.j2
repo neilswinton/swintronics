@@ -14,7 +14,7 @@ services:
     environment:
       DOZZLE_LEVEL: info
       # DOZZLE_FILTER: "dozzle"  # Optional: only show dozzle logs
-    restart: unless-stopped
+    restart: always
     labels:
       traefik.enable: true
       traefik.http.routers.dozzle.entrypoints: websecure

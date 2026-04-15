@@ -93,6 +93,43 @@
         cmd: awk '$5 >= 3071' /etc/ssh/moduli > /etc/ssh/moduli.tmp && mv /etc/ssh/moduli.tmp /etc/ssh/moduli
       changed_when: false
 
+    - name: Load hardware watchdog module at boot
+      ansible.builtin.copy:
+        content: "{{ hardware_watchdog_module }}\n"
+        dest: "/etc/modules-load.d/{{ hardware_watchdog_module }}.conf"
+        owner: root
+        group: root
+        mode: '0644'
+      when: hardware_watchdog_module is defined
+
+    - name: Load hardware watchdog module now
+      community.general.modprobe:
+        name: "{{ hardware_watchdog_module }}"
+        state: present
+      when: hardware_watchdog_module is defined
+
+    - name: Ensure systemd system.conf.d directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/system.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      when: hardware_watchdog_module is defined
+
+    - name: Configure systemd hardware watchdog
+      ansible.builtin.copy:
+        content: |
+          [Manager]
+          RuntimeWatchdogSec=30s
+          RebootWatchdogSec=2min
+        dest: /etc/systemd/system.conf.d/watchdog.conf
+        owner: root
+        group: root
+        mode: '0644'
+      when: hardware_watchdog_module is defined
+      notify: Reexec systemd
+
     - name: Disable sleep/suspend/hibernate targets
       ansible.builtin.systemd:
         name: "{{ item }}"
@@ -131,3 +168,7 @@
     - name: Restart systemd-logind
       ansible.builtin.debug:
         msg: "logind.conf was changed — reboot when ready for lid/sleep settings to take effect"
+
+    - name: Reexec systemd
+      ansible.builtin.systemd:
+        daemon_reexec: true

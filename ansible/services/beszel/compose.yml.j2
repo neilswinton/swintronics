@@ -8,7 +8,7 @@ services:
   beszel:
     image: henrygd/beszel:{{ versions.beszel }}
     container_name: beszel
-    restart: unless-stopped
+    restart: always
     env_file: .env
     volumes:
       - {{ data_disk_mountpoint }}/volumes/beszel/beszel_data:/beszel_data
@@ -23,7 +23,7 @@ services:
   beszel-agent:
     image: henrygd/beszel-agent:{{ versions.beszel }}
     container_name: beszel-agent
-    restart: unless-stopped
+    restart: always
     network_mode: host
     healthcheck:
       test: ['CMD', '/agent', 'health']
