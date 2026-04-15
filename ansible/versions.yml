@@ -32,3 +32,6 @@ versions:
 
   # https://github.com/fnsys/dockhand/releases
   dockhand: "v1.0.24"
+
+  # https://hub.docker.com/r/willfarrell/autoheal — restarts containers labeled autoheal=true when unhealthy
+  autoheal: "1.2.0"

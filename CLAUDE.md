@@ -241,6 +241,7 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 | linkwarden     | linkwarden     | services/linkwarden/compose.yml.j2  |
 | dozzle         | dozzle         | services/dozzle/compose.yml.j2      |
 | traefik        | networking     | services/networking/traefik.yml.j2  |
+| autoheal       | autoheal       | services/autoheal/compose.yml.j2    |
 
 ### Networking
 
