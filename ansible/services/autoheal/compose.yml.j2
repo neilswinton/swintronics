@@ -1,0 +1,15 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+
+name: autoheal
+
+services:
+  autoheal:
+    image: willfarrell/autoheal:{{ versions.autoheal }}
+    container_name: autoheal
+    restart: always
+    network_mode: none
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: "30"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
