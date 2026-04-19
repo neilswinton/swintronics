@@ -23,8 +23,8 @@ Before starting, you need accounts with:
 | [Oracle Cloud (OCI)](https://oracle.com/cloud/free) | Server (free tier) | See Step 2 |
 | [Cloudflare](https://cloudflare.com) | DNS + TLS certs | Must manage your domain — See Step 3 |
 | [Tailscale](https://tailscale.com) | VPN / Ansible connectivity | Free for personal use — See Step 6 |
-| [SMTP2Go](https://www.smtp2go.com) | Outbound email (Paperless, alerts) | Free tier: 1000 emails/month — See Step 8 |
-| [Telegram](https://telegram.org) | Push notifications (Uptime Kuma) | Free; requires a bot token + chat ID — See Step 9 |
+| [SMTP2Go](https://www.smtp2go.com) | Outbound email (Paperless, alerts) | Free tier: 1000 emails/month — See Step 7 |
+| [Telegram](https://telegram.org) | Push notifications (Uptime Kuma) | Free; requires a bot token + chat ID — See Step 8 |
 | [Healthchecks.io](https://healthchecks.io) | Backup monitoring pings | Free tier sufficient |
 
 ---
@@ -230,7 +230,7 @@ overwrite each other's state.
    - Save the ACL
 
 5. Create an OAuth client for Terraform
-   - Admin console → Settings → **OAuth Clients** → **Generate OAuth Client**
+   - Admin console → Settings → **Trust Credentials** → **+Credential**
    - Scopes: `auth_keys`, `devices:core`, `dns:read`, `oauth_keys`
    - Tag: `tag:server`
    - Copy the **Client ID** and **Client Secret** — shown only once
@@ -242,23 +242,12 @@ overwrite each other's state.
    | `TS_MS_PROVIDER_OAUTH_CLIENT_ID` | OAuth Client ID from above |
    | `TS_MS_PROVIDER_OAUTH_CLIENT_SECRET` | OAuth Client Secret from above |
 
----
-
-## Step 7 — Tailscale Auth Key 📋
-
-1. Tailscale admin console → Settings → Keys → Generate auth key
-2. Check **Reusable** (so Ansible can use it for initial join)
-3. Set an appropriate expiry
-
-4. Add to Infisical (folder `/`, environment `dev`):
-
-   | Secret name | Value |
-   |-------------|-------|
-   | `TS_SERVER_AUTH_KEY` | Auth key from above |
+   Terraform uses the OAuth client to generate a Tailscale auth key automatically —
+   no manual auth key creation is needed.
 
 ---
 
-## Step 8 — SMTP2Go Setup 📋
+## Step 7 — SMTP2Go Setup 📋
 
 1. Sign up at [smtp2go.com](https://www.smtp2go.com)
 
@@ -282,7 +271,7 @@ overwrite each other's state.
 
 ---
 
-## Step 9 — Telegram Bot Setup 📋
+## Step 8 — Telegram Bot Setup 📋
 
 1. Open Telegram and search for **@BotFather**
 
@@ -304,7 +293,7 @@ overwrite each other's state.
 
 ---
 
-## Step 10 — Configure Ansible Credentials 📋
+## Step 9 — Configure Ansible Credentials 📋
 
 Copy the Ansible env file and fill in your Infisical credentials:
 
@@ -321,7 +310,7 @@ and grant it read access to the project.
 
 ---
 
-## Step 11 — Create host_vars for the New Server 📋
+## Step 10 — Create host_vars for the New Server 📋
 
 Copy the example and fill in values:
 
@@ -336,12 +325,12 @@ Key values to set:
 - `cert_resolver` — `staging` first, switch to `production` after validating TLS
 - `tailscale_tag` — Tailscale ACL tag for this server (e.g. `server`)
 - `tailscale_authkey_secret` — Infisical secret name holding the auth key
-- `use_btrfs` — `false` for OCI (no separate data disk), `true` for Hetzner/physical
+- `use_btrfs` — `true` for servers with a data disk (OCI, Hetzner, physical)
 - `data_disk_mountpoint` — `/docker-data`
 
 ---
 
-## Step 12 — Add Server to Ansible Inventory 📋
+## Step 11 — Add Server to Ansible Inventory 📋
 
 Edit `ansible/inventory/hosts` to add the new host under `[oci]` or `[hetzner]`:
 
@@ -354,7 +343,7 @@ The host name must match the `host_vars` filename.
 
 ---
 
-## Step 13 — Validate Infisical Secrets 📋
+## Step 12 — Validate Infisical Secrets 📋
 
 Before running Terraform, verify all required secrets are present in your Infisical
 project (environment: `dev`). Use the Infisical dashboard to check each folder.
@@ -365,12 +354,11 @@ project (environment: `dev`). Use the Infisical dashboard to check each folder.
 | `CF_API_EMAIL` | Step 3 |
 | `CF_DNS_API_TOKEN` | Step 3 |
 | `CF_ZONE_ID` | Step 3 |
-| `TS_SERVER_AUTH_KEY` | Step 7 |
-| `SMTP_HOST` | Step 8 |
-| `SMTP_PORT` | Step 8 |
-| `SMTP_USERNAME` | Step 8 |
-| `SMTP_PASSWORD` | Step 8 |
-| `SMTP_FROM` | Step 8 |
+| `SMTP_HOST` | Step 7 |
+| `SMTP_PORT` | Step 7 |
+| `SMTP_USERNAME` | Step 7 |
+| `SMTP_PASSWORD` | Step 7 |
+| `SMTP_FROM` | Step 7 |
 
 ### Folder `/terraform`
 | Secret name | Added in |
@@ -386,8 +374,8 @@ project (environment: `dev`). Use the Infisical dashboard to check each folder.
 ### Folder `/server`
 | Secret name | Added in |
 |-------------|----------|
-| `TELEGRAM_BOT_TOKEN` | Step 9 |
-| `TELEGRAM_CHAT_ID` | Step 9 |
+| `TELEGRAM_BOT_TOKEN` | Step 8 |
+| `TELEGRAM_CHAT_ID` | Step 8 |
 
 _Healthchecks.io secrets (`HEALTHCHECKS_API_KEY`, `HEALTHCHECKS_KUMA_CHECK_UUID`) can
 be added to `/server` after services are running — they are not needed for initial
@@ -395,7 +383,7 @@ Terraform provisioning._
 
 ---
 
-## Step 14 — Terraform: Provision the Server 📋
+## Step 13 — Terraform: Provision the Server 📋
 
 ```bash
 cd terraform
@@ -412,7 +400,7 @@ approximately 2 minutes before proceeding.
 
 ---
 
-## Step 15 — Ansible: Initial Server Configuration 📋
+## Step 14 — Ansible: Initial Server Configuration 📋
 
 Run from the `ansible/` directory with credentials loaded:
 
@@ -434,7 +422,7 @@ if you used the public IP initially.
 
 ---
 
-## Step 16 — Ansible: Storage and Services 📋
+## Step 15 — Ansible: Storage and Services 📋
 
 ```bash
 # Create /docker-data directory structure
@@ -446,7 +434,7 @@ ansible-playbook playbooks/deploy-versions.yml -e target=oci-main
 
 ---
 
-## Step 17 — Ansible: Maintenance Configuration 📋
+## Step 16 — Ansible: Maintenance Configuration 📋
 
 ```bash
 # Configure unattended-upgrades with pre/post-reboot hooks
@@ -458,7 +446,7 @@ ansible-playbook playbooks/install-backup.yml -e target=oci-main
 
 ---
 
-## Step 18 — Manual: Uptime Kuma 📋
+## Step 17 — Manual: Uptime Kuma 📋
 
 _See the Uptime Kuma Setup section in CLAUDE.md for full instructions._
 
@@ -470,7 +458,7 @@ _See the Uptime Kuma Setup section in CLAUDE.md for full instructions._
 
 ---
 
-## Step 19 — Manual: Beszel Agent Bootstrap 📋
+## Step 18 — Manual: Beszel Agent Bootstrap 📋
 
 _See the Beszel Agent Bootstrap section in CLAUDE.md for full instructions._
 
