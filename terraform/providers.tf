@@ -36,7 +36,9 @@ provider "infisical" {
 
 # Configure the Hetzner Cloud Provider
 provider "hcloud" {
-  token = try(data.infisical_secrets.terraform_secrets.secrets["HETZNER_TOKEN"].value, "")
+  # Dummy 64-char token when Hetzner isn't configured — the provider validates
+  # token length at init even when no hcloud resources are being created.
+  token = try(data.infisical_secrets.terraform_secrets.secrets["HETZNER_TOKEN"].value, "0000000000000000000000000000000000000000000000000000000000000000")
 }
 
 provider "oci" {

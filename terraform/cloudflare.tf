@@ -4,7 +4,7 @@ provider "cloudflare" {
 }
 
 resource "cloudflare_dns_record" "root" {
-  count   = local.server_ip != null ? 1 : 0
+  count   = var.cloud_provider != null ? 1 : 0
   name    = "@"
   content = local.server_ip
   proxied = false
