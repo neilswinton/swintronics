@@ -8,15 +8,15 @@
 # restart and started after, with healthchecks.io paused for the duration.
 #
 # Usage:
-#   ansible-playbook playbooks/deploy-versions.yml
-#   ansible-playbook playbooks/deploy-versions.yml -e target=localhost
+#   ansible-playbook playbooks/deploy-versions.yml -e target=swintronics
+#   ansible-playbook playbooks/deploy-versions.yml -e target=cactus_cantina
 #
 # Dry run:
 #   ansible-playbook playbooks/deploy-versions.yml --check
 
 - name: Deploy service versions
-  hosts: "{{ target | default('servers') }}"
-  connection: "{{ 'local' if (target | default('servers')) == 'localhost' else 'ssh' }}"
+  hosts: "{{ target | default('clusters') }}"
+  connection: "{{ 'local' if inventory_hostname in groups.get('local', []) else 'ssh' }}"
   become: true
 
   vars_files:
@@ -281,6 +281,7 @@
       when:
         - _changed_services | length > 0
         - "'kuma' in versions"
+        - "'HEALTHCHECKS_API_KEY' in infisical_secrets.secrets"
 
     # ── Restart changed services — traefik first ──────────────────────────────
 
@@ -339,6 +340,7 @@
       when:
         - _changed_services | length > 0
         - "'kuma' in versions"
+        - "'HEALTHCHECKS_API_KEY' in infisical_secrets.secrets"
 
     # ── Cleanup ───────────────────────────────────────────────────────────────
 
@@ -370,7 +372,7 @@
         zone: "{{ server_domain }}"
         record: "{{ item }}"
         type: CNAME
-        value: "{{ dns_hostname }}.{{ server_domain }}"
+        value: "{{ dns_cname_target | default(dns_hostname ~ '.' ~ server_domain) }}"
         proxied: false
         api_token: "{{ infisical_secrets.secrets.CF_DNS_API_TOKEN }}"
         state: present

@@ -48,7 +48,9 @@ tfplayground/
 
 # Ansible secrets
 ansible/.env
+ansible/.env.*
 terraform/.env
+terraform/.env.*
 
 # Machine-specific playbooks (copy machines/example.yml and customize)
 ansible/playbooks/machines/*.yml

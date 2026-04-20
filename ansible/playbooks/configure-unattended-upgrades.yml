@@ -8,7 +8,7 @@
 #   ansible-playbook playbooks/configure-unattended-upgrades.yml
 
 - name: Configure unattended security updates
-  hosts: "{{ target_host | default('servers') }}"
+  hosts: "{{ target | default('clusters') }}"
   become: yes
 
   pre_tasks:

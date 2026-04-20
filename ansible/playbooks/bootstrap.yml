@@ -1,6 +1,6 @@
 - name: Install Ansible requirements
-  hosts: "{{ target | default('localhost') }}"
-  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
+  hosts: "{{ target | default('clusters') }}"
+  connection: "{{ 'local' if inventory_hostname in groups.get('local', []) else 'ssh' }}"
   gather_facts: false
   tasks:
     - name: Install required roles and collections
@@ -8,26 +8,24 @@
         cmd: ansible-galaxy install -r requirements.yml
       args:
         chdir: "{{ playbook_dir }}/.."
+      delegate_to: localhost
+      connection: local
+      run_once: true
 
-- hosts: "{{ target | default('localhost') }}"
-  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
+- hosts: "{{ target | default('clusters') }}"
+  connection: "{{ 'local' if inventory_hostname in groups.get('local', []) else 'ssh' }}"
   become: true
   tasks:
     - name: Install base packages
       apt:
         name:
           - apt-transport-https
-          - apache2-utils
           - ca-certificates
           - curl
-          - git
           - gnupg
-          - gnupg-agent
           - jq
           - openssh-server
-          - python3-pip
           - restic
-          - shellcheck
           - software-properties-common
           - tmux
         state: present
@@ -44,40 +42,16 @@
         sysctl_file: /etc/sysctl.d/99-enable-ipv4-forwarding.conf
         reload: true
 
-    - name: Add Infisical CLI apt signing key
-      ansible.builtin.shell:
-        cmd: curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash -
-        creates: /etc/apt/sources.list.d/infisical.list
-
-    - name: Install Infisical CLI
+    - name: Install python3-pip for infisicalsdk
       ansible.builtin.apt:
-        name: infisical
+        name: python3-pip
         state: present
-        update_cache: true
 
     - name: Install infisicalsdk
       ansible.builtin.pip:
         name: infisicalsdk
         state: present
         extra_args: "--break-system-packages"
-
-    - name: Add GitHub CLI apt signing key
-      ansible.builtin.get_url:
-        url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
-        dest: /etc/apt/keyrings/githubcli-archive-keyring.gpg
-        mode: '0644'
-
-    - name: Add GitHub CLI apt repository
-      ansible.builtin.apt_repository:
-        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main"
-        filename: github-cli
-        state: present
-
-    - name: Install GitHub CLI
-      ansible.builtin.apt:
-        name: gh
-        state: present
-        update_cache: true
 
     - name: Deploy Mozilla modern sshd_config
       ansible.builtin.copy:
@@ -87,11 +61,14 @@
         group: root
         mode: '0644'
       notify: Restart sshd
+      when: inventory_hostname in groups.get('local', [])
 
     - name: Remove weak Diffie-Hellman moduli (< 3072 bits)
       ansible.builtin.shell:
         cmd: awk '$5 >= 3071' /etc/ssh/moduli > /etc/ssh/moduli.tmp && mv /etc/ssh/moduli.tmp /etc/ssh/moduli
       changed_when: false
+      when: inventory_hostname in groups.get('local', [])
+
 
     - name: Ensure the user has a NOPASSWD entry in sudoers.d
       ansible.builtin.copy:

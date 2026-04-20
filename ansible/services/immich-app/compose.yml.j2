@@ -41,9 +41,11 @@ services:
 
   immich-machine-learning:
     container_name: immich_machine_learning
-    image: ghcr.io/immich-app/immich-machine-learning:{{ versions.immich }}-openvino
+    image: ghcr.io/immich-app/immich-machine-learning:{{ versions.immich }}{{ '-openvino' if ansible_facts['architecture'] != 'aarch64' else '' }}
+{% if ansible_facts['architecture'] != 'aarch64' %}
     devices:
       - /dev/dri:/dev/dri
+{% endif %}
     volumes:
       - model-cache:/cache
     env_file:

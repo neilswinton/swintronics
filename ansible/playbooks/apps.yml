@@ -1,5 +1,5 @@
-- hosts: "{{ target | default('localhost') }}"
-  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
+- hosts: "{{ target | default('clusters') }}"
+  connection: "{{ 'local' if inventory_hostname in groups.get('local', []) else 'ssh' }}"
   become: true
   tasks:
     - name: Add Signal apt signing key

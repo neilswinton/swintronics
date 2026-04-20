@@ -1,7 +1,0 @@
----
-# Docker services base path (uses cluster_name and server_admin_username from host_vars)
-docker_services_path: /home/{{ server_admin_username }}/{{ cluster_name }}/docker-services
-
-# Data disk
-data_disk_mountpoint: /docker-data
-immich_data_location: "{{ data_disk_mountpoint }}/volumes/immich"

@@ -12,12 +12,12 @@
 #   - Skips all disk setup; creates plain directories under data_disk_mountpoint.
 #
 # Usage:
-#   ansible-playbook playbooks/setup-storage.yml
-#   ansible-playbook playbooks/setup-storage.yml -e target=oci-main
+#   ansible-playbook playbooks/setup-storage.yml -e target=swintronics
+#   ansible-playbook playbooks/setup-storage.yml -e target=oci-1
 
 - name: Set up data disk storage layout
-  hosts: "{{ target | default('localhost') }}"
-  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
+  hosts: "{{ target | default('clusters') }}"
+  connection: "{{ 'local' if inventory_hostname in groups.get('local', []) else 'ssh' }}"
   become: true
   vars:
     _use_btrfs: "{{ use_btrfs | default(true) | bool }}"
@@ -55,8 +55,8 @@
 
         - name: Find data disk device (second block device)
           ansible.builtin.shell: |
-            ROOT_DISK=$(lsblk -dn -o NAME | head -n1)
-            lsblk -dn -o NAME | grep -v "^${ROOT_DISK}$" | head -n1
+            ROOT_DISK=$(lsblk -dn -o NAME -e 7 | head -n1)
+            lsblk -dn -o NAME -e 7 | grep -v "^${ROOT_DISK}$" | head -n1
           register: _data_disk_name
           changed_when: false
           when: _mount_check.rc != 0

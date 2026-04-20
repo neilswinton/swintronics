@@ -1,29 +1,29 @@
 ---
 # Host identity
-server_admin_username: "your-name"    # OS user on this server
-tz: "America/New_York"                # timezone (e.g. America/New_York, Europe/Berlin)
-server_domain: "example.com"          # domain for this deployment
+admin_user: "your-name"              # OS user on this server
 
-# Git identity
+# Git identity (local hosts only)
 git_user_name: "Your Name"
 git_user_email: "you@example.com"
 
-# Data disk
-data_disk_mountpoint: /docker-data
-immich_data_location: "{{ data_disk_mountpoint }}/volumes/immich"
-
 # Tailscale
 tailscale_tag: "server"               # role prepends "tag:" automatically
-tailscale_authkey_secret: "TS_MACHINENAME_AUTH_KEY"  # Infisical secret name
+tailscale_authkey_secret: "TS_AUTH_KEY"  # Infisical secret name
 tailscale_subnet: "192.168.1.0/24"   # advertise-routes subnet (leave blank to skip)
 tailscale_exit_node: false            # advertise as exit node
 
 # DNS
-dns_hostname: "machinename"           # <dns_hostname>.swintronics.com A/AAAA records
+dns_hostname: "myhostname"           # <dns_hostname>.<server_domain> A record
 
-# TLS
-cert_resolver: "production"           # or "staging" for Let's Encrypt staging
+# Storage
+use_btrfs: true                      # false to use plain directories instead of btrfs subvolumes
 
-# Beszel agent — set after logging into hub and adding a system (TCP mode, port 45876)
+# Docker
+docker_gid: "984"                    # Check with: getent group docker | cut -d: -f3
+
+# Hardware (optional)
+# hardware_watchdog_module: "iTCO_wdt"
+
+# Beszel agent — set after logging into hub and adding a system
 # beszel_agent_key: "ssh-ed25519 ..."
 # beszel_agent_token: "..."

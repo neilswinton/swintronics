@@ -75,15 +75,15 @@ resource "infisical_project_identity" "docker_deploy" {
 
 resource "infisical_secret" "tailscale_auth_key" {
   name         = "TS_AUTH_KEY"
-  value        = tailscale_tailnet_key.swintronics_auth.key
+  value        = tailscale_tailnet_key.primary.key
   env_slug     = "dev"
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"
 }
 
-resource "infisical_secret" "tailscale_xps13_auth_key" {
-  name         = "TS_XPS13_AUTH_KEY"
-  value        = tailscale_tailnet_key.xps13_auth.key
+resource "infisical_secret" "tailscale_failover_auth_key" {
+  name         = "TS_FAILOVER_AUTH_KEY"
+  value        = tailscale_tailnet_key.failover.key
   env_slug     = "dev"
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"
@@ -145,10 +145,25 @@ resource "infisical_secret" "immich_postgres_password" {
   folder_path  = "/"
 }
 
+# Paperless
+resource "random_password" "paperless_secret_key" {
+  length  = 50
+  special = false
+}
+
+resource "infisical_secret" "paperless_secret_key" {
+  name         = "PAPERLESS_SECRET_KEY"
+  value        = random_password.paperless_secret_key.result
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
 # linkwarden
 resource "random_password" "linkwarden_passwords" {
   for_each = toset(["NEXTAUTH_SECRET", "MEILI_MASTER_KEY", "POSTGRES_PASSWORD"])
   length   = 16
+  special  = false
 }
 
 resource "infisical_secret" "linkwarden_passwords" {

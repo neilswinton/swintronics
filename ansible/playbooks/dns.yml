@@ -1,6 +1,6 @@
 - name: Configure Cloudflare DNS
-  hosts: "{{ target | default('localhost') }}"
-  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
+  hosts: "{{ target | default('clusters') }}"
+  connection: "{{ 'local' if inventory_hostname in groups.get('local', []) else 'ssh' }}"
   become: false
   vars:
     dns_domain: "{{ cluster_name }}.com"
@@ -62,5 +62,27 @@
         proxied: false
         api_token: "{{ infisical_secrets.secrets.CF_DNS_API_TOKEN }}"
         state: present
+
+    - name: Create ts A record for Tailscale access
+      community.general.cloudflare_dns:
+        zone: "{{ dns_domain }}"
+        record: "ts"
+        type: A
+        value: "{{ _ts_ipv4.stdout | trim }}"
+        proxied: false
+        api_token: "{{ infisical_secrets.secrets.CF_DNS_API_TOKEN }}"
+        state: present
+      when: tailscale_ip is defined
+
+    - name: Create ts AAAA record for Tailscale access
+      community.general.cloudflare_dns:
+        zone: "{{ dns_domain }}"
+        record: "ts"
+        type: AAAA
+        value: "{{ _ts_ipv6.stdout | trim }}"
+        proxied: false
+        api_token: "{{ infisical_secrets.secrets.CF_DNS_API_TOKEN }}"
+        state: present
+      when: tailscale_ip is defined
 
     # Service CNAME records are managed by deploy-versions.yml (dns_names in _service_config)

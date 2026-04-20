@@ -4,7 +4,7 @@ locals {
   tailscale_server_tag = "tag:server"
 }
 
-resource "tailscale_tailnet_key" "swintronics_auth" {
+resource "tailscale_tailnet_key" "primary" {
   reusable      = true
   ephemeral     = false
   preauthorized = true
@@ -12,7 +12,7 @@ resource "tailscale_tailnet_key" "swintronics_auth" {
   expiry        = 7776000 # 90 days
 }
 
-resource "tailscale_tailnet_key" "xps13_auth" {
+resource "tailscale_tailnet_key" "failover" {
   reusable      = true
   ephemeral     = false
   preauthorized = true

@@ -1,0 +1,14 @@
+---
+admin_user: neilcito
+ansible_user: neilcito
+ansible_ssh_private_key_file: "{{ playbook_dir }}/../../terraform/artifacts/cactus-cantina_admin_ecdsa"
+dns_hostname: "oci-1"
+tailscale_ip: "100.114.175.38"
+dns_cname_target: "ts.cactus-cantina.com"
+tailscale_tag: "server"
+tailscale_authkey_secret: "TS_AUTH_KEY"
+use_btrfs: true
+docker_gid: "1000"
+
+# Uncomment after Tailscale is running to route Ansible over Tailscale:
+# ansible_host: 100.114.175.38

@@ -28,6 +28,12 @@ variable "domain_name" {
   description = "Domain name for this deployment."
 }
 
+variable "server_hostname" {
+  type        = string
+  default     = null
+  description = "Hostname for the cloud server (e.g. 'oci-1'). Creates a DNS A record at <hostname>.<domain_name> pointing to the server's public IP. Null to skip."
+}
+
 variable "data_disk_mountpoint" {
   type        = string
   default     = "/docker-data"

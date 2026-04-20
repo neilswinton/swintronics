@@ -17,6 +17,21 @@ resource "cloudflare_dns_record" "root" {
   }
 }
 
+# Host-level DNS record: <hostname>.<domain> → server public IP
+resource "cloudflare_dns_record" "host" {
+  count   = var.server_hostname != null && var.cloud_provider != null ? 1 : 0
+  name    = var.server_hostname
+  content = local.server_ip
+  proxied = false
+  ttl     = 1
+  type    = "A"
+  zone_id = data.infisical_secrets.root_secrets.secrets["CF_ZONE_ID"].value
+  comment = "Deployed ${timestamp()} host ${var.server_hostname} for ${var.project_name}"
+  lifecycle {
+    ignore_changes = [comment]
+  }
+}
+
 # Get Tailscale devices matching the project name for wildcard DNS
 data "tailscale_devices" "container" {
   name_prefix = var.project_name

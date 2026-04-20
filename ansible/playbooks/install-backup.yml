@@ -5,12 +5,12 @@
 # are deployed by deploy-versions.yml as part of normal service deployment.
 #
 # Usage:
-#   ansible-playbook playbooks/install-backup.yml
-#   ansible-playbook playbooks/install-backup.yml -e target=localhost
+#   ansible-playbook playbooks/install-backup.yml -e target=swintronics
+#   ansible-playbook playbooks/install-backup.yml -e target=cactus_cantina
 
 - name: Install backup orchestrator and cron job
-  hosts: "{{ target | default('servers') }}"
-  connection: "{{ 'local' if (target | default('servers')) == 'localhost' else 'ssh' }}"
+  hosts: "{{ target | default('clusters') }}"
+  connection: "{{ 'local' if inventory_hostname in groups.get('local', []) else 'ssh' }}"
   become: true
 
   tasks:
