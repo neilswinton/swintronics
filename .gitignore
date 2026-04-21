@@ -46,11 +46,8 @@ tfplayground/
 
 .infisical.json
 
-# Ansible secrets
-ansible/.env
-ansible/.env.*
-terraform/.env
-terraform/.env.*
+# Environment files
+**/.env*
 
 # Machine-specific playbooks (copy machines/example.yml and customize)
 ansible/playbooks/machines/*.yml
