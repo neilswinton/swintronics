@@ -93,6 +93,10 @@
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
+      autoheal:
+        dir: autoheal
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
 
   pre_tasks:
     - name: Determine disabled services

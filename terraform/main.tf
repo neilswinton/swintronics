@@ -63,6 +63,7 @@ module "oci" {
 }
 
 resource "local_file" "cloudinit" {
+  count  = var.cloud_provider != null ? 1 : 0
   content         = local.user_data
   filename        = "${path.module}/artifacts/cloud-init.yml"
   file_permission = "0644"
