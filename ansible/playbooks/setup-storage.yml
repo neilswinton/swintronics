@@ -108,6 +108,7 @@
       ansible.builtin.command: findmnt -n -o FSTYPE {{ data_disk_mountpoint }}
       register: fstype
       changed_when: false
+      check_mode: false
       when: _use_btrfs
 
     - name: Fail if data disk is not btrfs
