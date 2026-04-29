@@ -1,19 +1,14 @@
 ---
 # Infisical configuration
-# Credentials are read from environment variables — source ansible/.env before running playbooks.
+# Credentials are read from environment variables — source ansible/.env.<cluster> before running playbooks.
 infisical_client_id: "{{ lookup('env', 'INFISICAL_CLIENT_ID') }}"
 infisical_client_secret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') }}"
 infisical_project_id: "{{ lookup('env', 'INFISICAL_PROJECT_ID') }}"
 infisical_environment: "dev"
 
-# Timezone (override per machine if needed)
+# Timezone (override per host if needed)
 timezone: "America/New_York"
 
-# Cluster identity
-cluster_name: swintronics
-admin_user: "{{ ansible_facts['env']['SUDO_USER'] | default(ansible_facts['user_id']) }}"
-docker_services_path: "/home/{{ admin_user }}/{{ cluster_name }}/docker-services"
-
-# Service configuration (override per machine or group if needed)
-server_domain: "swintronics.com"
+# Defaults (override in cluster or host vars)
+data_disk_mountpoint: /docker-data
 cert_resolver: "staging"

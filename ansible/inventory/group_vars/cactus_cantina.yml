@@ -1,6 +1,6 @@
 ---
-cluster_name: swintronics
-server_domain: "swintronics.com"
-cert_resolver: "production"
+cluster_name: cactus-cantina
+server_domain: "cactus-cantina.com"
+cert_resolver: "staging"
 docker_services_path: "/home/{{ admin_user }}/{{ cluster_name }}/docker-services"
 immich_data_location: "{{ data_disk_mountpoint }}/volumes/immich"

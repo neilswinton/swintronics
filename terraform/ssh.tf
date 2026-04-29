@@ -14,11 +14,6 @@ resource "local_file" "server_public_key" {
   file_permission = "0644"
 }
 
-resource "hcloud_ssh_key" "server_public_key" {
-  count      = var.enable_hetzner ? 1 : 0
-  name       = "${var.project_name}-key"
-  public_key = tls_private_key.root.public_key_openssh
-}
 
 resource "tls_private_key" "admin" {
   algorithm   = "ECDSA"

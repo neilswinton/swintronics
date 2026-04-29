@@ -10,7 +10,7 @@
 #   ansible-playbook playbooks/configure-system-services.yml
 
 - name: Configure host system services
-  hosts: "{{ target_host | default('swintronics') }}"
+  hosts: "{{ target | default('clusters') }}"
   become: yes
 
   pre_tasks:
@@ -77,6 +77,12 @@
         state: started
 
     # ── Store monitoring credentials for reboot scripts ───────────────────────
+    # These tasks require HEALTHCHECKS_API_KEY in Infisical — skip for clusters
+    # that haven't set up healthchecks.io yet.
+
+    - name: Check if monitoring secrets are available
+      ansible.builtin.set_fact:
+        _has_monitoring_secrets: "{{ 'HEALTHCHECKS_API_KEY' in infisical_secrets.secrets }}"
 
     - name: Create /etc/swintronics directory
       file:
@@ -85,6 +91,7 @@
         owner: root
         group: root
         mode: '0700'
+      when: _has_monitoring_secrets
 
     - name: Deploy monitoring credentials
       copy:
@@ -97,10 +104,12 @@
         owner: root
         group: root
         mode: '0600'
+      when: _has_monitoring_secrets
 
     # ── Pre-reboot hook ───────────────────────────────────────────────────────
 
     - name: Deploy pre-reboot script
+      when: _has_monitoring_secrets
       copy:
         dest: /usr/local/sbin/swintronics-pre-reboot.sh
         content: |
@@ -137,6 +146,7 @@
         mode: '0755'
 
     - name: Deploy pre-reboot systemd unit
+      when: _has_monitoring_secrets
       copy:
         dest: /etc/systemd/system/swintronics-pre-reboot.service
         content: |
@@ -160,6 +170,7 @@
     # ── Post-boot hook ────────────────────────────────────────────────────────
 
     - name: Deploy post-boot script
+      when: _has_monitoring_secrets
       copy:
         dest: /usr/local/sbin/swintronics-post-boot.sh
         content: |
@@ -191,6 +202,7 @@
         mode: '0755'
 
     - name: Deploy post-boot failure notification script
+      when: _has_monitoring_secrets
       copy:
         dest: /usr/local/sbin/swintronics-post-boot-failed.sh
         content: |
@@ -206,6 +218,7 @@
         mode: '0755'
 
     - name: Deploy post-boot failure notification systemd unit
+      when: _has_monitoring_secrets
       copy:
         dest: /etc/systemd/system/swintronics-post-boot-failed.service
         content: |
@@ -220,6 +233,7 @@
       notify: reload systemd
 
     - name: Deploy post-boot systemd unit
+      when: _has_monitoring_secrets
       copy:
         dest: /etc/systemd/system/swintronics-post-boot.service
         content: |
@@ -245,11 +259,13 @@
       service:
         name: swintronics-pre-reboot
         enabled: yes
+      when: _has_monitoring_secrets
 
     - name: Enable post-boot service
       service:
         name: swintronics-post-boot
         enabled: yes
+      when: _has_monitoring_secrets
 
     # ── Boot-notify hook (every boot, including crash/watchdog recovery) ─────
 

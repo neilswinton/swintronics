@@ -46,9 +46,8 @@ tfplayground/
 
 .infisical.json
 
-# Ansible secrets
-ansible/.env
-terraform/.env
+# Environment files
+**/.env*
 
 # Machine-specific playbooks (copy machines/example.yml and customize)
 ansible/playbooks/machines/*.yml
@@ -56,3 +55,6 @@ ansible/playbooks/machines/*.yml
 
 # Machine-specific host vars (copy host_vars/localhost.yml.example and fill in)
 ansible/inventory/host_vars/localhost.yml
+
+# Terraform backend config (copy terraform/backend.hcl.example and fill in)
+terraform/backend.hcl

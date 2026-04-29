@@ -1,6 +1,9 @@
 # Mozilla Modern OpenSSH server configuration
 # https://infosec.mozilla.org/guidelines/openssh
 
+# Include platform-specific drop-in configs (e.g. OCI AuthorizedKeysCommand)
+Include /etc/ssh/sshd_config.d/*.conf
+
 # Supported HostKey algorithms by order of preference
 HostKey /etc/ssh/ssh_host_ed25519_key
 HostKey /etc/ssh/ssh_host_rsa_key
@@ -14,6 +17,9 @@ MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@op
 
 AuthenticationMethods publickey
 PasswordAuthentication no
+
+# Support both standard and cloud-provider key locations (OCI uses /etc/ssh/authorized_keys.d/)
+AuthorizedKeysFile .ssh/authorized_keys /etc/ssh/authorized_keys.d/%u
 
 LogLevel VERBOSE
 

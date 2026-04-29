@@ -1,6 +1,6 @@
 - name: Install and configure Tailscale
-  hosts: "{{ target | default('localhost') }}"
-  connection: "{{ 'local' if (target | default('localhost')) == 'localhost' else 'ssh' }}"
+  hosts: "{{ target | default('clusters') }}"
+  connection: "{{ 'local' if inventory_hostname in groups.get('local', []) else 'ssh' }}"
   become: true
   pre_tasks:
     - name: Verify required Tailscale vars are set
@@ -34,7 +34,7 @@
     - name: Build tailscale up args
       ansible.builtin.set_fact:
         _tailscale_args: "{{ (
-            ['--ssh', '--auto-update']
+            ['--ssh']
             + (['--advertise-routes=' + tailscale_subnet] if tailscale_subnet | default('') != '' else [])
             + (['--advertise-exit-node'] if tailscale_exit_node | default(false) | bool else [])
           ) | join(' ') }}"

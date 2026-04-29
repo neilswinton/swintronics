@@ -13,6 +13,10 @@ terraform {
       source  = "infisical/infisical"
       version = "~> 0.15"
     }
+    oci = {
+      source  = "oracle/oci"
+      version = "~> 6"
+    }
     tailscale = {
       source  = "tailscale/tailscale"
       version = "~> 0.21"
@@ -32,7 +36,17 @@ provider "infisical" {
 
 # Configure the Hetzner Cloud Provider
 provider "hcloud" {
-  token = ephemeral.infisical_secret.hetzner_token.value
+  # Dummy 64-char token when Hetzner isn't configured — the provider validates
+  # token length at init even when no hcloud resources are being created.
+  token = try(data.infisical_secrets.terraform_secrets.secrets["HETZNER_TOKEN"].value, "0000000000000000000000000000000000000000000000000000000000000000")
+}
+
+provider "oci" {
+  tenancy_ocid = try(data.infisical_secrets.terraform_secrets.secrets["OCI_TENANCY_OCID"].value, "")
+  user_ocid    = try(data.infisical_secrets.terraform_secrets.secrets["OCI_USER_OCID"].value, "")
+  fingerprint  = try(data.infisical_secrets.terraform_secrets.secrets["OCI_FINGERPRINT"].value, "")
+  private_key  = try(data.infisical_secrets.terraform_secrets.secrets["OCI_PRIVATE_KEY"].value, "")
+  region       = try(data.infisical_secrets.terraform_secrets.secrets["OCI_REGION"].value, "")
 }
 
 # Provider for tailscale using provisioning client id
@@ -42,19 +56,18 @@ provider "tailscale" {
   oauth_client_secret = ephemeral.infisical_secret.tailscale_provider_oauth_client_secret.value
 }
 
-# Configure the R2 backend for terraform state storage
-# See https://developers.cloudflare.com/terraform/advanced-topics/remote-backend/ for more information
+# S3-compatible backend for Terraform state (Cloudflare R2 or Backblaze B2).
+# See https://developers.cloudflare.com/terraform/advanced-topics/remote-backend for R2 requirements
 #
-# Define AWS_SECRET_ACCESS_KEY and AWS_ACCESS_KEY_ID in the environment for terraform
+# Deployment-specific values (bucket, key, endpoints) are in backend.hcl (gitignored).
+# AWS credentials come from the environment: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY.
+#
+# Initialize with:
+#   terraform init -backend-config=backend.hcl
 #
 terraform {
   backend "s3" {
-    bucket = "swintronics-tfstate"
-    key    = "swintronics/terraform.tfstate"
-    region = "auto"
-    endpoints = {
-      s3 = "https://b36f9e73188dcaad461bb82e5ff002f7.r2.cloudflarestorage.com"
-    }
+    region                      = "auto"
     skip_credentials_validation = true
     skip_metadata_api_check     = true
     skip_region_validation      = true

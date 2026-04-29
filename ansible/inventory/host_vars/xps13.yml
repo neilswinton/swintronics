@@ -1,0 +1,12 @@
+---
+admin_user: neil
+dns_hostname: "xps13"
+tailscale_tag: "server"
+tailscale_authkey_secret: "TS_FAILOVER_AUTH_KEY"
+tailscale_subnet: "192.168.1.0/24"
+tailscale_exit_node: true
+use_btrfs: true
+docker_gid: "984"
+hardware_watchdog_module: "iTCO_wdt"
+git_user_name: "Neil Swinton"
+git_user_email: "5995552+neilswinton@users.noreply.github.com"
