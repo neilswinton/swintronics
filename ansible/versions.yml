@@ -27,9 +27,6 @@ versions:
   # https://github.com/henrygd/beszel/releases
   beszel: "0.18.7"
 
-  # https://github.com/semaphoreui/semaphore/releases
-  semaphore: "v2.17.28"
-
   # https://github.com/fnsys/dockhand/releases
   dockhand: "v1.0.24"
 

@@ -99,3 +99,21 @@ variable "infisical_project_user_username" {
   default     = ""
   description = "Username or email to invite to the runtime Infisical project. Leave empty to skip."
 }
+
+variable "password_overrides" {
+  type        = map(string)
+  default     = {}
+  sensitive   = true
+  description = <<-EOT
+    Map of Infisical secret name to override value. Overrides the deterministic
+    sha256-derived default for that secret. Useful during failover to pin the
+    new cluster's generated secrets to values already in use by running services
+    (e.g. preserving an Immich DB password during a cross-cluster restore).
+
+    Example:
+      password_overrides = {
+        IMMICH_DB_PASSWORD           = "abc123..."
+        LINKWARDEN_POSTGRES_PASSWORD = "def456..."
+      }
+  EOT
+}
