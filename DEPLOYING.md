@@ -462,10 +462,13 @@ _See the Uptime Kuma Setup section in CLAUDE.md for full instructions._
 
 _See the Beszel Agent Bootstrap section in CLAUDE.md for full instructions._
 
-1. Log in at `https://beszel.<your-domain>`
-2. Add a system, copy the public key shown
-3. Add `beszel_agent_key` to the server's `host_vars` file
-4. Re-run `deploy-versions.yml` — agent starts automatically
+1. Log in at `https://beszel.<your-domain>` — first user becomes a superuser
+2. Create a second user (Settings → Users → Add User) — superusers can't use universal tokens
+3. Log in as the second user
+4. Settings → Tokens → enable a permanent universal token; copy the UUID
+5. Click "Add System" → copy the SSH public key shown (don't submit the form)
+6. Set `BESZEL_AGENT_KEY` and `BESZEL_AGENT_TOKEN` in the Infisical Runtime project
+7. Re-run `deploy-versions.yml` — agent deploys and auto-registers
 
 ---
 

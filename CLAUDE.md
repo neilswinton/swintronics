@@ -136,10 +136,6 @@ cert_resolver: "staging"     # Use "staging" until everything works, then "produ
 docker_gid: "984"   # Check with: getent group docker | cut -d: -f3
 
 hardware_watchdog_module: "iTCO_wdt"   # Intel: iTCO_wdt, AMD: sp5100_tco; omit on unknown hardware
-
-# Set after first Beszel deploy (see Beszel Agent Bootstrap below):
-# beszel_agent_key: ""
-# beszel_agent_token: ""
 ```
 
 #### `docker-services/backup.env`
@@ -295,16 +291,23 @@ Kuma configuration is manual (no API automation). Use SQLite (the default) — n
 
 ### Beszel Agent Bootstrap
 
-Beszel hub and agent communicate over a Unix socket. The agent requires the hub's public key (`KEY`) to authenticate. This key is only available after the hub is running and a system has been added in the UI.
+Beszel agents authenticate with the hub using the hub's SSH public key (`KEY`) and a token (`TOKEN`). We use a **universal token** so any agent can auto-register with the hub on first connect — no per-system setup needed. Both values are stored in the Infisical Runtime project as `BESZEL_AGENT_KEY` and `BESZEL_AGENT_TOKEN`, and are pulled by `deploy-versions.yml`.
 
-**First-time setup on a new machine:**
-1. Run `deploy-versions.yml` — hub starts, agent is absent (key not set yet)
-2. Log into the Beszel UI at `https://beszel.<server_domain>`
-3. Add a system — copy the public key shown
-4. Add `beszel_agent_key: "<key>"` to `ansible/inventory/host_vars/localhost.yml`
-5. Run `deploy-versions.yml` again — agent service is now rendered and started
+**First-time setup on a new cluster:**
+1. Run `deploy-versions.yml` — hub starts; the agent service is rendered only when both secrets exist in Infisical, so it stays absent until step 7
+2. Log into the Beszel UI at `https://beszel.<server_domain>` — the first user you create becomes a superuser
+3. Create a second user (Settings → Users → Add User) — superusers cannot use universal tokens
+4. Log out, log back in as the second user
+5. Settings → Tokens → enable a permanent universal token; copy the UUID
+6. Click "Add System" anywhere in the UI to view the hub's SSH public key; copy it (don't submit the form)
+7. In the Infisical Runtime project, create:
+   - `BESZEL_AGENT_KEY` = the SSH public key (e.g. `ssh-ed25519 AAAA...`)
+   - `BESZEL_AGENT_TOKEN` = the universal token UUID
+8. Re-run `deploy-versions.yml` — the agent now deploys and auto-registers in the hub
 
-**Subsequent deploys:** key is already in `localhost.yml`, agent deploys normally.
+**Subsequent deploys (this cluster):** secrets are in Infisical, agent deploys normally.
+
+**Additional servers:** the same `BESZEL_AGENT_KEY`/`BESZEL_AGENT_TOKEN` work for every agent — each one auto-registers as a separate system on first connect.
 
 ## Current Work In Progress
 
