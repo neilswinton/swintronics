@@ -16,7 +16,7 @@ services:
       - SECURITY_ENABLE_LOGIN=false
       - LANGS=en_US
       - TZ=${TZ:-America/New_York}
-    restart: unless-stopped
+    restart: always
     labels:
       traefik.enable: true
       traefik.http.routers.stirling-pdf.entrypoints: websecure

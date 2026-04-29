@@ -7,7 +7,7 @@ services:
   uptime-kuma:
     container_name: uptime-kuma
     image: louislam/uptime-kuma:{{ versions.kuma }}
-    restart: unless-stopped
+    restart: always
     volumes:
       - {{ data_disk_mountpoint }}/volumes/uptime-kuma/data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock

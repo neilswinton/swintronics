@@ -8,7 +8,7 @@ services:
   dockhand:
     image: fnsys/dockhand:{{ versions.dockhand }}
     container_name: dockhand
-    restart: unless-stopped
+    restart: always
     env_file: .env
     group_add:
       - "{{ docker_gid }}"

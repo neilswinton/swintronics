@@ -135,6 +135,8 @@ cert_resolver: "staging"     # Use "staging" until everything works, then "produ
 
 docker_gid: "984"   # Check with: getent group docker | cut -d: -f3
 
+hardware_watchdog_module: "iTCO_wdt"   # Intel: iTCO_wdt, AMD: sp5100_tco; omit on unknown hardware
+
 # Set after first Beszel deploy (see Beszel Agent Bootstrap below):
 # beszel_agent_key: ""
 # beszel_agent_token: ""
@@ -255,6 +257,7 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 | linkwarden     | linkwarden     | services/linkwarden/compose.yml.j2  |
 | dozzle         | dozzle         | services/dozzle/compose.yml.j2      |
 | traefik        | networking     | services/networking/traefik.yml.j2  |
+| autoheal       | autoheal       | services/autoheal/compose.yml.j2    |
 
 ### Networking
 
