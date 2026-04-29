@@ -23,7 +23,3 @@ docker_gid: "984"                    # Check with: getent group docker | cut -d:
 
 # Hardware (optional)
 # hardware_watchdog_module: "iTCO_wdt"
-
-# Beszel agent — set after logging into hub and adding a system
-# beszel_agent_key: "ssh-ed25519 ..."
-# beszel_agent_token: "..."
