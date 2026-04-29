@@ -179,16 +179,6 @@ ansible-playbook playbooks/update-service.yml \
 - Check: `ssh neil@swintronics-1 "docker ps"`
 - If container name differs, you'll need to adjust the playbook
 
-## Next Steps
-
-Once you're comfortable running playbooks from the command line, you can:
-
-1. **Set up Semaphore** for a web UI
-2. **Create templates** for each service
-3. **Run updates with one click** instead of typing commands
-
-But master the CLI first - it's helpful for debugging!
-
 ## Understanding the Playbook
 
 The playbook does this in order:

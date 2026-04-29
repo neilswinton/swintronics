@@ -111,16 +111,6 @@ If the lookup plugin can't read `~/.infisical.json`:
 chmod 600 ~/.infisical.json
 ```
 
-## For Semaphore
-
-When running through Semaphore, you'll need to:
-
-1. Mount `~/.infisical.json` into the Semaphore container
-2. Install Infisical CLI in the Semaphore container
-3. Or use environment variables for credentials
-
-See SEMAPHORE-SETUP.md for details on Semaphore integration with Infisical.
-
 ## Security Benefits
 
 ✅ Secrets never stored in Git

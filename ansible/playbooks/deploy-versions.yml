@@ -93,13 +93,6 @@
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
-      semaphore:
-        enabled: false
-        dir: semaphore
-        dns_names: [semaphore]
-        files:
-          - { src: compose.yml.j2,  dest: compose.yml }
-          - { src: .env.j2,         dest: .env,               secret: true }
 
   pre_tasks:
     - name: Determine disabled services
