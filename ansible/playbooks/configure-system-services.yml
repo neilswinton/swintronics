@@ -270,7 +270,7 @@
           SHUTDOWN_NOTE=""
           if journalctl --list-boots --no-pager 2>/dev/null | grep -qE '^[[:space:]]*-1\b'; then
               if journalctl -b -1 -n 100 --no-pager 2>/dev/null \
-                  | grep -qE "Reached target (Power-Off|Reboot|Halt|System Power Off|Shutdown)"; then
+                  | grep -qiE "Reached target (power-off|reboot|halt|shutdown)\\.target"; then
                   SHUTDOWN_NOTE="✓ prior shutdown was clean"
               else
                   SHUTDOWN_NOTE="⚠️ prior shutdown UNCLEAN (crash, watchdog, or power loss)"
