@@ -152,6 +152,14 @@
       delegate_to: localhost
       check_mode: no
 
+    - name: Set beszel agent secrets from Infisical
+      ansible.builtin.set_fact:
+        beszel_agent_key: "{{ infisical_secrets.secrets.BESZEL_AGENT_KEY }}"
+        beszel_agent_token: "{{ infisical_secrets.secrets.BESZEL_AGENT_TOKEN }}"
+      when:
+        - "'BESZEL_AGENT_KEY' in infisical_secrets.secrets"
+        - "'BESZEL_AGENT_TOKEN' in infisical_secrets.secrets"
+
   tasks:
     # ── Ensure service directories exist ─────────────────────────────────────
 
