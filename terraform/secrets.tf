@@ -129,103 +129,71 @@ resource "infisical_secret" "server_secrets" {
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"
 }
-# Immich
+# Deterministic generated secrets.
+#
+# Each secret is derived from sha256("${project_name}-${secret_name}"):
+#   - type = "hex":    substr of the 64-char hex digest (URL-safe, alphanumeric)
+#   - type = "base64": base64 of the 32-byte raw digest (44 chars, for keys
+#                      that expect binary entropy like encryption keys)
+#
+# Values can be pinned via var.password_overrides — useful during failover
+# when services on a new cluster must keep passwords already in use.
+locals {
+  _password_specs = {
+    IMMICH_DB_PASSWORD              = { type = "hex", length = 16 }
+    PAPERLESS_SECRET_KEY            = { type = "hex", length = 50 }
+    LINKWARDEN_NEXTAUTH_SECRET      = { type = "hex", length = 16 }
+    LINKWARDEN_MEILI_MASTER_KEY     = { type = "hex", length = 16 }
+    LINKWARDEN_POSTGRES_PASSWORD    = { type = "hex", length = 16 }
+    DOCKHAND_ENCRYPTION_KEY         = { type = "base64" }
+  }
 
-resource "random_password" "immich_postgres_password" {
-  length  = 16
-  special = false
+  passwords = {
+    for name, spec in local._password_specs :
+    name => try(
+      var.password_overrides[name],
+      spec.type == "base64"
+      ? base64sha256("${var.project_name}-${name}")
+      : substr(sha256("${var.project_name}-${name}"), 0, spec.length)
+    )
+  }
 }
 
-
+# Immich
 resource "infisical_secret" "immich_postgres_password" {
   name         = "IMMICH_DB_PASSWORD"
-  value        = random_password.immich_postgres_password.result
+  value        = local.passwords["IMMICH_DB_PASSWORD"]
   env_slug     = "dev"
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"
 }
 
 # Paperless
-resource "random_password" "paperless_secret_key" {
-  length  = 50
-  special = false
-}
-
 resource "infisical_secret" "paperless_secret_key" {
   name         = "PAPERLESS_SECRET_KEY"
-  value        = random_password.paperless_secret_key.result
+  value        = local.passwords["PAPERLESS_SECRET_KEY"]
   env_slug     = "dev"
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"
 }
 
-# linkwarden
-resource "random_password" "linkwarden_passwords" {
-  for_each = toset(["NEXTAUTH_SECRET", "MEILI_MASTER_KEY", "POSTGRES_PASSWORD"])
-  length   = 16
-  special  = false
-}
-
+# Linkwarden
 resource "infisical_secret" "linkwarden_passwords" {
-  for_each     = random_password.linkwarden_passwords
+  for_each     = toset(["NEXTAUTH_SECRET", "MEILI_MASTER_KEY", "POSTGRES_PASSWORD"])
   name         = "LINKWARDEN_${each.key}"
-  value        = each.value.result
+  value        = local.passwords["LINKWARDEN_${each.key}"]
   env_slug     = "dev"
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"
 }
 
 # Dockhand
-resource "random_id" "dockhand_encryption_key" {
-  byte_length = 32
-}
-
 resource "infisical_secret" "dockhand_encryption_key" {
   name         = "DOCKHAND_ENCRYPTION_KEY"
-  value        = random_id.dockhand_encryption_key.b64_std
+  value        = local.passwords["DOCKHAND_ENCRYPTION_KEY"]
   env_slug     = "dev"
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"
 }
 
-# Semaphore
-resource "random_password" "semaphore_admin_password" {
-  length  = 16
-  special = false
-}
-
-resource "random_id" "semaphore_access_key_encryption" {
-  byte_length = 32
-}
-
-resource "infisical_secret" "semaphore_admin_password" {
-  name         = "SEMAPHORE_ADMIN_PASSWORD"
-  value        = random_password.semaphore_admin_password.result
-  env_slug     = "dev"
-  workspace_id = infisical_project.runtime_secrets.id
-  folder_path  = "/"
-}
-
-resource "infisical_secret" "semaphore_access_key_encryption" {
-  name         = "SEMAPHORE_ACCESS_KEY_ENCRYPTION"
-  value        = random_id.semaphore_access_key_encryption.b64_std
-  env_slug     = "dev"
-  workspace_id = infisical_project.runtime_secrets.id
-  folder_path  = "/"
-}
-
-# Monitoring
-resource "random_password" "monitoring_passwords" {
-  for_each = toset(["GRAFANA_ADMIN_PASSWORD"])
-  length   = 16
-}
-
-resource "infisical_secret" "monitoring_passwords" {
-  for_each     = random_password.monitoring_passwords
-  name         = "${each.key}"
-  value        = each.value.result
-  env_slug     = "dev"
-  workspace_id = infisical_project.runtime_secrets.id
-  folder_path  = "/"
-}
 
