@@ -1,0 +1,22 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+
+include:
+  - ../networks.yml
+
+services:
+  gatus:
+    container_name: gatus
+    image: twinproduction/gatus:{{ versions.gatus }}
+    restart: always
+    env_file: .env
+    volumes:
+      - {{ data_disk_mountpoint }}/volumes/gatus:/data
+      - ./config.yaml:/config/config.yaml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      traefik.enable: true
+      traefik.http.routers.gatus.entrypoints: websecure
+      traefik.http.routers.gatus.rule: Host(`{{ _service_config.gatus.dns_names[0] }}.{{ server_domain }}`)
+      traefik.http.routers.gatus.tls.certresolver: ${CERT_RESOLVER}
+      traefik.http.services.gatus.loadbalancer.server.port: 8080

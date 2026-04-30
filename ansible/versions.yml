@@ -18,6 +18,9 @@ versions:
   # https://github.com/louislam/uptime-kuma/releases
   kuma: "2.2.1"
 
+  # https://github.com/TwiN/gatus/releases
+  gatus: "v5.35.0"
+
   # https://github.com/Stirling-Tools/Stirling-PDF/releases
   stirling_pdf: "2.7.3"
 

@@ -67,6 +67,13 @@
           - { src: .env.j2,         dest: .env,               secret: true }
           - { src: backup-execute,  dest: backup-execute,     executable: true }
           - { src: backup-remote,   dest: backup-remote,      executable: true }
+      gatus:
+        dir: gatus
+        dns_names: [gatus]
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: config.yaml.j2,  dest: config.yaml }
+          - { src: .env.j2,         dest: .env,               secret: true }
       stirling_pdf:
         dir: stirling-pdf
         dns_names: [stirling-pdf]

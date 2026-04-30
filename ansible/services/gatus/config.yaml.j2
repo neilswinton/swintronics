@@ -1,0 +1,77 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+
+storage:
+  type: sqlite
+  path: /data/data.db
+
+alerting:
+  telegram:
+    token: ${GATUS_TELEGRAM_BOT_TOKEN}
+    id: ${GATUS_TELEGRAM_CHAT_ID}
+
+endpoints:
+  # ── Services (5m, 3 retries) ──────────────────────────────────────────────
+  - name: Immich
+    group: Services
+    url: https://photos.{{ server_domain }}/api/server/ping
+    interval: 5m
+    conditions: ["[STATUS] == 200"]
+    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+
+  - name: Paperless
+    group: Services
+    url: https://paperless.{{ server_domain }}/accounts/login/
+    interval: 5m
+    conditions: ["[STATUS] == 200"]
+    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+
+  - name: Linkwarden
+    group: Services
+    url: https://linkwarden.{{ server_domain }}/api/v1/logins
+    interval: 5m
+    conditions: ["[STATUS] == 200"]
+    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+
+  - name: Stirling-PDF
+    group: Services
+    url: https://stirling-pdf.{{ server_domain }}/api/v1/info/status
+    interval: 5m
+    conditions: ["[STATUS] == 200"]
+    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+
+  # ── System Monitoring (5m, 3 retries) ─────────────────────────────────────
+  - name: Traefik
+    group: System Monitoring
+    url: https://traefik.{{ server_domain }}/api/version
+    interval: 5m
+    conditions: ["[STATUS] == 200"]
+    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+
+  - name: Dockhand
+    group: System Monitoring
+    url: https://dockhand.{{ server_domain }}/api/health
+    interval: 5m
+    conditions: ["[STATUS] == 200"]
+    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+
+  - name: Beszel
+    group: System Monitoring
+    url: https://beszel.{{ server_domain }}/api/health
+    interval: 5m
+    conditions: ["[STATUS] == 200"]
+    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+
+  - name: Beszel agent
+    group: System Monitoring
+    url: tcp://host.docker.internal:45876
+    interval: 5m
+    conditions: ["[CONNECTED] == true"]
+    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+
+  # ── Healthchecks.io heartbeat (60s, 3 retries) ────────────────────────────
+  - name: Healthchecks.io heartbeat
+    group: System Monitoring
+    url: ${GATUS_HEALTHCHECKS_PING_URL}
+    interval: 60s
+    conditions: ["[STATUS] == 200"]
+    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
