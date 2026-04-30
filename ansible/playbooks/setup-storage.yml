@@ -30,6 +30,7 @@
       immich:      { dir: immich,       stateful: true, subvol_path: "immich/library" }
       paperless:   { dir: paperless,    stateful: true  }
       kuma:        { dir: uptime-kuma,  stateful: true  }
+      gatus:       { dir: gatus,        stateful: true  }
       stirling_pdf: { dir: stirling-pdf, stateful: false }
       linkwarden:  { dir: linkwarden,   stateful: true  }
       beszel:      { dir: beszel,       stateful: true  }
