@@ -1,37 +1,41 @@
 ---
 # Service versions — edit these and run deploy-versions.yml to update.
 # Ansible will only restart services whose compose file actually changes.
+#
+# Tag strategy:
+#   - Floating tags (e.g. "v3.6", "2.20", "v5") catch patches automatically.
+#   - Pinned tags (e.g. "v2.7.5") are used for fast-moving or pre-1.0 software
+#     where minor/patch upgrades have a real chance of breaking things.
+#   - Tag prefix conventions vary across registries — match what each image
+#     publishes (e.g. traefik uses "v3.6", paperless uses "2.20", beszel "0.18.7").
 
 versions:
-  # https://github.com/traefik/traefik/releases
-  traefik: "3.6.13"
+  # https://github.com/traefik/traefik/releases — floating minor
+  traefik: "v3.6"
 
-  # https://github.com/amir20/dozzle/releases
-  dozzle: "v10.2.1"
-
-  # https://github.com/immich-app/immich/releases
+  # https://github.com/immich-app/immich/releases — pinned (rapid breaking changes)
   immich: "v2.7.5"
 
-  # https://github.com/paperless-ngx/paperless-ngx/releases
-  paperless: "2.20.13"
+  # https://github.com/paperless-ngx/paperless-ngx/releases — floating minor
+  paperless: "2.20"
 
-  # https://github.com/louislam/uptime-kuma/releases
+  # https://github.com/louislam/uptime-kuma/releases — pinned (decommissioning)
   kuma: "2.2.1"
 
-  # https://github.com/TwiN/gatus/releases
-  gatus: "v5.35.0"
+  # https://github.com/TwiN/gatus/releases — floating major
+  gatus: "v5"
 
-  # https://github.com/Stirling-Tools/Stirling-PDF/releases
-  stirling_pdf: "2.7.3"
+  # https://github.com/Stirling-Tools/Stirling-PDF/releases — pinned
+  stirling_pdf: "2.10.0"
 
-  # https://github.com/linkwarden/linkwarden/releases
-  linkwarden: "v2.14.0"
+  # https://github.com/linkwarden/linkwarden/releases — pinned
+  linkwarden: "v2.14.1"
 
-  # https://github.com/henrygd/beszel/releases
+  # https://github.com/henrygd/beszel/releases — pinned (pre-1.0)
   beszel: "0.18.7"
 
-  # https://github.com/fnsys/dockhand/releases
-  dockhand: "v1.0.24"
+  # https://hub.docker.com/r/fnsys/dockhand/tags — pinned (small project)
+  dockhand: "v1.0.27"
 
-  # https://hub.docker.com/r/willfarrell/autoheal — restarts containers labeled autoheal=true when unhealthy
+  # https://hub.docker.com/r/willfarrell/autoheal — pinned (rarely updated)
   autoheal: "1.2.0"
