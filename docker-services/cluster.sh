@@ -4,7 +4,7 @@ set -euo pipefail
 action="up"
 wait=30
 pull=false
-normal_services=("dozzle" "stirling-pdf" "immich-app" "paperless" "monitoring"  "linkwarden")
+normal_services=("stirling-pdf" "immich-app" "paperless" "monitoring")
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do

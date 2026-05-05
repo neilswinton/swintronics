@@ -26,15 +26,16 @@
     # stateful: false → stateless; only a logs directory is created
     _service_storage:
       traefik:     { dir: traefik,      stateful: false }
-      dozzle:      { dir: dozzle,       stateful: false }
       immich:      { dir: immich,       stateful: true, subvol_path: "immich/library" }
       paperless:   { dir: paperless,    stateful: true  }
       kuma:        { dir: uptime-kuma,  stateful: true  }
       gatus:       { dir: gatus,        stateful: true  }
       stirling_pdf: { dir: stirling-pdf, stateful: false }
-      linkwarden:  { dir: linkwarden,   stateful: true  }
       beszel:      { dir: beszel,       stateful: true  }
-      dockhand:    { dir: dockhand,     stateful: true  }
+      dockhand:      { dir: dockhand,       stateful: true  }
+      homeassistant: { dir: homeassistant,  stateful: true  }
+      zigbee2mqtt:   { dir: zigbee2mqtt,    stateful: true  }
+      mosquitto:     { dir: mosquitto,      stateful: true  }
 
   pre_tasks:
     - name: Load versions

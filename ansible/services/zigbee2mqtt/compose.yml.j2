@@ -1,0 +1,26 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+#
+# zigbee_dongle_path must be set in host_vars. Use the stable by-id path:
+#   ls /dev/serial/by-id/   (with ZBDongle-P plugged in)
+
+include:
+  - ../networks.yml
+
+services:
+  zigbee2mqtt:
+    container_name: zigbee2mqtt
+    image: koenkk/zigbee2mqtt:{{ versions.zigbee2mqtt }}
+    restart: always
+    env_file: .env
+    volumes:
+      - {{ data_disk_mountpoint }}/volumes/zigbee2mqtt:/app/data
+    devices:
+      - {{ zigbee_dongle_path }}:/dev/ttyUSB0
+    group_add:
+      - dialout
+    labels:
+      traefik.enable: true
+      traefik.http.routers.zigbee2mqtt.entrypoints: websecure
+      traefik.http.routers.zigbee2mqtt.rule: Host(`{{ _service_config.zigbee2mqtt.dns_names[0] }}.{{ server_domain }}`)
+      traefik.http.routers.zigbee2mqtt.tls.certresolver: ${CERT_RESOLVER}
+      traefik.http.services.zigbee2mqtt.loadbalancer.server.port: 8080

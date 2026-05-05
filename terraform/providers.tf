@@ -17,6 +17,10 @@ terraform {
       source  = "oracle/oci"
       version = "~> 6"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3"
+    }
     tailscale = {
       source  = "tailscale/tailscale"
       version = "~> 0.21"

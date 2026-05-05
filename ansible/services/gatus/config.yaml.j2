@@ -25,16 +25,23 @@ endpoints:
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
-  - name: Linkwarden
+  - name: Stirling-PDF
     group: Services
-    url: https://linkwarden.{{ server_domain }}/api/v1/logins
+    url: https://stirling-pdf.{{ server_domain }}/api/v1/info/status
     interval: 5m
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
-  - name: Stirling-PDF
+  - name: Home Assistant
     group: Services
-    url: https://stirling-pdf.{{ server_domain }}/api/v1/info/status
+    url: https://ha.{{ server_domain }}/
+    interval: 5m
+    conditions: ["[STATUS] == 200"]
+    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+
+  - name: Zigbee2MQTT
+    group: Services
+    url: https://z2m.{{ server_domain }}/
     interval: 5m
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]

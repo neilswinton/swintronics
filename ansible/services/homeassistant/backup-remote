@@ -1,0 +1,29 @@
+#!/bin/bash
+set -euo pipefail
+# Upload HA+Z2M snapshots to restic and ping monitoring endpoint.
+
+DATA="${DATA_MOUNTPOINT:-/mnt/docker-data}"
+HA_SNAP="${DATA}/snapshots/homeassistant/backup"
+Z2M_SNAP="${DATA}/snapshots/zigbee2mqtt/backup"
+HA_ARCHIVE="${DATA}/snapshots/homeassistant/${DAY:-$(date +%A)}"
+Z2M_ARCHIVE="${DATA}/snapshots/zigbee2mqtt/${DAY:-$(date +%A)}"
+
+echo "Uploading homeassistant snapshots to restic..."
+sudo -E restic backup --tag homeassistant --tag "${DATE:-$(date +%F_%H-%M)}" "${HA_SNAP}" "${Z2M_SNAP}"
+sudo -E restic forget --tag homeassistant --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+sudo -E restic check
+
+for pair in "${HA_SNAP}:${HA_ARCHIVE}" "${Z2M_SNAP}:${Z2M_ARCHIVE}"; do
+    snap="${pair%%:*}"
+    archive="${pair##*:}"
+    if [ "$(stat --format=%i "${archive}" 2>/dev/null)" = "256" ]; then
+        sudo btrfs property set "${archive}" ro false
+        sudo btrfs subvolume delete "${archive}"
+    fi
+    if [ -e "${archive}" ]; then
+        echo "ERROR: could not remove previous archive at ${archive}" >&2; exit 1
+    fi
+    mv "${snap}" "${archive}"
+done
+
+[ -n "${HA_BACKUP_HC_PING_URL:-}" ] && curl -fsS -o /dev/null --retry 3 "${HA_BACKUP_HC_PING_URL}" || true

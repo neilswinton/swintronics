@@ -34,13 +34,6 @@
           - { src: traefik.yml.j2,        dest: traefik.yml }
           - { src: traefik-static.yml.j2, dest: traefik-data/traefik.yml }
           - { src: .env.j2,               dest: .env,         secret: true }
-      dozzle:
-        enabled: false
-        dir: dozzle
-        dns_names: [logs]
-        files:
-          - { src: compose.yml.j2,  dest: compose.yml }
-          - { src: .env.j2,         dest: .env,               secret: true }
       immich:
         dir: immich-app
         dns_names: [photos]
@@ -80,14 +73,6 @@
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
-      linkwarden:
-        dir: linkwarden
-        dns_names: [linkwarden]
-        files:
-          - { src: compose.yml.j2,  dest: compose.yml }
-          - { src: .env.j2,         dest: .env,               secret: true }
-          - { src: backup-execute,  dest: backup-execute,     executable: true }
-          - { src: backup-remote,   dest: backup-remote,      executable: true }
       beszel:
         dir: beszel
         dns_names: [beszel]
@@ -104,6 +89,25 @@
         dir: autoheal
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
+      homeassistant:
+        dir: homeassistant
+        dns_names: [ha]
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,            secret: true }
+          - { src: backup-execute,  dest: backup-execute,  executable: true }
+          - { src: backup-remote,   dest: backup-remote,   executable: true }
+      zigbee2mqtt:
+        dir: zigbee2mqtt
+        dns_names: [z2m]
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,            secret: true }
+      mosquitto:
+        dir: mosquitto
+        files:
+          - { src: compose.yml.j2,    dest: compose.yml }
+          - { src: mosquitto.conf.j2, dest: mosquitto.conf }
 
   pre_tasks:
     - name: Determine disabled services

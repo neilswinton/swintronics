@@ -22,14 +22,11 @@ versions:
   # https://github.com/louislam/uptime-kuma/releases — pinned (decommissioning)
   kuma: "2.2.1"
 
-  # https://github.com/TwiN/gatus/releases — floating major
-  gatus: "v5"
+  # https://github.com/TwiN/gatus/releases — pinned (no floating major tags published)
+  gatus: "v5.35.0"
 
   # https://github.com/Stirling-Tools/Stirling-PDF/releases — pinned
   stirling_pdf: "2.10.0"
-
-  # https://github.com/linkwarden/linkwarden/releases — pinned
-  linkwarden: "v2.14.1"
 
   # https://github.com/henrygd/beszel/releases — pinned (pre-1.0)
   beszel: "0.18.7"
@@ -39,3 +36,12 @@ versions:
 
   # https://hub.docker.com/r/willfarrell/autoheal — pinned (rarely updated)
   autoheal: "1.2.0"
+
+  # https://hub.docker.com/r/homeassistant/home-assistant/tags — "stable" tracks latest stable monthly release
+  homeassistant: "stable"
+
+  # https://github.com/Koenkk/zigbee2mqtt/releases — floating major
+  zigbee2mqtt: "2"
+
+  # https://hub.docker.com/_/mosquitto — floating major (extremely stable)
+  mosquitto: "2"

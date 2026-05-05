@@ -203,8 +203,6 @@ The playbook automatically converts service names to variable names:
 - `paperless-ngx` → `PAPERLESS_NGX_VERSION`
 - `kuma` → `KUMA_VERSION`
 - `stirling-pdf` → `STIRLING_PDF_VERSION`
-- `linkwarden` → `LINKWARDEN_VERSION`
-- `dozzle` → `DOZZLE_VERSION`
 - `traefik` → `TRAEFIK_VERSION`
 
 Make sure your `.env` files use these exact variable names!

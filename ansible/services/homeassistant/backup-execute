@@ -1,0 +1,32 @@
+#!/bin/bash
+set -euo pipefail
+# Stop HA and Z2M, snapshot both volumes, restart.
+# Kuma is already stopped and healthchecks paused by the orchestrator.
+
+DATA="${DATA_MOUNTPOINT:-/mnt/docker-data}"
+HA_SNAP="${DATA}/snapshots/homeassistant/backup"
+Z2M_SNAP="${DATA}/snapshots/zigbee2mqtt/backup"
+
+mkdir -p "$(dirname "${HA_SNAP}")" "$(dirname "${Z2M_SNAP}")"
+
+for snap in "${HA_SNAP}" "${Z2M_SNAP}"; do
+    if [ "$(stat --format=%i "${snap}" 2>/dev/null)" = "256" ]; then
+        sudo btrfs property set "${snap}" ro false
+        sudo btrfs subvolume delete "${snap}"
+    fi
+    if [ -e "${snap}" ]; then
+        echo "ERROR: could not remove previous snapshot at ${snap}" >&2; exit 1
+    fi
+done
+
+echo "Stopping Home Assistant and Zigbee2MQTT..."
+docker compose stop homeassistant
+(cd ../zigbee2mqtt && docker compose stop zigbee2mqtt)
+
+echo "Creating snapshots..."
+sudo btrfs subvolume snapshot -r "${DATA}/volumes/homeassistant" "${HA_SNAP}"
+sudo btrfs subvolume snapshot -r "${DATA}/volumes/zigbee2mqtt" "${Z2M_SNAP}"
+
+echo "Starting Home Assistant and Zigbee2MQTT..."
+docker compose start homeassistant
+(cd ../zigbee2mqtt && docker compose start zigbee2mqtt)
