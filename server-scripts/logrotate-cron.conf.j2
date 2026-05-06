@@ -1,0 +1,17 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+#
+# To test: sudo logrotate --debug /etc/logrotate.d/swintronics-backup
+# To force: sudo logrotate --force /etc/logrotate.d/swintronics-backup
+
+{{ data_disk_mountpoint }}/logs/cron/*.log {
+  daily
+  rotate 30
+  maxage 30
+  missingok
+  notifempty
+  compress
+  dateext
+  dateformat .%Y-%m-%d
+  nocreate
+  su {{ admin_user }} {{ admin_user }}
+}

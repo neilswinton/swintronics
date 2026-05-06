@@ -37,3 +37,11 @@
         hour: "4"
         job: "{{ docker_services_path }}/backup.sh"
         user: "{{ admin_user }}"
+
+    - name: Install logrotate config for backup logs
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../../server-scripts/logrotate-cron.conf.j2"
+        dest: /etc/logrotate.d/swintronics-backup
+        owner: root
+        group: root
+        mode: '0644'
