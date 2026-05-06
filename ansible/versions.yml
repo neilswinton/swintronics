@@ -19,11 +19,8 @@ versions:
   # https://github.com/paperless-ngx/paperless-ngx/releases — floating minor
   paperless: "2.20"
 
-  # https://github.com/louislam/uptime-kuma/releases — pinned (decommissioning)
-  kuma: "2.2.1"
-
-  # https://github.com/TwiN/gatus/releases — pinned (no floating major tags published)
-  gatus: "v5.35.0"
+  # https://github.com/TwiN/gatus/releases — floating (stable tag tracks latest stable)
+  gatus: "stable"
 
   # https://github.com/Stirling-Tools/Stirling-PDF/releases — pinned
   stirling_pdf: "2.10.0"

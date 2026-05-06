@@ -26,4 +26,6 @@ for pair in "${HA_SNAP}:${HA_ARCHIVE}" "${Z2M_SNAP}:${Z2M_ARCHIVE}"; do
     mv "${snap}" "${archive}"
 done
 
-[ -n "${HA_BACKUP_HC_PING_URL:-}" ] && curl -fsS -o /dev/null --retry 3 "${HA_BACKUP_HC_PING_URL}" || true
+[ -n "${GATUS_BASE_URL:-}" ] && curl -fsS -o /dev/null --retry 3 \
+    -X POST -H "Authorization: Bearer ${GATUS_BACKUP_PUSH_TOKEN}" \
+    "${GATUS_BASE_URL}/api/v1/endpoints/backups_home-assistant/external?success=true" || true
