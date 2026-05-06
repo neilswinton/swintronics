@@ -1,0 +1,28 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+#
+# NOTE: After first start, add the following to /config/configuration.yaml to
+# trust Traefik's X-Forwarded-For headers (avoids "Your system is potentially
+# exposed to the Internet" warning):
+#
+#   http:
+#     use_x_forwarded_for: true
+#     trusted_proxies:
+#       - 172.16.0.0/12
+
+include:
+  - ../networks.yml
+
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: homeassistant/home-assistant:{{ versions.homeassistant }}
+    restart: always
+    env_file: .env
+    volumes:
+      - {{ data_disk_mountpoint }}/volumes/homeassistant:/config
+    labels:
+      traefik.enable: true
+      traefik.http.routers.homeassistant.entrypoints: websecure
+      traefik.http.routers.homeassistant.rule: Host(`{{ _service_config.homeassistant.dns_names[0] }}.{{ server_domain }}`)
+      traefik.http.routers.homeassistant.tls.certresolver: ${CERT_RESOLVER}
+      traefik.http.services.homeassistant.loadbalancer.server.port: 8123

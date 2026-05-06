@@ -1,0 +1,15 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+# Mosquitto is internal-only — no Traefik labels, port 1883 not exposed outside Docker.
+
+include:
+  - ../networks.yml
+
+services:
+  mosquitto:
+    container_name: mosquitto
+    image: eclipse-mosquitto:{{ versions.mosquitto }}
+    restart: always
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - {{ data_disk_mountpoint }}/volumes/mosquitto:/mosquitto/data
+      - {{ data_disk_mountpoint }}/logs/mosquitto:/mosquitto/log

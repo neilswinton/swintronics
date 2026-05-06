@@ -1,0 +1,9 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+# Anonymous auth is acceptable: port 1883 is not exposed outside the Docker proxy network.
+
+listener 1883
+allow_anonymous true
+persistence true
+persistence_location /mosquitto/data/
+log_dest file /mosquitto/log/mosquitto.log
+log_dest stdout

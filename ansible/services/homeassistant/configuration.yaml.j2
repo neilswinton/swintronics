@@ -1,0 +1,19 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+# UI-configured integrations are stored in .storage/ and are not affected.
+
+# Loads default set of integrations. Do not remove.
+default_config:
+
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 172.16.0.0/12   # Docker bridge networks (covers 172.16–172.31)
+    - 100.64.0.0/10   # Tailscale
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml

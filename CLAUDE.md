@@ -136,6 +136,9 @@ cert_resolver: "staging"     # Use "staging" until everything works, then "produ
 docker_gid: "984"   # Check with: getent group docker | cut -d: -f3
 
 hardware_watchdog_module: "iTCO_wdt"   # Intel: iTCO_wdt, AMD: sp5100_tco; omit on unknown hardware
+
+# Zigbee USB dongle — use stable by-id path (run: ls /dev/serial/by-id/ with dongle plugged in)
+zigbee_dongle_path: /dev/serial/by-id/usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_<serial>-if00-port0
 ```
 
 #### `docker-services/backup.env`
@@ -158,7 +161,6 @@ HEARTBEAT_HEALTHCHECK_RESUME_URL=
 # Kuma push URLs — created in Kuma UI as push monitors, one per service (optional)
 KUMA_PHOTO_PUSH_URL=
 KUMA_PAPERLESS_PUSH_URL=
-KUMA_LINKWARDEN_PUSH_URL=
 KUMA_KUMA_PUSH_URL=
 ```
 
@@ -181,6 +183,7 @@ Terraform reads from the **Terraform project** (existing, pre-created):
 | `/terraform` | `OCI_REGION` | OCI region identifier |
 | `/server` | `TELEGRAM_BOT_TOKEN` | Telegram bot token for Kuma notifications |
 | `/server` | `TELEGRAM_CHAT_ID` | Telegram chat ID |
+| `/server` | `Z2M_FRONTEND_AUTH_TOKEN` | Zigbee2MQTT web UI auth token |
 
 Terraform creates the **Runtime project** and populates it with generated secrets (DB passwords, encryption keys, auth keys). Ansible reads from the Runtime project.
 
@@ -250,10 +253,11 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 | paperless      | paperless      | services/paperless/compose.yml.j2   |
 | kuma           | uptime-kuma    | services/uptime-kuma/compose.yml.j2 |
 | stirling-pdf   | stirling-pdf   | services/stirling-pdf/compose.yml.j2|
-| linkwarden     | linkwarden     | services/linkwarden/compose.yml.j2  |
-| dozzle         | dozzle         | services/dozzle/compose.yml.j2      |
 | traefik        | networking     | services/networking/traefik.yml.j2  |
-| autoheal       | autoheal       | services/autoheal/compose.yml.j2    |
+| autoheal       | autoheal       | services/autoheal/compose.yml.j2      |
+| homeassistant  | homeassistant  | services/homeassistant/compose.yml.j2 |
+| zigbee2mqtt    | zigbee2mqtt    | services/zigbee2mqtt/compose.yml.j2   |
+| mosquitto      | mosquitto      | services/mosquitto/compose.yml.j2     |
 
 ### Networking
 
@@ -280,9 +284,7 @@ Kuma configuration is manual (no API automation). Use SQLite (the default) — n
 5. Add **HTTP monitors** for each service — interval: 5 minutes, retries: 3:
    - `https://photos.<domain>` — Immich
    - `https://paperless.<domain>` — Paperless
-   - `https://linkwarden.<domain>` — Linkwarden
    - `https://stirling-pdf.<domain>` — Stirling PDF
-   - `https://logs.<domain>` — Dozzle
    - `https://beszel.<domain>` — Beszel
    - `https://status-admin.<domain>` — Kuma itself
    - healthchecks.io ping URL (from Infisical as `HC_KUMA_PING_URL`) — confirms Kuma is alive
@@ -433,4 +435,4 @@ This scenario requires additional planning around Restic repo sharing and is def
 - Long-term: phone-friendly server management — expose remaining service UIs, document mobile access patterns
 
 ### Upstream Compose File Convention
-Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, linkwarden, uptime-kuma, beszel. Not tracked: networking/traefik (fully custom), dozzle, dockhand (single-container, written from scratch), stirling-pdf (upstream repo only has build-from-source compose files, no runtime compose)
+Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, uptime-kuma, beszel. Not tracked: networking/traefik (fully custom), dockhand (single-container, written from scratch), stirling-pdf (upstream repo only has build-from-source compose files, no runtime compose)

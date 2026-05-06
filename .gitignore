@@ -46,8 +46,9 @@ tfplayground/
 
 .infisical.json
 
-# Environment files
+# Environment files — ignore .env and .env.* but not .env.j2 templates
 **/.env*
+!**/.env.j2
 
 # Machine-specific playbooks (copy machines/example.yml and customize)
 ansible/playbooks/machines/*.yml
