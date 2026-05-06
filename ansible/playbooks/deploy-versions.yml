@@ -52,14 +52,6 @@
           - { src: docker-compose.env.j2, dest: docker-compose.env, secret: true }
           - { src: backup-prepare,        dest: backup-prepare, executable: true }
           - { src: backup-remote,         dest: backup-remote,  executable: true }
-      kuma:
-        dir: uptime-kuma
-        dns_names: [status, status-admin]
-        files:
-          - { src: compose.yml.j2,  dest: compose.yml }
-          - { src: .env.j2,         dest: .env,               secret: true }
-          - { src: backup-execute,  dest: backup-execute,     executable: true }
-          - { src: backup-remote,   dest: backup-remote,      executable: true }
       gatus:
         dir: gatus
         dns_names: [gatus]
@@ -275,33 +267,10 @@
         project_src: "{{ docker_services_path }}/{{ _service_config[item].dir }}"
         pull: always
         profiles: "{{ _service_config[item].profiles | default(omit) }}"
-      loop: "{{ _changed_services | reject('equalto', 'traefik') | reject('equalto', 'kuma') | list }}"
+      loop: "{{ _changed_services | reject('equalto', 'traefik') | list }}"
       when:
         - _changed_services | length > 0
         - (_service_config[item].profiles is not defined) or (_service_config[item].profiles | length > 0)
-
-    # ── Stop Kuma and pause monitoring before restarting anything ─────────────
-
-    - name: Stop Uptime Kuma
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/uptime-kuma"
-        state: absent
-      when:
-        - _changed_services | length > 0
-        - "'kuma' in versions"
-
-    - name: Pause healthchecks.io monitor
-      ansible.builtin.uri:
-        url: "https://healthchecks.io/api/v3/checks/{{ infisical_secrets.secrets.HEALTHCHECKS_KUMA_CHECK_UUID }}/pause"
-        method: POST
-        headers:
-          X-Api-Key: "{{ infisical_secrets.secrets.HEALTHCHECKS_API_KEY }}"
-        status_code: 200
-      delegate_to: localhost
-      when:
-        - _changed_services | length > 0
-        - "'kuma' in versions"
-        - "'HEALTHCHECKS_API_KEY' in infisical_secrets.secrets"
 
     # ── Restart changed services — traefik first ──────────────────────────────
 
@@ -318,49 +287,10 @@
         state: present
         recreate: always
         profiles: "{{ _service_config[item].profiles | default(omit) }}"
-      loop: "{{ _changed_services | reject('equalto', 'traefik') | reject('equalto', 'kuma') | list }}"
+      loop: "{{ _changed_services | reject('equalto', 'traefik') | list }}"
       when:
         - _changed_services | length > 0
         - (_service_config[item].profiles is not defined) or (_service_config[item].profiles | length > 0)
-
-    # ── Restart Kuma and resume monitoring ────────────────────────────────────
-
-    - name: Start Uptime Kuma
-      community.docker.docker_compose_v2:
-        project_src: "{{ docker_services_path }}/uptime-kuma"
-        state: present
-      when:
-        - _changed_services | length > 0
-        - "'kuma' in versions"
-
-    - name: Wait for Uptime Kuma to be ready
-      ansible.builtin.wait_for:
-        port: 3001
-        delay: 5
-        timeout: 60
-      when:
-        - _changed_services | length > 0
-        - "'kuma' in versions"
-
-    - name: Wait for Uptime Kuma to start issuing heartbeats
-      ansible.builtin.pause:
-        seconds: 30
-      when:
-        - _changed_services | length > 0
-        - "'kuma' in versions"
-
-    - name: Resume healthchecks.io monitor
-      ansible.builtin.uri:
-        url: "https://healthchecks.io/api/v3/checks/{{ infisical_secrets.secrets.HEALTHCHECKS_KUMA_CHECK_UUID }}/resume"
-        method: POST
-        headers:
-          X-Api-Key: "{{ infisical_secrets.secrets.HEALTHCHECKS_API_KEY }}"
-        status_code: [200, 409]
-      delegate_to: localhost
-      when:
-        - _changed_services | length > 0
-        - "'kuma' in versions"
-        - "'HEALTHCHECKS_API_KEY' in infisical_secrets.secrets"
 
     # ── Cleanup ───────────────────────────────────────────────────────────────
 

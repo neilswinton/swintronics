@@ -1,8 +1,16 @@
 # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
 
+ui:
+  default-sort-by: group
+
 storage:
   type: sqlite
   path: /data/data.db
+
+maintenance:
+  start: "03:55"
+  duration: 20m
+  timezone: "America/New_York"
 
 alerting:
   telegram:
@@ -82,3 +90,26 @@ endpoints:
     interval: 60s
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+
+external-endpoints:
+  # ── Backups (push from backup-remote scripts, alert if no ping in 25h) ─────
+  - name: Immich
+    group: Backups
+    token: ${GATUS_BACKUP_PUSH_TOKEN}
+    heartbeat:
+      interval: 25h
+    alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]
+
+  - name: Paperless
+    group: Backups
+    token: ${GATUS_BACKUP_PUSH_TOKEN}
+    heartbeat:
+      interval: 25h
+    alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]
+
+  - name: Home Assistant
+    group: Backups
+    token: ${GATUS_BACKUP_PUSH_TOKEN}
+    heartbeat:
+      interval: 25h
+    alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]

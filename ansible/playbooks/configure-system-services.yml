@@ -114,11 +114,9 @@
         dest: /usr/local/sbin/swintronics-pre-reboot.sh
         content: |
           #!/bin/bash
-          # Pause healthchecks.io and stop Uptime Kuma before reboot.
+          # Pause healthchecks.io before reboot.
           # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
           set -euo pipefail
-
-          KUMA_DIR="{{ docker_services_path }}/uptime-kuma"
 
           echo "swintronics-pre-reboot: pausing healthchecks.io monitor..."
           curl -s -X POST \
@@ -127,9 +125,6 @@
             --retry 2 \
             "https://healthchecks.io/api/v3/checks/${HEALTHCHECKS_KUMA_CHECK_UUID}/pause" || \
             echo "swintronics-pre-reboot: warning: healthchecks.io pause failed (proceeding anyway)"
-
-          echo "swintronics-pre-reboot: stopping Uptime Kuma..."
-          docker compose -f "${KUMA_DIR}/compose.yml" stop --timeout 15
 
           echo "swintronics-pre-reboot: notifying via Telegram..."
           curl -s -X POST \
@@ -151,7 +146,7 @@
         dest: /etc/systemd/system/swintronics-pre-reboot.service
         content: |
           [Unit]
-          Description=Swintronics pre-reboot: pause monitoring and stop Uptime Kuma
+          Description=Swintronics pre-reboot: pause healthchecks.io monitoring
           DefaultDependencies=no
           Before=shutdown.target reboot.target halt.target
           After=docker.service
@@ -175,18 +170,18 @@
         dest: /usr/local/sbin/swintronics-post-boot.sh
         content: |
           #!/bin/bash
-          # Wait for Uptime Kuma to come back up, then resume healthchecks.io monitoring.
+          # Wait for Gatus to come back up, then resume healthchecks.io monitoring.
           # Containers themselves are restarted by dockerd (restart: always); this script
-          # just gates the healthchecks resume on Kuma actually being ready to ping it.
+          # just gates the healthchecks resume on Gatus being ready to ping it.
           # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
           set -euo pipefail
 
-          echo "swintronics-post-boot: waiting for Uptime Kuma to be ready on port 3001..."
+          echo "swintronics-post-boot: waiting for Gatus container to be running..."
           timeout 120 bash -c \
-            'until bash -c "echo >/dev/tcp/localhost/3001" 2>/dev/null; do sleep 2; done'
+            'until docker ps -q --filter name=^/gatus$ --filter status=running 2>/dev/null | grep -q .; do sleep 2; done'
 
-          echo "swintronics-post-boot: waiting for Uptime Kuma to start issuing heartbeats..."
-          sleep 15
+          echo "swintronics-post-boot: waiting for Gatus startup delay ({{ gatus_delay_start_seconds + 30 }}s)..."
+          sleep {{ gatus_delay_start_seconds + 30 }}
 
           echo "swintronics-post-boot: resuming healthchecks.io monitor..."
           curl -s -X POST \
@@ -238,7 +233,7 @@
         dest: /etc/systemd/system/swintronics-post-boot.service
         content: |
           [Unit]
-          Description=Swintronics post-boot: start Uptime Kuma and resume healthchecks.io
+          Description=Swintronics post-boot: resume healthchecks.io after Gatus is ready
           After=docker.service network-online.target
           Wants=network-online.target
           OnFailure=swintronics-post-boot-failed.service

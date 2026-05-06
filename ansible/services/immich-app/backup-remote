@@ -21,4 +21,6 @@ if [ -e "${ARCHIVE_DIR}" ]; then
 fi
 mv "${SNAP_DIR}" "${ARCHIVE_DIR}"
 
-[ -n "${KUMA_PHOTO_PUSH_URL:-}" ] && curl -fsS -o /dev/null --retry 3 "${KUMA_PHOTO_PUSH_URL}" || true
+[ -n "${GATUS_BASE_URL:-}" ] && curl -fsS -o /dev/null --retry 3 \
+    -X POST -H "Authorization: Bearer ${GATUS_BACKUP_PUSH_TOKEN}" \
+    "${GATUS_BASE_URL}/api/v1/endpoints/backups_immich/external?success=true" || true

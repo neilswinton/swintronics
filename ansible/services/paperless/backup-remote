@@ -9,4 +9,6 @@ sudo -E restic backup --tag paperless --tag "${DATE:-$(date +%F_%H-%M)}" "${EXPO
 sudo -E restic forget --tag paperless --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
 sudo -E restic check
 
-[ -n "${KUMA_PAPERLESS_PUSH_URL:-}" ] && curl -fsS -o /dev/null --retry 3 "${KUMA_PAPERLESS_PUSH_URL}" || true
+[ -n "${GATUS_BASE_URL:-}" ] && curl -fsS -o /dev/null --retry 3 \
+    -X POST -H "Authorization: Bearer ${GATUS_BACKUP_PUSH_TOKEN}" \
+    "${GATUS_BASE_URL}/api/v1/endpoints/backups_paperless/external?success=true" || true

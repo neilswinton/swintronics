@@ -156,6 +156,8 @@ resource "random_password" "z2m_frontend_auth_token" {
   special = false
 }
 
+resource "random_uuid" "gatus_backup_push_token" {}
+
 # Immich
 resource "infisical_secret" "immich_postgres_password" {
   name         = "IMMICH_DB_PASSWORD"
@@ -187,6 +189,15 @@ resource "infisical_secret" "dockhand_encryption_key" {
 resource "infisical_secret" "z2m_frontend_auth_token" {
   name         = "Z2M_FRONTEND_AUTH_TOKEN"
   value        = random_password.z2m_frontend_auth_token.result
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
+# Gatus
+resource "infisical_secret" "gatus_backup_push_token" {
+  name         = "GATUS_BACKUP_PUSH_TOKEN"
+  value        = random_uuid.gatus_backup_push_token.result
   env_slug     = "dev"
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"

@@ -12,3 +12,4 @@ timezone: "America/New_York"
 # Defaults (override in cluster or host vars)
 data_disk_mountpoint: /docker-data
 cert_resolver: "staging"
+gatus_delay_start_seconds: 120

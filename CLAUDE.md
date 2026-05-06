@@ -63,7 +63,7 @@ ansible-playbook playbooks/update-service.yml \
 ./cluster.sh --debug     # Enable bash -x tracing
 ```
 
-`cluster.sh` reads `backup.env` for healthchecks.io API keys and coordinates startup/shutdown order: networking first/last, Uptime Kuma last up / first down.
+`cluster.sh` reads `backup.env` for Restic and Gatus config and coordinates startup/shutdown order: networking first/last.
 
 ## New Deployment Checklist
 
@@ -153,15 +153,9 @@ RESTIC_REPOSITORY=
 RESTIC_PASSWORD=
 # Add any provider-specific env vars (B2_ACCOUNT_ID, AWS_ACCESS_KEY_ID, etc.)
 
-# healthchecks.io — for pausing/resuming the Kuma heartbeat monitor during backup
-HEARTBEAT_HEALTHCHECK_API_KEY=
-HEARTBEAT_HEALTHCHECK_PAUSE_URL=
-HEARTBEAT_HEALTHCHECK_RESUME_URL=
-
-# Kuma push URLs — created in Kuma UI as push monitors, one per service (optional)
-KUMA_PHOTO_PUSH_URL=
-KUMA_PAPERLESS_PUSH_URL=
-KUMA_KUMA_PUSH_URL=
+# Gatus backup push — used by backup-remote scripts to push success to Gatus external endpoints
+GATUS_BASE_URL=https://gatus.<domain>
+GATUS_BACKUP_PUSH_TOKEN=   # matches GATUS_BACKUP_PUSH_TOKEN in Infisical runtime project
 ```
 
 ### Infisical secret structure
@@ -233,7 +227,7 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 
 - Terraform accesses Infisical via machine identity in `.auto.tfvars`
 - Ansible authenticates to Infisical using Universal Auth (Machine Identity); credentials in `ansible/.env`
-- `cluster.sh` reads local `backup.env` on the server for healthchecks.io keys
+- `cluster.sh` reads local `backup.env` on the server for Restic and Gatus config
 
 ### Service Update Workflow (Ansible)
 

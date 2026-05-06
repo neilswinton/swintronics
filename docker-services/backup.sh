@@ -6,8 +6,8 @@ set -euo pipefail
 #
 # Phase order:
 #   1. backup-prepare  — all services running (exports, DB dumps)
-#   2. backup-execute  — kuma stopped, healthchecks paused (btrfs snapshots;
-#                        each service stops/starts its own containers as needed)
+#   2. backup-execute  — btrfs snapshots; each service stops/starts its own
+#                        containers as needed
 #   3. backup-remote   — all services running (restic upload + health pings)
 #
 # Usage: backup.sh [--debug]
@@ -15,7 +15,6 @@ set -euo pipefail
 # ── Configuration ────────────────────────────────────────────────────────────
 
 DOCKER_SERVICES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-KUMA_DIR="${DOCKER_SERVICES}/uptime-kuma"
 
 # ── Common environment ───────────────────────────────────────────────────────
 
@@ -62,24 +61,6 @@ run_hooks() {
     done
 }
 
-kuma_stop() {
-    echo "Stopping Uptime Kuma..."
-    (cd "${KUMA_DIR}" && docker compose stop uptime-kuma) || true
-}
-
-kuma_start() {
-    echo "Starting Uptime Kuma..."
-    (cd "${KUMA_DIR}" && docker compose start uptime-kuma) || true
-    echo "Waiting for Uptime Kuma to be ready..."
-    local attempts=60
-    while [ $attempts -gt 0 ]; do
-        sleep 2
-        curl -fsS -o /dev/null http://localhost:3001 2>/dev/null && return
-        attempts=$((attempts - 1))
-    done
-    echo "Warning: Uptime Kuma did not become ready in time"
-}
-
 hc_pause() {
     curl -fsS -o /dev/null --retry 3 \
         --header "X-Api-Key: ${HEARTBEAT_HEALTHCHECK_API_KEY}" \
@@ -94,8 +75,7 @@ hc_resume() {
         "${HEARTBEAT_HEALTHCHECK_RESUME_URL}" || echo "HC resume failed (continuing)"
 }
 
-# Ensure kuma is restarted and HC resumed even if something fails
-trap 'kuma_start; hc_resume' ERR
+trap 'hc_resume' ERR
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
@@ -103,12 +83,8 @@ date +"🕓 Backup started at %Y-%m-%d %H:%M:%S"
 
 run_hooks backup-prepare
 
-kuma_stop
 hc_pause
-
 run_hooks backup-execute
-
-kuma_start
 hc_resume
 
 run_hooks backup-remote
