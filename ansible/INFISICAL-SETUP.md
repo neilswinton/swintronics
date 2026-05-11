@@ -10,7 +10,7 @@ Your playbook is now configured to pull secrets from Infisical Cloud instead of 
 4. Add these secrets:
    - Key: `HEALTHCHECKS_API_KEY`
      Value: (your healthchecks.io API key)
-   - Key: `HEALTHCHECKS_KUMA_CHECK_UUID`
+   - Key: `HEALTHCHECKS_HEARTBEAT_CHECK_UUID`
      Value: (your Kuma heartbeat check UUID)
 
 ## Step 2: Create Machine Identity Credentials File
@@ -102,7 +102,7 @@ Install the Infisical CLI (Step 3 above).
 - Check you're using the correct environment (dev)
 - Make sure secret names match exactly:
   - `HEALTHCHECKS_API_KEY`
-  - `HEALTHCHECKS_KUMA_CHECK_UUID`
+  - `HEALTHCHECKS_HEARTBEAT_CHECK_UUID`
 
 ### Permission Issues
 

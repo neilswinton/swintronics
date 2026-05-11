@@ -98,7 +98,7 @@
         dest: /etc/swintronics/monitoring.env
         content: |
           HEALTHCHECKS_API_KEY={{ infisical_secrets.secrets.HEALTHCHECKS_API_KEY }}
-          HEALTHCHECKS_KUMA_CHECK_UUID={{ infisical_secrets.secrets.HEALTHCHECKS_KUMA_CHECK_UUID }}
+          HEALTHCHECKS_HEARTBEAT_CHECK_UUID={{ infisical_secrets.secrets.HEALTHCHECKS_HEARTBEAT_CHECK_UUID }}
           TELEGRAM_BOT_TOKEN={{ infisical_secrets.secrets.SERVER_TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID={{ infisical_secrets.secrets.SERVER_TELEGRAM_CHAT_ID }}
         owner: root
@@ -123,7 +123,7 @@
             -H "X-Api-Key: ${HEALTHCHECKS_API_KEY}" \
             --max-time 5 \
             --retry 2 \
-            "https://healthchecks.io/api/v3/checks/${HEALTHCHECKS_KUMA_CHECK_UUID}/pause" || \
+            "https://healthchecks.io/api/v3/checks/${HEALTHCHECKS_HEARTBEAT_CHECK_UUID}/pause" || \
             echo "swintronics-pre-reboot: warning: healthchecks.io pause failed (proceeding anyway)"
 
           echo "swintronics-pre-reboot: notifying via Telegram..."
@@ -188,7 +188,7 @@
             -H "X-Api-Key: ${HEALTHCHECKS_API_KEY}" \
             --max-time 5 \
             --retry 2 \
-            "https://healthchecks.io/api/v3/checks/${HEALTHCHECKS_KUMA_CHECK_UUID}/resume" || \
+            "https://healthchecks.io/api/v3/checks/${HEALTHCHECKS_HEARTBEAT_CHECK_UUID}/resume" || \
             echo "swintronics-post-boot: warning: healthchecks.io resume failed (proceeding anyway)"
 
           echo "swintronics-post-boot: done."

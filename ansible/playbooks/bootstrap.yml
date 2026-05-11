@@ -31,6 +31,55 @@
         state: present
         update_cache: true
 
+    # Ubuntu's restic package lags upstream (24.04 ships 0.16.4, which doesn't
+    # speak B2's v2 API) and strips the `self-update` subcommand. Install the
+    # upstream binary to /usr/local/bin (ahead of /usr/bin in PATH) directly.
+    - name: Query latest restic version from GitHub
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/restic/restic/releases/latest
+        return_content: true
+      register: _restic_release
+      check_mode: false
+
+    - name: Set restic_latest_version
+      ansible.builtin.set_fact:
+        restic_latest_version: "{{ _restic_release.json.tag_name | regex_replace('^v', '') }}"
+
+    - name: Check installed restic at /usr/local/bin
+      ansible.builtin.command: /usr/local/bin/restic version
+      register: _local_restic
+      failed_when: false
+      changed_when: false
+      check_mode: false
+
+    - name: Download and install upstream restic {{ restic_latest_version }}
+      when: restic_latest_version not in (_local_restic.stdout | default(''))
+      block:
+        - name: Download restic release
+          ansible.builtin.get_url:
+            url: "https://github.com/restic/restic/releases/download/v{{ restic_latest_version }}/restic_{{ restic_latest_version }}_linux_amd64.bz2"
+            dest: "/tmp/restic_{{ restic_latest_version }}_linux_amd64.bz2"
+            mode: '0644'
+
+        - name: Decompress restic binary
+          ansible.builtin.command:
+            cmd: "bunzip2 -f /tmp/restic_{{ restic_latest_version }}_linux_amd64.bz2"
+            creates: "/tmp/restic_{{ restic_latest_version }}_linux_amd64"
+
+        - name: Install restic to /usr/local/bin
+          ansible.builtin.copy:
+            src: "/tmp/restic_{{ restic_latest_version }}_linux_amd64"
+            dest: /usr/local/bin/restic
+            remote_src: true
+            owner: root
+            group: root
+            mode: '0755'
+
+        - name: Clean up restic tempfile
+          ansible.builtin.file:
+            path: "/tmp/restic_{{ restic_latest_version }}_linux_amd64"
+            state: absent
+
     - name: Set timezone
       community.general.timezone:
         name: "{{ timezone | default('America/New_York') }}"
