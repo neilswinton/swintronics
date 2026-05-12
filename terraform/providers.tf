@@ -1,6 +1,10 @@
 # Tell terraform to use the provider and select a version.
 terraform {
   required_providers {
+    b2 = {
+      source  = "Backblaze/b2"
+      version = "~> 0.10"
+    }
     cloudflare = {
       source  = "cloudflare/cloudflare"
       version = "~> 5"
@@ -8,6 +12,10 @@ terraform {
     hcloud = {
       source  = "hetznercloud/hcloud"
       version = "~> 1.52"
+    }
+    healthchecksio = {
+      source  = "kristofferahl/healthchecksio"
+      version = "~> 1.7"
     }
     infisical = {
       source  = "infisical/infisical"
@@ -58,6 +66,18 @@ provider "oci" {
 provider "tailscale" {
   oauth_client_id     = ephemeral.infisical_secret.tailscale_provider_oauth_client.value
   oauth_client_secret = ephemeral.infisical_secret.tailscale_provider_oauth_client_secret.value
+}
+
+# Backblaze B2 — bootstrap with a master/admin application key with writeKeys + listKeys.
+# Provider creates a bucket-scoped restic key; the existing bootstrap key is not stored in backup.env.
+provider "b2" {
+  application_key_id = try(data.infisical_secrets.terraform_secrets.secrets["B2_MASTER_KEY_ID"].value, "")
+  application_key    = try(data.infisical_secrets.terraform_secrets.secrets["B2_MASTER_KEY"].value, "")
+}
+
+# healthchecks.io — api_key is the project-level read/write API key.
+provider "healthchecksio" {
+  api_key = try(data.infisical_secrets.terraform_secrets.secrets["HEALTHCHECKS_API_KEY"].value, "")
 }
 
 # S3-compatible backend for Terraform state (Cloudflare R2 or Backblaze B2).

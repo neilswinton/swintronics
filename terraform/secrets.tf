@@ -137,23 +137,39 @@ resource "random_password" "immich_db_password" {
   length      = 16
   special     = true
   min_special = 0
+
+  lifecycle {
+    ignore_changes = [length, special, override_special, min_lower, min_upper, min_numeric, min_special, keepers]
+  }
 }
 
 resource "random_password" "paperless_secret_key" {
   length      = 50
   special     = true
   min_special = 0
+
+  lifecycle {
+    ignore_changes = [length, special, override_special, min_lower, min_upper, min_numeric, min_special, keepers]
+  }
 }
 
 resource "random_password" "dockhand_encryption_key" {
   length      = 44
   special     = true
   min_special = 0
+
+  lifecycle {
+    ignore_changes = [length, special, override_special, min_lower, min_upper, min_numeric, min_special, keepers]
+  }
 }
 
 resource "random_password" "z2m_frontend_auth_token" {
   length  = 32
   special = false
+
+  lifecycle {
+    ignore_changes = [length, special, override_special, min_lower, min_upper, min_numeric, min_special, keepers]
+  }
 }
 
 resource "random_uuid" "gatus_backup_push_token" {}

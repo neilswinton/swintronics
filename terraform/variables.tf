@@ -66,6 +66,25 @@ variable "oci" {
   description = "Oracle Cloud configuration. Defaults to a single A1.Flex instance within the free tier (200 GiB total block storage)."
 }
 
+# Backups (Backblaze B2 + restic)
+variable "backup_bucket_name" {
+  type        = string
+  default     = ""
+  description = "B2 bucket name for backups. Defaults to '<project_name>-restic'. Override to match an existing bucket when importing."
+}
+
+variable "restic_repository_path" {
+  type        = string
+  default     = ""
+  description = "Path within the B2 bucket for the restic repository (no leading slash). Leave empty for bucket root. Set to e.g. 'backups/immich' to match an existing repo."
+}
+
+variable "b2_region" {
+  type        = string
+  default     = "us-east-005"
+  description = "B2 cluster/region for the S3-compatible endpoint (e.g. us-east-005, us-west-002, eu-central-003). Must match the bucket's actual cluster — restic uses the S3 API because B2's native auth endpoint is unreliable across versions."
+}
+
 # Infisical
 variable "infisical_client_id" {
   type        = string

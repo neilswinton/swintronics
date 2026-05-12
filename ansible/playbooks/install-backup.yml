@@ -1,8 +1,10 @@
 ---
 # Install the backup orchestrator script and cron job.
 #
-# Service-specific backup hooks (backup-prepare, backup-execute, backup-remote)
-# are deployed by deploy-versions.yml as part of normal service deployment.
+# Renders backup.env from Infisical secrets, deploys backup.sh, and installs
+# the backup cron job. Service-specific backup hooks (backup-prepare,
+# backup-execute, backup-remote) are deployed by deploy-versions.yml as part
+# of normal service deployment.
 #
 # Usage:
 #   ansible-playbook playbooks/install-backup.yml -e target=swintronics
@@ -13,6 +15,28 @@
   connection: "{{ 'local' if inventory_hostname in groups.get('local', []) else 'ssh' }}"
   become: true
 
+  pre_tasks:
+    - name: Login to Infisical
+      infisical.vault.login:
+        url: "https://app.infisical.com"
+        auth_method: universal_auth
+        universal_auth_client_id: "{{ infisical_client_id }}"
+        universal_auth_client_secret: "{{ infisical_client_secret }}"
+      register: infisical_login
+      delegate_to: localhost
+      check_mode: no
+
+    - name: Fetch secrets from Infisical
+      infisical.vault.read_secrets:
+        login_data: "{{ infisical_login.login_data }}"
+        project_id: "{{ infisical_project_id }}"
+        env_slug: "{{ infisical_environment }}"
+        path: "/"
+        as_dict: true
+      register: infisical_secrets
+      delegate_to: localhost
+      check_mode: no
+
   tasks:
     - name: Create backup log directory
       ansible.builtin.file:
@@ -21,6 +45,14 @@
         owner: "{{ admin_user }}"
         group: "{{ admin_user }}"
         mode: '0755'
+
+    - name: Render backup.env from Infisical secrets
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../services/backup/backup.env.j2"
+        dest: "{{ docker_services_path }}/backup.env"
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0600'
 
     - name: Deploy backup orchestrator
       ansible.builtin.copy:

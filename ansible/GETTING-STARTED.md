@@ -44,7 +44,7 @@ This installs the `community.docker`, `ansible.posix`, and `infisical.vault` col
 The playbook authenticates to Infisical using a Machine Identity (Universal Auth).
 
 **One-time setup:**
-1. Add secrets to your Infisical project: `HEALTHCHECKS_API_KEY` and `HEALTHCHECKS_KUMA_CHECK_UUID`
+1. Add secrets to your Infisical project: `HEALTHCHECKS_API_KEY` and `HEALTHCHECKS_HEARTBEAT_CHECK_UUID`
 2. Create a Machine Identity in Infisical with Universal Auth and grant it read access to the project
 3. Copy `ansible/.env.example` to `ansible/.env` and fill in your Client ID, Client Secret, and project UUID
 

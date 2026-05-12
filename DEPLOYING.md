@@ -370,6 +370,9 @@ project (environment: `dev`). Use the Infisical dashboard to check each folder.
 | `OCI_REGION` | Step 2 |
 | `TS_MS_PROVIDER_OAUTH_CLIENT_ID` | Step 6 |
 | `TS_MS_PROVIDER_OAUTH_CLIENT_SECRET` | Step 6 |
+| `B2_MASTER_KEY_ID` | Backblaze B2 master/admin key (with `writeKeys` + `listKeys`) |
+| `B2_MASTER_KEY` | Backblaze B2 master/admin key secret |
+| `HEALTHCHECKS_API_KEY` | healthchecks.io project API key (Settings → API Access → "API key (read/write)") |
 
 ### Folder `/server`
 | Secret name | Added in |
@@ -377,9 +380,12 @@ project (environment: `dev`). Use the Infisical dashboard to check each folder.
 | `TELEGRAM_BOT_TOKEN` | Step 8 |
 | `TELEGRAM_CHAT_ID` | Step 8 |
 
-_Healthchecks.io secrets (`HEALTHCHECKS_API_KEY`, `HEALTHCHECKS_KUMA_CHECK_UUID`) can
-be added to `/server` after services are running — they are not needed for initial
-Terraform provisioning._
+_Terraform creates the bucket-scoped restic application key, the healthchecks.io
+heartbeat check, and the restic password, then writes `B2_ACCOUNT_ID`,
+`B2_ACCOUNT_KEY`, `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`,
+`HEALTHCHECKS_HEARTBEAT_CHECK_UUID`, and `HEALTHCHECKS_API_KEY` into the runtime
+project. Ansible's `install-backup.yml` reads them and renders
+`docker-services/backup.env`._
 
 ---
 

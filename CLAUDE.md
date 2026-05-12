@@ -141,22 +141,8 @@ hardware_watchdog_module: "iTCO_wdt"   # Intel: iTCO_wdt, AMD: sp5100_tco; omit 
 zigbee_dongle_path: /dev/serial/by-id/usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_<serial>-if00-port0
 ```
 
-#### `docker-services/backup.env`
-
-Sourced by `backup.sh` and `cluster.sh`. All `RESTIC_*` vars are passed to `restic` via `sudo -E`.
-
-```bash
-DATA_MOUNTPOINT=/docker-data
-
-# Restic repository (e.g. Backblaze B2, S3, local path)
-RESTIC_REPOSITORY=
-RESTIC_PASSWORD=
-# Add any provider-specific env vars (B2_ACCOUNT_ID, AWS_ACCESS_KEY_ID, etc.)
-
-# Gatus backup push — used by backup-remote scripts to push success to Gatus external endpoints
-GATUS_BASE_URL=https://gatus.<domain>
-GATUS_BACKUP_PUSH_TOKEN=   # matches GATUS_BACKUP_PUSH_TOKEN in Infisical runtime project
-```
+_`docker-services/backup.env` is rendered by Ansible (`install-backup.yml`) from
+Infisical secrets — no manual file is required._
 
 ### Infisical secret structure
 
@@ -175,9 +161,23 @@ Terraform reads from the **Terraform project** (existing, pre-created):
 | `/terraform` | `OCI_FINGERPRINT` | OCI API key fingerprint |
 | `/terraform` | `OCI_PRIVATE_KEY` | OCI API signing key (PEM) |
 | `/terraform` | `OCI_REGION` | OCI region identifier |
+| `/terraform` | `B2_MASTER_KEY_ID` | Backblaze B2 master/admin key ID (must have `writeKeys` + `listKeys`) |
+| `/terraform` | `B2_MASTER_KEY` | Backblaze B2 master/admin key secret |
+| `/terraform` | `HEALTHCHECKS_API_KEY` | healthchecks.io project API key (read/write); copied to runtime by Terraform |
 | `/server` | `TELEGRAM_BOT_TOKEN` | Telegram bot token for Kuma notifications |
 | `/server` | `TELEGRAM_CHAT_ID` | Telegram chat ID |
 | `/server` | `Z2M_FRONTEND_AUTH_TOKEN` | Zigbee2MQTT web UI auth token |
+
+Terraform writes these to the **Runtime project** for Ansible to consume:
+
+| Path | Key | Source |
+|------|-----|--------|
+| `/` | `B2_ACCOUNT_ID` | Generated bucket-scoped application key |
+| `/` | `B2_ACCOUNT_KEY` | Generated bucket-scoped application key (only emitted at create) |
+| `/` | `RESTIC_REPOSITORY` | Computed: `b2:<bucket>:<path>` |
+| `/` | `RESTIC_PASSWORD` | `random_password` (importable to preserve existing repos) |
+| `/` | `HEALTHCHECKS_HEARTBEAT_CHECK_UUID` | `healthchecksio_check.heartbeat` UUID |
+| `/` | `HEALTHCHECKS_API_KEY` | Pass-through from `/terraform` |
 
 Terraform creates the **Runtime project** and populates it with generated secrets (DB passwords, encryption keys, auth keys). Ansible reads from the Runtime project.
 
@@ -193,8 +193,73 @@ Terraform creates the **Runtime project** and populates it with generated secret
 8. `ansible-playbook playbooks/tailscale.yml` — joins Tailscale network
 9. `ansible-playbook playbooks/setup-storage.yml` — creates btrfs subvolumes for stateful services
 10. `ansible-playbook playbooks/deploy-versions.yml` — deploys and starts all services
-11. `ansible-playbook playbooks/install-backup.yml` — installs backup cron job
-12. Complete manual setup: Kuma (see below), Beszel (see below), `backup.env` on server
+11. `ansible-playbook playbooks/install-backup.yml` — renders `backup.env` from Infisical and installs the backup cron job
+12. Complete manual setup: Kuma (see below), Beszel (see below)
+
+### Importing or migrating existing backup state
+
+There are two paths from a legacy hand-managed restic repo. Pick one **before**
+running `terraform apply`, otherwise Terraform creates fresh resources and old
+snapshots become unreachable.
+
+#### Option A — fresh bucket + `restic copy` (recommended)
+
+Best when you want to clean up the bucket name or repo path (e.g. dropping the
+legacy `backups/immich` prefix).
+
+```bash
+# 1. Import the existing healthchecks.io heartbeat check + restic password so
+#    Terraform doesn't create duplicates. (Bucket and app key are intentionally
+#    NOT imported — we want a fresh bucket.)
+cd terraform
+terraform import random_password.restic '<existing RESTIC_PASSWORD>'
+terraform import healthchecksio_check.heartbeat <existing-check-uuid>
+
+# 2. (Optional) Set the new repo path. Add to `.auto.tfvars`:
+#       restic_repository_path = "backups"
+#    Bucket name defaults to <project_name>-restic.
+
+# 3. Apply — creates new bucket + bucket-scoped app key, writes new B2_* and
+#    RESTIC_REPOSITORY into Infisical.
+terraform apply
+
+# 4. Copy snapshots from the old repo into the new repo. restic shares one set
+#    of B2 credentials for source + destination, so use the B2 master key for
+#    the duration of the copy (the TF-managed key is scoped to the new bucket).
+export B2_ACCOUNT_ID=<master-key-id>
+export B2_ACCOUNT_KEY=<master-key>
+export RESTIC_PASSWORD=<existing restic password — same on both ends>
+restic -r b2:<new-bucket>:backups init \
+       --from-repo b2:swintronics:backups/immich --copy-chunker-params
+restic -r b2:<new-bucket>:backups copy \
+       --from-repo b2:swintronics:backups/immich
+restic -r b2:<new-bucket>:backups snapshots   # verify
+
+# 5. Run `ansible-playbook playbooks/install-backup.yml` to render the new
+#    backup.env with TF-managed credentials and the new repo path.
+
+# 6. After a successful backup run against the new repo, delete the old bucket
+#    in the B2 console and revoke the legacy app key.
+```
+
+#### Option B — adopt the existing bucket in place
+
+Best when the existing bucket and path are already what you want. The B2
+application key still gets replaced (the secret can't be imported) — revoke
+the legacy key in the B2 console after the new key is in use.
+
+```bash
+cd terraform
+
+# Add to `.auto.tfvars` so Terraform manages the existing bucket name + path:
+#    backup_bucket_name      = "swintronics"
+#    restic_repository_path  = "backups/immich"
+
+terraform import b2_bucket.backups <bucket-id>          # from `b2 list-buckets`
+terraform import random_password.restic '<existing RESTIC_PASSWORD>'
+terraform import healthchecksio_check.heartbeat <existing-check-uuid>
+terraform apply
+```
 
 ### Restore / Disaster Recovery
 
