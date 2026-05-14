@@ -308,15 +308,17 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 
 | service_name   | directory      | template                            |
 |----------------|----------------|-------------------------------------|
-| immich         | immich-app     | services/immich-app/compose.yml.j2  |
-| paperless      | paperless      | services/paperless/compose.yml.j2   |
-| kuma           | uptime-kuma    | services/uptime-kuma/compose.yml.j2 |
-| stirling-pdf   | stirling-pdf   | services/stirling-pdf/compose.yml.j2|
-| traefik        | networking     | services/networking/traefik.yml.j2  |
+| immich         | immich-app     | services/immich-app/compose.yml.j2    |
+| paperless      | paperless      | services/paperless/compose.yml.j2     |
+| stirling-pdf   | stirling-pdf   | services/stirling-pdf/compose.yml.j2  |
+| traefik        | networking     | services/networking/traefik.yml.j2    |
 | autoheal       | autoheal       | services/autoheal/compose.yml.j2      |
 | homeassistant  | homeassistant  | services/homeassistant/compose.yml.j2 |
 | zigbee2mqtt    | zigbee2mqtt    | services/zigbee2mqtt/compose.yml.j2   |
 | mosquitto      | mosquitto      | services/mosquitto/compose.yml.j2     |
+| beszel         | beszel         | services/beszel/compose.yml.j2        |
+| dockhand       | dockhand       | services/dockhand/compose.yml.j2      |
+| gatus          | gatus          | services/gatus/compose.yml.j2         |
 
 ### Networking
 
