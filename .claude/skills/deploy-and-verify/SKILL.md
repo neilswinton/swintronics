@@ -19,6 +19,8 @@ git diff --stat ansible/
 
 Note the touched paths under `ansible/services/<service>/` and any version bumps in `versions.yml`. These are the services to verify in step 3.
 
+**If `git diff --stat ansible/` is empty**, there is nothing to deploy. Skip step 2 entirely and go straight to step 3 — useful for health-checking a named service without redeploying. Report `⊘ deploy skipped — no ansible/ changes` in step 4. Do **not** run the playbook just to "make sure" — a no-op run still touches every host and takes a couple of minutes.
+
 ### 2. Run the deploy
 
 There is only one deploy playbook — `deploy-versions.yml`. It renders every service's templates, detects which rendered files actually changed, and restarts only those services. A service-name arg to this skill scopes *verification* (step 3); it does not change the deploy command.
