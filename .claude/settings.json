@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=$(jq -r '.tool_input.file_path // .tool_response.filePath // \"\"')\ncase \"$file\" in\n  */ansible/*.yml|*/ansible/*.yaml) ;;\n  *) exit 0 ;;\nesac\nout=$(ansible-lint --profile=min \"$file\" 2>&1)\nif [ $? -ne 0 ]; then\n  printf \"ansible-lint (--profile=min) reported issues in %s:\\n%s\\n\" \"$file\" \"$out\" >&2\n  exit 2\nfi\nexit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
