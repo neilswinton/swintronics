@@ -1,6 +1,6 @@
 ---
 name: deploy-and-verify
-description: Deploy Ansible changes and verify they actually landed on the target before reporting success. Use after editing ansible/versions.yml or any ansible/services/*. Catches the "edited playbook but never ran it" and "ran playbook but container crashed" failure modes. Optional arg: a single service name to scope deploy to update-service.yml.
+description: Deploy Ansible changes and verify they actually landed on the target before reporting success. Use after editing ansible/versions.yml or any ansible/services/*. Catches the "edited playbook but never ran it" and "ran playbook but container crashed" failure modes. Optional arg: a single service name to scope verification (the deploy itself only restarts services whose rendered files change).
 ---
 
 # Deploy and Verify
@@ -19,24 +19,21 @@ git diff --stat ansible/
 
 Note the touched paths under `ansible/services/<service>/` and any version bumps in `versions.yml`. These are the services to verify in step 3.
 
+**If `git diff --stat ansible/` is empty**, there is nothing to deploy. Skip step 2 entirely and go straight to step 3 — useful for health-checking a named service without redeploying. Report `⊘ deploy skipped — no ansible/ changes` in step 4. Do **not** run the playbook just to "make sure" — a no-op run still touches every host and takes a couple of minutes.
+
 ### 2. Run the deploy
 
-If the user invoked `/deploy-and-verify <service>` with a service name:
+There is only one deploy playbook — `deploy-versions.yml`. It renders every service's templates, detects which rendered files actually changed, and restarts only those services. A service-name arg to this skill scopes *verification* (step 3); it does not change the deploy command.
+
+Always pass `-e target=<cluster>` — without it the playbook defaults to the `clusters` group, which fans out to both `swintronics` and `cactus_cantina` (experimental). The XPS13 / production target is `swintronics`. Use `cactus_cantina` only when the user is explicitly working on OCI.
 
 ```bash
 cd /home/neil/git/swintronics/ansible
 source .env
-# Look up the new_version from versions.yml if needed:
-ansible-playbook playbooks/update-service.yml -e service_name=<service> -e new_version=<version>
+ansible-playbook playbooks/deploy-versions.yml -e target=swintronics
 ```
 
-Otherwise (no arg → multi-service deploy):
-
-```bash
-cd /home/neil/git/swintronics/ansible
-source .env
-ansible-playbook playbooks/deploy-versions.yml
-```
+Do **not** pipe the playbook output through `tail` or `head` — failure context lives in the middle of the run and gets truncated. If output is long, write to a file (`tee /tmp/deploy.log`) and grep it.
 
 If Ansible exits non-zero, stop here and report the failure with the relevant task output. Do **not** continue to verification.
 
