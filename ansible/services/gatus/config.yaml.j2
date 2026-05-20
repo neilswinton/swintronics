@@ -7,11 +7,6 @@ storage:
   type: sqlite
   path: /data/data.db
 
-maintenance:
-  start: "03:55"
-  duration: 20m
-  timezone: "America/New_York"
-
 alerting:
   telegram:
     token: ${GATUS_TELEGRAM_BOT_TOKEN}
@@ -20,6 +15,7 @@ alerting:
 endpoints:
   # ── Services (5m, 3 retries) ──────────────────────────────────────────────
   - name: Immich
+    enabled: true
     group: Services
     url: https://photos.{{ server_domain }}/api/server/ping
     interval: 5m
@@ -27,6 +23,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: Paperless
+    enabled: true
     group: Services
     url: https://paperless.{{ server_domain }}/accounts/login/
     interval: 5m
@@ -34,6 +31,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: Stirling-PDF
+    enabled: true
     group: Services
     url: https://stirling-pdf.{{ server_domain }}/api/v1/info/status
     interval: 5m
@@ -41,6 +39,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: Home Assistant
+    enabled: true
     group: Services
     url: https://ha.{{ server_domain }}/
     interval: 5m
@@ -48,6 +47,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: Zigbee2MQTT
+    enabled: true
     group: Services
     url: https://z2m.{{ server_domain }}/
     interval: 5m
@@ -56,6 +56,7 @@ endpoints:
 
   # ── System Monitoring (5m, 3 retries) ─────────────────────────────────────
   - name: Traefik
+    enabled: true
     group: System Monitoring
     url: https://traefik.{{ server_domain }}/api/version
     interval: 5m
@@ -63,6 +64,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: Dockhand
+    enabled: true
     group: System Monitoring
     url: https://dockhand.{{ server_domain }}/api/health
     interval: 5m
@@ -70,6 +72,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: Beszel
+    enabled: true
     group: System Monitoring
     url: https://beszel.{{ server_domain }}/api/health
     interval: 5m
@@ -77,6 +80,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: Beszel agent
+    enabled: true
     group: System Monitoring
     url: tcp://host.docker.internal:45876
     interval: 5m
@@ -85,6 +89,7 @@ endpoints:
 
   # ── Healthchecks.io heartbeat (60s, 3 retries) ────────────────────────────
   - name: Healthchecks.io heartbeat
+    enabled: true
     group: System Monitoring
     url: ${GATUS_HEALTHCHECKS_PING_URL}
     interval: 60s
@@ -94,6 +99,7 @@ endpoints:
 external-endpoints:
   # ── Backups (push from backup-remote scripts, alert if no ping in 25h) ─────
   - name: Immich
+    enabled: true
     group: Backups
     token: ${GATUS_BACKUP_PUSH_TOKEN}
     heartbeat:
@@ -101,6 +107,7 @@ external-endpoints:
     alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]
 
   - name: Paperless
+    enabled: true
     group: Backups
     token: ${GATUS_BACKUP_PUSH_TOKEN}
     heartbeat:
@@ -108,6 +115,7 @@ external-endpoints:
     alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]
 
   - name: Home Assistant
+    enabled: true
     group: Backups
     token: ${GATUS_BACKUP_PUSH_TOKEN}
     heartbeat:
