@@ -7,11 +7,22 @@ HA_SNAP="${DATA}/snapshots/homeassistant/backup"
 Z2M_SNAP="${DATA}/snapshots/zigbee2mqtt/backup"
 HA_ARCHIVE="${DATA}/snapshots/homeassistant/${DAY:-$(date +%A)}"
 Z2M_ARCHIVE="${DATA}/snapshots/zigbee2mqtt/${DAY:-$(date +%A)}"
+GATUS_ENDPOINT="backups_home-assistant"
+
+push_gatus() {
+    local success="$1"
+    [ -n "${GATUS_BASE_URL:-}" ] || return 0
+    curl -fsS -o /dev/null --retry 3 \
+        -X POST -H "Authorization: Bearer ${GATUS_BACKUP_PUSH_TOKEN}" \
+        "${GATUS_BASE_URL}/api/v1/endpoints/${GATUS_ENDPOINT}/external?success=${success}" || true
+}
+
+trap 'push_gatus false' ERR
 
 echo "Uploading homeassistant snapshots to restic..."
-sudo -E restic backup --tag homeassistant --tag "${DATE:-$(date +%F_%H-%M)}" "${HA_SNAP}" "${Z2M_SNAP}"
-sudo -E restic forget --tag homeassistant --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
-sudo -E restic check
+sudo -E restic backup --retry-lock 10m --tag homeassistant --tag "${DATE:-$(date +%F_%H-%M)}" "${HA_SNAP}" "${Z2M_SNAP}"
+sudo -E restic forget --retry-lock 10m --tag homeassistant --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+sudo -E restic check --retry-lock 10m
 
 for pair in "${HA_SNAP}:${HA_ARCHIVE}" "${Z2M_SNAP}:${Z2M_ARCHIVE}"; do
     snap="${pair%%:*}"
@@ -26,6 +37,4 @@ for pair in "${HA_SNAP}:${HA_ARCHIVE}" "${Z2M_SNAP}:${Z2M_ARCHIVE}"; do
     mv "${snap}" "${archive}"
 done
 
-[ -n "${GATUS_BASE_URL:-}" ] && curl -fsS -o /dev/null --retry 3 \
-    -X POST -H "Authorization: Bearer ${GATUS_BACKUP_PUSH_TOKEN}" \
-    "${GATUS_BASE_URL}/api/v1/endpoints/backups_home-assistant/external?success=true" || true
+push_gatus true

@@ -3,12 +3,21 @@ set -euo pipefail
 # Upload paperless export to restic and ping monitoring.
 
 EXPORT_PATH="${DATA_MOUNTPOINT:-/mnt/docker-data}/volumes/paperless/export"
+GATUS_ENDPOINT="backups_paperless"
+
+push_gatus() {
+    local success="$1"
+    [ -n "${GATUS_BASE_URL:-}" ] || return 0
+    curl -fsS -o /dev/null --retry 3 \
+        -X POST -H "Authorization: Bearer ${GATUS_BACKUP_PUSH_TOKEN}" \
+        "${GATUS_BASE_URL}/api/v1/endpoints/${GATUS_ENDPOINT}/external?success=${success}" || true
+}
+
+trap 'push_gatus false' ERR
 
 echo "Uploading paperless export to restic..."
-sudo -E restic backup --tag paperless --tag "${DATE:-$(date +%F_%H-%M)}" "${EXPORT_PATH}"
-sudo -E restic forget --tag paperless --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
-sudo -E restic check
+sudo -E restic backup --retry-lock 10m --tag paperless --tag "${DATE:-$(date +%F_%H-%M)}" "${EXPORT_PATH}"
+sudo -E restic forget --retry-lock 10m --tag paperless --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+sudo -E restic check --retry-lock 10m
 
-[ -n "${GATUS_BASE_URL:-}" ] && curl -fsS -o /dev/null --retry 3 \
-    -X POST -H "Authorization: Bearer ${GATUS_BACKUP_PUSH_TOKEN}" \
-    "${GATUS_BASE_URL}/api/v1/endpoints/backups_paperless/external?success=true" || true
+push_gatus true
