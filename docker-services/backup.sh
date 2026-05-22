@@ -48,14 +48,24 @@ fi
 
 run_hooks() {
     local hook="$1"
+    local continue_on_error="${2:-false}"
     echo "━━ Phase: ${hook} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     for dir in "${DOCKER_SERVICES}"/*/; do
         if [ -x "${dir}/${hook}" ]; then
-            echo "▶ ${hook}: $(basename "${dir}")"
+            local service rc=0
+            service=$(basename "${dir}")
+            echo "▶ ${hook}: ${service}"
             if $debug; then
-                (cd "${dir}" && bash -x ./"${hook}")
+                (cd "${dir}" && bash -x ./"${hook}") || rc=$?
             else
-                (cd "${dir}" && ./"${hook}")
+                (cd "${dir}" && ./"${hook}") || rc=$?
+            fi
+            if [ $rc -ne 0 ]; then
+                if $continue_on_error; then
+                    echo "⚠ ${hook} for ${service} failed (rc=${rc}); continuing"
+                else
+                    return $rc
+                fi
             fi
         fi
     done
@@ -87,6 +97,6 @@ hc_pause
 run_hooks backup-execute
 hc_resume
 
-run_hooks backup-remote
+run_hooks backup-remote true
 
 date +"✅ Backup complete at %Y-%m-%d %H:%M:%S"
