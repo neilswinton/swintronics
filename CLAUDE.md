@@ -15,6 +15,12 @@ Infrastructure-as-Code for a self-hosted server cluster. Primary server is a Del
 - **`docker-services/`** — Non-versioned service config (cluster.sh, networks.yml, env files, traefik config); compose files are deployed here by Ansible
 - **`server-scripts/`** — Backup scripts (Restic) and cron definitions that live on the server
 
+## Infrastructure Context
+
+- This repo is primarily Ansible + YAML config; the control node is localhost, not a remote server
+- Verify exact variable names and key casing (e.g., Gatus endpoint keys are lowercase: `backups_immich` not `Backups_Immich`) before editing
+- When removing services, also clean up their directories on the target server and check for cross-service dependencies (e.g., hc_pause/hc_resume helpers)
+
 ## Key Commands
 
 ### Terraform
@@ -64,6 +70,23 @@ ansible-playbook playbooks/update-service.yml \
 ```
 
 `cluster.sh` reads `backup.env` for Restic and Gatus config and coordinates startup/shutdown order: networking first/last.
+
+## Issue Triage
+
+- When working from a GitHub issue, first diagnose the root cause before implementing fixes; don't just take the issue title at face value
+
+## Git Workflow
+
+- ALWAYS create a feature branch before committing changes; never commit directly to main
+- Sign commits per user's git config; do NOT use `-c commit.gpgsign=false` to bypass signing
+- After committing, open a PR and handle rebases/conflicts cleanly
+
+## Testing & Verification
+
+### Deployment Verification
+
+- After modifying a playbook, confirm it has actually been deployed before debugging behavior (the Telegram-on-reboot bug was caused by an undeployed playbook)
+- For backup changes, run a one-shot backup to validate end-to-end
 
 ## New Deployment Checklist
 
