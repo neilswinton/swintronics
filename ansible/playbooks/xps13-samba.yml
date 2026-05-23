@@ -1,0 +1,160 @@
+---
+# Export /home/neil over Samba on the XPS13, read-only, restricted to Tailscale.
+#
+# - Binds smbd to lo + tailscale0 only (not exposed on Wi-Fi / LAN interfaces).
+# - hosts allow: 100.64.0.0/10 (Tailscale CGNAT range) + loopback.
+# - Authenticated access only (security = user, map to guest = never).
+# - Share is read-only; the only valid user is `neil`.
+#
+# Prerequisites:
+#   - Add SAMBA_PASSWORD_NEIL to the Swintronics Runtime project in Infisical
+#     (root path). This is the password Windows uses when connecting.
+#
+# Usage:
+#   ansible-playbook playbooks/xps13-samba.yml
+#
+# Connect from Windows (file explorer):
+#   \\xps13-1.tailc1e76b.ts.net\home-neil
+#   user: neil, password: value of SAMBA_PASSWORD_NEIL
+
+- name: Export /home/neil over Samba (Tailscale-only, read-only)
+  hosts: "{{ target | default('local') }}"
+  connection: "{{ 'local' if inventory_hostname in groups.get('local', []) else 'ssh' }}"
+  become: true
+
+  pre_tasks:
+    - name: Login to Infisical
+      infisical.vault.login:
+        url: "https://app.infisical.com"
+        auth_method: universal_auth
+        universal_auth_client_id: "{{ infisical_client_id }}"
+        universal_auth_client_secret: "{{ infisical_client_secret }}"
+      register: infisical_login
+      delegate_to: localhost
+      check_mode: no
+
+    - name: Fetch secrets from Infisical
+      infisical.vault.read_secrets:
+        login_data: "{{ infisical_login.login_data }}"
+        project_id: "{{ infisical_project_id }}"
+        env_slug: "{{ infisical_environment }}"
+        path: "/"
+        as_dict: true
+      register: infisical_secrets
+      delegate_to: localhost
+      check_mode: no
+      no_log: true
+
+    - name: Require SAMBA_PASSWORD_NEIL to be present in Infisical
+      ansible.builtin.assert:
+        that: "'SAMBA_PASSWORD_NEIL' in infisical_secrets.secrets"
+        fail_msg: >-
+          SAMBA_PASSWORD_NEIL is missing from the Infisical Runtime project (root path).
+          Add it before running this playbook.
+
+  tasks:
+    - name: Install Samba server
+      ansible.builtin.apt:
+        name: samba
+        state: present
+        update_cache: true
+
+    - name: Deploy /etc/samba/smb.conf
+      ansible.builtin.copy:
+        dest: /etc/samba/smb.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          # Managed by Ansible (playbooks/xps13-samba.yml). Do not edit by hand.
+          [global]
+            workgroup = WORKGROUP
+            server string = %h Samba server
+            server role = standalone server
+            log file = /var/log/samba/log.%m
+            max log size = 1000
+            logging = file
+
+            # Restrict to Tailscale CGNAT + loopback at the application layer.
+            # We cannot bind smbd only to tailscale0: Samba's interface enumeration
+            # drops non-broadcast (POINTOPOINT) devices like Tailscale's userspace
+            # interface, regardless of how `interfaces =` is specified. So smbd
+            # listens on all interfaces and hosts allow/deny enforces access.
+            hosts allow = 127.0.0.0/8 100.64.0.0/10
+            hosts deny  = 0.0.0.0/0
+
+            # We do not need NetBIOS browsing — Tailscale Magic DNS handles names.
+            disable netbios = yes
+
+            # Authenticated access only — no guest fallback.
+            security = user
+            map to guest = never
+
+            # Require modern SMB + signing.
+            server min protocol = SMB2
+            client min protocol = SMB2
+            server signing = mandatory
+
+          [home-neil]
+            comment = neil home directory (read-only)
+            path = /home/neil
+            valid users = neil
+            read only = yes
+            browseable = yes
+            guest ok = no
+      notify: Restart smbd
+
+    - name: Validate smb.conf
+      ansible.builtin.command: testparm -s
+      changed_when: false
+      check_mode: false
+      when: not ansible_check_mode
+
+    - name: Enable and start smbd
+      ansible.builtin.systemd:
+        name: smbd
+        enabled: true
+        state: started
+
+    - name: Disable nmbd (no NetBIOS broadcasts on LAN)
+      ansible.builtin.systemd:
+        name: nmbd
+        enabled: false
+        state: stopped
+        masked: true
+
+    - name: Check whether neil exists in the Samba password database
+      ansible.builtin.shell: pdbedit -L | grep -q '^neil:'
+      register: pdbedit_check
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Add neil to the Samba password database
+      ansible.builtin.shell: |
+        set -o pipefail
+        printf '%s\n%s\n' "$PW" "$PW" | smbpasswd -s -a neil
+      args:
+        executable: /bin/bash
+      environment:
+        PW: "{{ infisical_secrets.secrets.SAMBA_PASSWORD_NEIL }}"
+      when: pdbedit_check.rc != 0
+      no_log: true
+
+    - name: Sync neil's Samba password with the Infisical value
+      ansible.builtin.shell: |
+        set -o pipefail
+        printf '%s\n%s\n' "$PW" "$PW" | smbpasswd -s neil
+      args:
+        executable: /bin/bash
+      environment:
+        PW: "{{ infisical_secrets.secrets.SAMBA_PASSWORD_NEIL }}"
+      when: pdbedit_check.rc == 0
+      changed_when: false
+      no_log: true
+
+  handlers:
+    - name: Restart smbd
+      ansible.builtin.systemd:
+        name: smbd
+        state: restarted
