@@ -375,6 +375,22 @@ Kuma configuration is manual (no API automation). Use SQLite (the default) — n
 
 **Subsequent deploys:** Kuma data persists in `/docker-data/volumes/uptime-kuma/data` (SQLite file).
 
+### HACS Setup
+
+HACS (Home Assistant Community Store) is installed by `deploy-versions.yml` from
+the GitHub release pinned in `versions.yml` (`hacs:`). Files land in
+`/docker-data/volumes/homeassistant/custom_components/hacs/` and a
+`.installed-version` marker drives idempotency — bumping the version triggers a
+re-extract and HA restart on the next deploy.
+
+The UI side is manual (one-time per HA install):
+
+1. After the first deploy with HACS, restart HA finishes loading `custom_components/hacs/`
+2. In the HA UI: Settings → Devices & Services → Add Integration → search "HACS"
+3. Accept the prompts; HACS shows a GitHub device-code URL + code
+4. Open the URL on any browser signed into GitHub, paste the code, authorize
+5. HACS appears in the sidebar; integrations installed through it are managed by HACS from then on
+
 ### Beszel Agent Bootstrap
 
 Beszel agents authenticate with the hub using the hub's SSH public key (`KEY`) and a token (`TOKEN`). We use a **universal token** so any agent can auto-register with the hub on first connect — no per-system setup needed. Both values are stored in the Infisical Runtime project as `BESZEL_AGENT_KEY` and `BESZEL_AGENT_TOKEN`, and are pulled by `deploy-versions.yml`.
