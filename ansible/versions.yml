@@ -37,6 +37,9 @@ versions:
   # https://hub.docker.com/r/homeassistant/home-assistant/tags — "stable" tracks latest stable monthly release
   homeassistant: "stable"
 
+  # https://github.com/hacs/integration/releases — pinned; installed into HA custom_components/
+  hacs: "2.0.5"
+
   # https://github.com/Koenkk/zigbee2mqtt/releases — floating major
   zigbee2mqtt: "2"
 
