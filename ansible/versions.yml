@@ -11,7 +11,7 @@
 
 versions:
   # https://github.com/traefik/traefik/releases — floating minor
-  traefik: "v3.6"
+  traefik: "v3.7"
 
   # https://github.com/immich-app/immich/releases — pinned (rapid breaking changes)
   immich: "v2.7.5"
@@ -29,7 +29,7 @@ versions:
   beszel: "0.18.7"
 
   # https://hub.docker.com/r/fnsys/dockhand/tags — pinned (small project)
-  dockhand: "v1.0.27"
+  dockhand: "v1.0.31"
 
   # https://hub.docker.com/r/willfarrell/autoheal — pinned (rarely updated)
   autoheal: "1.2.0"
