@@ -334,6 +334,7 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 | immich         | immich-app     | services/immich-app/compose.yml.j2    |
 | paperless      | paperless      | services/paperless/compose.yml.j2     |
 | stirling-pdf   | stirling-pdf   | services/stirling-pdf/compose.yml.j2  |
+| bentopdf       | bentopdf       | services/bentopdf/compose.yml.j2      |
 | traefik        | networking     | services/networking/traefik.yml.j2    |
 | autoheal       | autoheal       | services/autoheal/compose.yml.j2      |
 | homeassistant  | homeassistant  | services/homeassistant/compose.yml.j2 |

@@ -65,6 +65,12 @@
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
+      bentopdf:
+        dir: bentopdf
+        dns_names: [bentopdf]
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
       beszel:
         dir: beszel
         dns_names: [beszel]
