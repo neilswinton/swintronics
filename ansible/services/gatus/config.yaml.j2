@@ -38,6 +38,14 @@ endpoints:
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
+  - name: BentoPDF
+    enabled: true
+    group: Services
+    url: https://bentopdf.{{ server_domain }}/
+    interval: 5m
+    conditions: ["[STATUS] == 200"]
+    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+
   - name: Home Assistant
     enabled: true
     group: Services

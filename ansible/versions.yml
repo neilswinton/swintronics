@@ -25,6 +25,9 @@ versions:
   # https://github.com/Stirling-Tools/Stirling-PDF/releases — pinned
   stirling_pdf: "2.10.0"
 
+  # https://github.com/alam00000/bentopdf/releases — pinned (fast-moving)
+  bentopdf: "v2.8.5"
+
   # https://github.com/henrygd/beszel/releases — pinned (pre-1.0)
   beszel: "0.18.7"
 
