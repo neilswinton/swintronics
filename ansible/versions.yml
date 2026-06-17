@@ -32,7 +32,7 @@ versions:
   beszel: "0.18.7"
 
   # https://hub.docker.com/r/fnsys/dockhand/tags — pinned (small project)
-  dockhand: "v1.0.31"
+  dockhand: "v1.0.34"
 
   # https://hub.docker.com/r/willfarrell/autoheal — pinned (rarely updated)
   autoheal: "1.2.0"
