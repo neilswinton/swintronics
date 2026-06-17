@@ -78,7 +78,7 @@ ansible-playbook playbooks/update-service.yml \
 ## Git Workflow
 
 - ALWAYS create a feature branch before committing changes; never commit directly to main
-- Sign commits per user's git config; do NOT use `-c commit.gpgsign=false` to bypass signing
+- Commit signing is intentionally disabled for this repo (`commit.gpgsign=false` in `.git/config`): the repo is often driven via remote control where the GPG passphrase prompt is impractical, and PRs are always squash-merged (GitHub re-signs the squash commit on `main`). Commit normally — do not re-enable signing or add `-c commit.gpgsign=true` here.
 - After committing, open a PR and handle rebases/conflicts cleanly
 
 ## Testing & Verification
