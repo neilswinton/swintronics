@@ -13,8 +13,8 @@ versions:
   # https://github.com/traefik/traefik/releases — floating minor
   traefik: "v3.7"
 
-  # https://github.com/immich-app/immich/releases — pinned (rapid breaking changes)
-  immich: "v2.7.5"
+  # https://github.com/immich-app/immich/releases — floating major (upgrade via dockhand)
+  immich: "v3"
 
   # https://github.com/paperless-ngx/paperless-ngx/releases — floating minor
   paperless: "2.20"

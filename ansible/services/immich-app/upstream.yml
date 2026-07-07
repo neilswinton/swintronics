@@ -1,4 +1,4 @@
-# Upstream docker-compose.yml from immich v2.7.5
+# Upstream docker-compose.yml from immich v3.0.1
 # Source: https://github.com/immich-app/immich/releases/latest/download/docker-compose.yml
 # Saved for diffing against compose.yml.j2
 
@@ -53,7 +53,7 @@ services:
 
   redis:
     container_name: immich_redis
-    image: docker.io/valkey/valkey:9@sha256:3b55fbaa0cd93cf0d9d961f405e4dfcc70efe325e2d84da207a0a8e6d8fde4f9
+    image: docker.io/valkey/valkey:9@sha256:4963247afc4cd33c7d3b2d2816b9f7f8eeebab148d29056c2ca4d7cbc966f2d9
     healthcheck:
       test: redis-cli ping || exit 1
     restart: always
