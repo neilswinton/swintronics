@@ -30,14 +30,6 @@ endpoints:
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
-  - name: Stirling-PDF
-    enabled: true
-    group: Services
-    url: https://stirling-pdf.{{ server_domain }}/api/v1/info/status
-    interval: 5m
-    conditions: ["[STATUS] == 200"]
-    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
-
   - name: BentoPDF
     enabled: true
     group: Services

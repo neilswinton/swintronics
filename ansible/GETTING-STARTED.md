@@ -122,13 +122,6 @@ ansible-playbook playbooks/update-service.yml \
   -e "new_version=1.23.13"
 ```
 
-**Stirling PDF:**
-```bash
-ansible-playbook playbooks/update-service.yml \
-  -e "service_name=stirling-pdf" \
-  -e "new_version=0.33.0"
-```
-
 ## Common Commands
 
 **Check what would change (dry run):**
@@ -202,7 +195,6 @@ The playbook automatically converts service names to variable names:
 - `immich` → `IMMICH_VERSION`
 - `paperless-ngx` → `PAPERLESS_NGX_VERSION`
 - `kuma` → `KUMA_VERSION`
-- `stirling-pdf` → `STIRLING_PDF_VERSION`
 - `traefik` → `TRAEFIK_VERSION`
 
 Make sure your `.env` files use these exact variable names!

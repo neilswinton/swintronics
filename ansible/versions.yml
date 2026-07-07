@@ -22,9 +22,6 @@ versions:
   # https://github.com/TwiN/gatus/releases — floating (stable tag tracks latest stable)
   gatus: "stable"
 
-  # https://github.com/Stirling-Tools/Stirling-PDF/releases — pinned
-  stirling_pdf: "2.10.0"
-
   # https://github.com/alam00000/bentopdf/releases — pinned (fast-moving)
   bentopdf: "v2.8.5"
 
@@ -53,5 +50,5 @@ versions:
 # while their compose files, config, volumes, and Docker network are left
 # intact. Remove a name to re-enable — the next deploy redeploys and restarts
 # it. Names must match the service keys above / the playbook's _service_config
-# (e.g. bentopdf, stirling_pdf, dockhand).
-disabled_services: ["stirling_pdf"]
+# (e.g. bentopdf, dockhand).
+disabled_services: []
