@@ -4,12 +4,8 @@ xps13 ansible_connection=local ansible_host=localhost
 [swintronics:children]
 local
 
-[cactus_cantina]
-oci-1 ansible_host=oci-1.cactus-cantina.com
-
 [clusters:children]
 swintronics
-cactus_cantina
 
 [clusters:vars]
 ansible_python_interpreter=/usr/bin/python3

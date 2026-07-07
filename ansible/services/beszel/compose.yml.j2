@@ -37,4 +37,6 @@ services:
       KEY: "{{ beszel_agent_key }}"
       TOKEN: "{{ beszel_agent_token }}"
       HUB_URL: "https://{{ _service_config.beszel.dns_names[0] }}.{{ server_domain }}"
+    labels:
+      autoheal: "true"
 {% endif %}
