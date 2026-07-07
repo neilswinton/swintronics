@@ -346,8 +346,14 @@ Matched pair of Claude Code skills drives the service lifecycle:
 
 To temporarily disable a service instead (keep files and data, stop
 containers), add it to `disabled_services` in `ansible/versions.yml`. The
-Gatus config template reads the same list, so the service's monitors are
-disabled on the same deploy (and re-enabled when the name is removed).
+Gatus config template reads the same list, so the service's monitors —
+including its Backups heartbeat endpoint — are disabled on the same deploy
+(and re-enabled when the name is removed). The deploy also writes a
+`.disabled` marker into the service's compose directory, which makes
+`backup.sh` skip its backup hooks (the containers are down; running the hooks
+would fail or restart them). Trade-off: while disabled, the service's restic
+snapshots age toward the retention window (`--keep-daily 7` etc.) — fine for
+a temporary disable, but pre-disable snapshots eventually rotate out.
 
 ### Networking
 
