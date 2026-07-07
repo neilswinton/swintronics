@@ -52,7 +52,10 @@ stateless web app, `paperless` for stateful with DB + backups).
 - `ansible/playbooks/setup-storage.yml` — `_service_storage` entry
   (`stateful: true` → btrfs subvolume; `false` → logs dir only)
 - `ansible/services/gatus/config.yaml.j2` — endpoint block (copy an existing
-  one; use a lightweight health/status URL, Telegram alerts); lowercase keys
+  one; use a lightweight health/status URL, Telegram alerts); lowercase keys;
+  make `enabled:` conditional on the service key so disabling the service
+  also pauses its monitor:
+  `enabled: {{ ('<service-key>' not in disabled_services | default([])) | lower }}`
 - `CLAUDE.md` — row in the Service Name Mapping table; update the
   upstream-compose convention list
 

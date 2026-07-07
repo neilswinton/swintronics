@@ -345,7 +345,9 @@ Matched pair of Claude Code skills drives the service lifecycle:
   snapshots are never touched — the service just stops being backed up.
 
 To temporarily disable a service instead (keep files and data, stop
-containers), add it to `disabled_services` in `ansible/versions.yml`.
+containers), add it to `disabled_services` in `ansible/versions.yml`. The
+Gatus config template reads the same list, so the service's monitors are
+disabled on the same deploy (and re-enabled when the name is removed).
 
 ### Networking
 
