@@ -105,6 +105,14 @@
         files:
           - { src: compose.yml.j2,    dest: compose.yml }
           - { src: mosquitto.conf.j2, dest: mosquitto.conf }
+      memos:
+        dir: memos
+        dns_names: [memos]
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,            secret: true }
+          - { src: backup-execute,  dest: backup-execute,  executable: true }
+          - { src: backup-remote,   dest: backup-remote,   executable: true }
 
   pre_tasks:
     - name: Determine disabled services
