@@ -51,6 +51,14 @@ run_hooks() {
     local continue_on_error="${2:-false}"
     echo "━━ Phase: ${hook} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     for dir in "${DOCKER_SERVICES}"/*/; do
+        # deploy-versions.yml marks disabled_services with a .disabled file;
+        # their containers are down, so running hooks would fail or restart them
+        if [ -e "${dir}/.disabled" ]; then
+            if [ -x "${dir}/${hook}" ]; then
+                echo "⏭ ${hook}: $(basename "${dir}") (disabled — skipped)"
+            fi
+            continue
+        fi
         if [ -x "${dir}/${hook}" ]; then
             local service rc=0
             service=$(basename "${dir}")

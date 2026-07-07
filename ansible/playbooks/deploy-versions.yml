@@ -5,7 +5,9 @@
 #
 # Services not defined in versions.yml are skipped entirely. Services listed in
 # versions.yml's `disabled_services` are stopped (`docker compose down`) while
-# their files, config, volumes, and network are left intact.
+# their files, config, volumes, and network are left intact. A `.disabled`
+# marker is written into the service's compose directory so backup.sh skips
+# its backup hooks (and removed again when the service is re-enabled).
 # Traefik is always restarted first. Uptime Kuma is stopped before any
 # restart and started after, with healthchecks.io paused for the duration.
 #
@@ -181,6 +183,27 @@
       loop: "{{ _disabled_dirs.results | selectattr('stat.exists') | list }}"
       loop_control:
         label: "{{ item.item }}"
+
+    # backup.sh's run_hooks skips any service directory containing .disabled,
+    # so a disabled service's backup hooks don't run against stopped containers.
+
+    - name: Mark disabled services so backup hooks are skipped
+      ansible.builtin.file:
+        path: "{{ docker_services_path }}/{{ _service_config[item.item].dir }}/.disabled"
+        state: touch
+        owner: "{{ admin_user }}"
+        mode: '0644'
+        modification_time: preserve
+        access_time: preserve
+      loop: "{{ _disabled_dirs.results | selectattr('stat.exists') | list }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Remove .disabled marker from enabled services
+      ansible.builtin.file:
+        path: "{{ docker_services_path }}/{{ _service_config[item].dir }}/.disabled"
+        state: absent
+      loop: "{{ _enabled_services }}"
 
     - name: Deploy shared networks.yml
       ansible.builtin.copy:

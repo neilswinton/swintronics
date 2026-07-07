@@ -98,8 +98,10 @@ endpoints:
 
 external-endpoints:
   # ── Backups (push from backup-remote scripts, alert if no ping in 25h) ─────
+  # Disabled services skip their backup hooks (.disabled marker), so their
+  # heartbeat endpoints are disabled too — otherwise they'd alert after 25h.
   - name: Immich
-    enabled: true
+    enabled: {{ ('immich' not in disabled_services | default([])) | lower }}
     group: Backups
     token: ${GATUS_BACKUP_PUSH_TOKEN}
     heartbeat:
@@ -107,7 +109,7 @@ external-endpoints:
     alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]
 
   - name: Paperless
-    enabled: true
+    enabled: {{ ('paperless' not in disabled_services | default([])) | lower }}
     group: Backups
     token: ${GATUS_BACKUP_PUSH_TOKEN}
     heartbeat:
@@ -115,7 +117,7 @@ external-endpoints:
     alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]
 
   - name: Home Assistant
-    enabled: true
+    enabled: {{ ('homeassistant' not in disabled_services | default([])) | lower }}
     group: Backups
     token: ${GATUS_BACKUP_PUSH_TOKEN}
     heartbeat:
