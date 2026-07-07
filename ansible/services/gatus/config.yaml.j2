@@ -15,7 +15,7 @@ alerting:
 endpoints:
   # ── Services (5m, 3 retries) ──────────────────────────────────────────────
   - name: Immich
-    enabled: true
+    enabled: {{ ('immich' not in disabled_services | default([])) | lower }}
     group: Services
     url: https://photos.{{ server_domain }}/api/server/ping
     interval: 5m
@@ -23,7 +23,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: Paperless
-    enabled: true
+    enabled: {{ ('paperless' not in disabled_services | default([])) | lower }}
     group: Services
     url: https://paperless.{{ server_domain }}/accounts/login/
     interval: 5m
@@ -31,7 +31,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: BentoPDF
-    enabled: true
+    enabled: {{ ('bentopdf' not in disabled_services | default([])) | lower }}
     group: Services
     url: https://bentopdf.{{ server_domain }}/
     interval: 5m
@@ -39,7 +39,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: Home Assistant
-    enabled: true
+    enabled: {{ ('homeassistant' not in disabled_services | default([])) | lower }}
     group: Services
     url: https://ha.{{ server_domain }}/
     interval: 5m
@@ -47,7 +47,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: Zigbee2MQTT
-    enabled: true
+    enabled: {{ ('zigbee2mqtt' not in disabled_services | default([])) | lower }}
     group: Services
     url: https://z2m.{{ server_domain }}/
     interval: 5m
@@ -56,7 +56,7 @@ endpoints:
 
   # ── System Monitoring (5m, 3 retries) ─────────────────────────────────────
   - name: Traefik
-    enabled: true
+    enabled: {{ ('traefik' not in disabled_services | default([])) | lower }}
     group: System Monitoring
     url: https://traefik.{{ server_domain }}/api/version
     interval: 5m
@@ -64,7 +64,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: Dockhand
-    enabled: true
+    enabled: {{ ('dockhand' not in disabled_services | default([])) | lower }}
     group: System Monitoring
     url: https://dockhand.{{ server_domain }}/api/health
     interval: 5m
@@ -72,7 +72,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: Beszel
-    enabled: true
+    enabled: {{ ('beszel' not in disabled_services | default([])) | lower }}
     group: System Monitoring
     url: https://beszel.{{ server_domain }}/api/health
     interval: 5m
@@ -80,7 +80,7 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
   - name: Beszel agent
-    enabled: true
+    enabled: {{ ('beszel' not in disabled_services | default([])) | lower }}
     group: System Monitoring
     url: tcp://host.docker.internal:45876
     interval: 5m
