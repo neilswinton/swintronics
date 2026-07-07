@@ -46,6 +46,9 @@ versions:
   # https://hub.docker.com/_/mosquitto — floating major (extremely stable)
   mosquitto: "2"
 
+  # https://github.com/usememos/memos/releases — pinned (pre-1.0)
+  memos: "0.29.1"
+
 # Services listed here are stopped by deploy-versions (`docker compose down`)
 # while their compose files, config, volumes, and Docker network are left
 # intact. Remove a name to re-enable — the next deploy redeploys and restarts

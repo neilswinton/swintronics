@@ -326,6 +326,7 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 | homeassistant  | homeassistant  | services/homeassistant/compose.yml.j2 |
 | zigbee2mqtt    | zigbee2mqtt    | services/zigbee2mqtt/compose.yml.j2   |
 | mosquitto      | mosquitto      | services/mosquitto/compose.yml.j2     |
+| memos          | memos          | services/memos/compose.yml.j2         |
 | beszel         | beszel         | services/beszel/compose.yml.j2        |
 | dockhand       | dockhand       | services/dockhand/compose.yml.j2      |
 | gatus          | gatus          | services/gatus/compose.yml.j2         |
@@ -546,4 +547,4 @@ This scenario requires additional planning around Restic repo sharing and is def
 - Long-term: phone-friendly server management — expose remaining service UIs, document mobile access patterns
 
 ### Upstream Compose File Convention
-Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, uptime-kuma, beszel. Not tracked: networking/traefik (fully custom), dockhand (single-container, written from scratch)
+Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, uptime-kuma, beszel, memos. Not tracked: networking/traefik (fully custom), dockhand (single-container, written from scratch)
