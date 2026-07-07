@@ -3,7 +3,9 @@
 # Edit versions.yml and run this playbook — only services whose compose file
 # or .env actually changes will be restarted.
 #
-# Services not defined in versions.yml are skipped entirely.
+# Services not defined in versions.yml are skipped entirely. Services listed in
+# versions.yml's `disabled_services` are stopped (`docker compose down`) while
+# their files, config, volumes, and network are left intact.
 # Traefik is always restarted first. Uptime Kuma is stopped before any
 # restart and started after, with healthchecks.io paused for the duration.
 #
@@ -112,11 +114,8 @@
     - name: Determine disabled services
       ansible.builtin.set_fact:
         _disabled_services: >-
-          {{ _service_config
-             | dict2items
-             | selectattr('value.enabled', 'defined')
-             | selectattr('value.enabled', 'equalto', false)
-             | map(attribute='key')
+          {{ disabled_services | default([])
+             | select('in', _service_config.keys() | list)
              | list }}
 
     - name: Determine enabled services
