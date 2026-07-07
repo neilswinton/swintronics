@@ -12,7 +12,7 @@ Infrastructure-as-Code for a self-hosted server cluster. Primary server is a Del
 - **`ansible/`** — Manages rolling updates to Docker services from your local machine; connects via Tailscale
   - `versions.yml` — single file tracking all service versions; edit and run `deploy-versions.yml` to update
   - `services/` — Docker Compose files as Jinja2 templates; Ansible renders and deploys these to the server
-- **`docker-services/`** — Non-versioned service config (cluster.sh, networks.yml, env files, traefik config); compose files are deployed here by Ansible
+- **`docker-services/`** — Non-versioned service config (networks.yml, env files, traefik config); compose files are deployed here by Ansible
 - **`server-scripts/`** — Backup scripts (Restic) and cron definitions that live on the server
 
 ## Infrastructure Context
@@ -58,18 +58,6 @@ ansible-playbook playbooks/update-service.yml \
   -e "service_name=immich" \
   -e "new_version=v1.117.0"
 ```
-
-### Docker Cluster (run on the server in `/home/neil/swintronics/docker-services/`)
-
-```bash
-./cluster.sh --up        # Start all services
-./cluster.sh --down      # Stop all services
-./cluster.sh --upgrade   # Pull new images and restart
-./cluster.sh --pull      # Pull images without restarting
-./cluster.sh --debug     # Enable bash -x tracing
-```
-
-`cluster.sh` reads `backup.env` for Restic and Gatus config and coordinates startup/shutdown order: networking first/last.
 
 ## Issue Triage
 
@@ -315,7 +303,6 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 
 - Terraform accesses Infisical via machine identity in `.auto.tfvars`
 - Ansible authenticates to Infisical using Universal Auth (Machine Identity); credentials in `ansible/.env`
-- `cluster.sh` reads local `backup.env` on the server for Restic and Gatus config
 
 ### Service Update Workflow (Ansible)
 
@@ -333,7 +320,6 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 |----------------|----------------|-------------------------------------|
 | immich         | immich-app     | services/immich-app/compose.yml.j2    |
 | paperless      | paperless      | services/paperless/compose.yml.j2     |
-| stirling-pdf   | stirling-pdf   | services/stirling-pdf/compose.yml.j2  |
 | bentopdf       | bentopdf       | services/bentopdf/compose.yml.j2      |
 | traefik        | networking     | services/networking/traefik.yml.j2    |
 | autoheal       | autoheal       | services/autoheal/compose.yml.j2      |
@@ -343,6 +329,23 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 | beszel         | beszel         | services/beszel/compose.yml.j2        |
 | dockhand       | dockhand       | services/dockhand/compose.yml.j2      |
 | gatus          | gatus          | services/gatus/compose.yml.j2         |
+
+### Adding and Deleting Services
+
+Matched pair of Claude Code skills drives the service lifecycle:
+
+- **`/add-service <name>`** — scaffolds the repo config (compose template from
+  upstream, `_service_config` / `_service_storage` / `versions.yml` entries,
+  Gatus endpoint, docs), then deploys via `/deploy-and-verify`. Server-side
+  creation is entirely `deploy-versions.yml`.
+- **`/delete-service <name>`** — the reverse: removes the repo config and doc
+  references, then runs `ansible-playbook playbooks/delete-service.yml
+  -e service_dir=<dir>` to tear down the server side (containers + named
+  volumes, compose directory, data volumes, logs, DNS CNAMEs). Existing restic
+  snapshots are never touched — the service just stops being backed up.
+
+To temporarily disable a service instead (keep files and data, stop
+containers), add it to `disabled_services` in `ansible/versions.yml`.
 
 ### Networking
 
@@ -369,7 +372,6 @@ Kuma configuration is manual (no API automation). Use SQLite (the default) — n
 5. Add **HTTP monitors** for each service — interval: 5 minutes, retries: 3:
    - `https://photos.<domain>` — Immich
    - `https://paperless.<domain>` — Paperless
-   - `https://stirling-pdf.<domain>` — Stirling PDF
    - `https://beszel.<domain>` — Beszel
    - `https://status-admin.<domain>` — Kuma itself
    - healthchecks.io ping URL (from Infisical as `HC_KUMA_PING_URL`) — confirms Kuma is alive
@@ -536,4 +538,4 @@ This scenario requires additional planning around Restic repo sharing and is def
 - Long-term: phone-friendly server management — expose remaining service UIs, document mobile access patterns
 
 ### Upstream Compose File Convention
-Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, uptime-kuma, beszel. Not tracked: networking/traefik (fully custom), dockhand (single-container, written from scratch), stirling-pdf (upstream repo only has build-from-source compose files, no runtime compose)
+Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, uptime-kuma, beszel. Not tracked: networking/traefik (fully custom), dockhand (single-container, written from scratch)

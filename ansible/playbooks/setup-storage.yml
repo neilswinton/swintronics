@@ -29,7 +29,6 @@
       immich:      { dir: immich,       stateful: true, subvol_path: "immich/library" }
       paperless:   { dir: paperless,    stateful: true  }
       gatus:       { dir: gatus,        stateful: true  }
-      stirling_pdf: { dir: stirling-pdf, stateful: false }
       bentopdf:    { dir: bentopdf,     stateful: false }
       beszel:      { dir: beszel,       stateful: true  }
       dockhand:      { dir: dockhand,       stateful: true  }

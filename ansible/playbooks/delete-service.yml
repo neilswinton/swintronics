@@ -1,0 +1,115 @@
+---
+# Completely delete a service from the target server: stop and remove its
+# containers (including named volumes), delete its compose project directory,
+# its data volumes, and its logs, and remove its Cloudflare DNS records.
+#
+# Existing restic snapshots are NOT touched — deleting the compose directory
+# removes the service's backup-* hooks, so it simply stops being backed up.
+# Old snapshots remain restorable until pruned separately.
+#
+# This playbook takes explicit parameters instead of reading _service_config
+# from deploy-versions.yml, so it still works after the service has been
+# removed from the repo. The /delete-service skill drives the full workflow
+# (repo cleanup + this playbook).
+#
+# Usage:
+#   ansible-playbook playbooks/delete-service.yml -e service_dir=stirling-pdf \
+#     -e '{"dns_names": ["stirling-pdf"]}'
+#
+#   # Directory names differ per service (see _service_config): e.g. immich
+#   # lives in immich-app/ with volumes under volumes/immich and DNS "photos":
+#   ansible-playbook playbooks/delete-service.yml -e service_dir=immich-app \
+#     -e volume_dir=immich -e '{"dns_names": ["photos"]}'
+#
+# Vars:
+#   service_dir  (required) directory under docker_services_path
+#   volume_dir   (optional) directory name under <data_disk_mountpoint>/volumes
+#                and <data_disk_mountpoint>/logs; defaults to service_dir
+#   dns_names    (optional) list of CNAME record names to delete
+
+- name: Delete a service completely
+  hosts: "{{ target | default('clusters') }}"
+  connection: "{{ 'local' if inventory_hostname in groups.get('local', []) else 'ssh' }}"
+  become: true
+
+  vars:
+    _volume_dir: "{{ volume_dir | default(service_dir) }}"
+
+  pre_tasks:
+    - name: Require service_dir
+      ansible.builtin.assert:
+        that:
+          - service_dir is defined
+          - service_dir | length > 0
+        fail_msg: "Pass -e service_dir=<directory under docker_services_path>"
+
+  tasks:
+    - name: Check for compose file
+      ansible.builtin.stat:
+        path: "{{ docker_services_path }}/{{ service_dir }}/compose.yml"
+      register: _compose_file
+
+    - name: Stop and remove containers, networks, and named volumes
+      community.docker.docker_compose_v2:
+        project_src: "{{ docker_services_path }}/{{ service_dir }}"
+        state: absent
+        remove_volumes: true
+        remove_orphans: true
+      when: _compose_file.stat.exists
+
+    - name: Delete compose project directory (includes backup hooks)
+      ansible.builtin.file:
+        path: "{{ docker_services_path }}/{{ service_dir }}"
+        state: absent
+
+    - name: Delete data volumes
+      ansible.builtin.file:
+        path: "{{ data_disk_mountpoint }}/volumes/{{ _volume_dir }}"
+        state: absent
+
+    - name: Delete logs
+      ansible.builtin.file:
+        path: "{{ data_disk_mountpoint }}/logs/{{ _volume_dir }}"
+        state: absent
+
+    - name: Prune unused Docker images
+      community.docker.docker_prune:
+        images: true
+        images_filters:
+          dangling: false
+
+    # ── Remove DNS CNAME records ──────────────────────────────────────────────
+
+    - name: Remove DNS records
+      when: dns_names | default([]) | length > 0
+      block:
+        - name: Login to Infisical
+          infisical.vault.login:
+            url: "https://app.infisical.com"
+            auth_method: universal_auth
+            universal_auth_client_id: "{{ infisical_client_id }}"
+            universal_auth_client_secret: "{{ infisical_client_secret }}"
+          register: infisical_login
+          delegate_to: localhost
+          check_mode: no
+
+        - name: Fetch secrets from Infisical
+          infisical.vault.read_secrets:
+            login_data: "{{ infisical_login.login_data }}"
+            project_id: "{{ infisical_project_id }}"
+            env_slug: "{{ infisical_environment }}"
+            path: "/"
+            as_dict: true
+          register: infisical_secrets
+          delegate_to: localhost
+          check_mode: no
+
+        - name: Delete CNAME records
+          community.general.cloudflare_dns:
+            zone: "{{ server_domain }}"
+            record: "{{ item }}"
+            type: CNAME
+            api_token: "{{ infisical_secrets.secrets.CF_DNS_API_TOKEN }}"
+            state: absent
+          loop: "{{ dns_names }}"
+          delegate_to: localhost
