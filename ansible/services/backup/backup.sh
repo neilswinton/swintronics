@@ -23,7 +23,7 @@ DOCKER_SERVICES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-export DATE DAY DATA_MOUNTPOINT
+export DAY DATA_MOUNTPOINT
 DATE=$(date +%F_%H-%M)
 DAY=$(date +%A)
 DATA_MOUNTPOINT="${DATA_MOUNTPOINT:-/mnt/docker-data}"
