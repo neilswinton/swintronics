@@ -81,6 +81,7 @@
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
+          - { src: update-dockhand, dest: update-dockhand,    executable: true }
       autoheal:
         dir: autoheal
         files:
@@ -383,6 +384,33 @@
       ansible.builtin.debug:
         msg: "Updated: {{ _changed_services | join(', ') }}"
       when: _changed_services | length > 0
+
+    # ── Dockhand self-update cron ─────────────────────────────────────────────
+    # Dockhand updates other containers but not itself (issue #62), so a daily
+    # cron pulls its floating tag and recreates the container only when the
+    # image changed. Runs as root because the script reads Telegram creds from
+    # /etc/swintronics/monitoring.env. Removed when dockhand is disabled or
+    # dropped from versions.yml; the script also honors the .disabled marker.
+
+    - name: Ensure cron log directory exists
+      ansible.builtin.file:
+        path: "{{ data_disk_mountpoint }}/logs/cron"
+        state: directory
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0755'
+      when: "'dockhand' in _enabled_services"
+
+    - name: Install dockhand self-update cron job
+      ansible.builtin.cron:
+        name: "dockhand self-update"
+        minute: "0"
+        hour: "5"
+        job: >-
+          {{ docker_services_path }}/dockhand/update-dockhand
+          >> {{ data_disk_mountpoint }}/logs/cron/dockhand-update.log 2>&1
+        user: root
+        state: "{{ 'present' if 'dockhand' in _enabled_services else 'absent' }}"
 
     # ── Ensure DNS CNAME records exist for all enabled services ──────────────
 
