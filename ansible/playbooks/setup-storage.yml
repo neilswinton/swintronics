@@ -35,7 +35,6 @@
       homeassistant: { dir: homeassistant,  stateful: true  }
       zigbee2mqtt:   { dir: zigbee2mqtt,    stateful: true  }
       mosquitto:     { dir: mosquitto,      stateful: true  }
-      memos:         { dir: memos,          stateful: true  }
 
   pre_tasks:
     - name: Load versions
