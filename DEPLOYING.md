@@ -8,7 +8,7 @@ Status markers: ✅ validated | 🚧 in progress | 📋 planned
 ## What You'll End Up With
 
 A cloud server (OCI or Hetzner) running Docker Compose services behind Traefik, connected
-to your Tailscale network, with secrets from Infisical and monitoring via Uptime Kuma and
+to your Tailscale network, with secrets from Infisical and monitoring via Gatus and
 Beszel. Services are managed by Ansible from your local machine.
 
 ---
@@ -24,7 +24,7 @@ Before starting, you need accounts with:
 | [Cloudflare](https://cloudflare.com) | DNS + TLS certs | Must manage your domain — See Step 3 |
 | [Tailscale](https://tailscale.com) | VPN / Ansible connectivity | Free for personal use — See Step 6 |
 | [SMTP2Go](https://www.smtp2go.com) | Outbound email (Paperless, alerts) | Free tier: 1000 emails/month — See Step 7 |
-| [Telegram](https://telegram.org) | Push notifications (Uptime Kuma) | Free; requires a bot token + chat ID — See Step 8 |
+| [Telegram](https://telegram.org) | Push notifications (Gatus alerts, reboot hooks) | Free; requires a bot token + chat ID — See Step 8 |
 | [Healthchecks.io](https://healthchecks.io) | Backup monitoring pings | Free tier sufficient |
 
 ---
@@ -444,7 +444,7 @@ ansible-playbook playbooks/deploy-versions.yml -e target=oci-main
 
 ```bash
 # Configure unattended-upgrades with pre/post-reboot hooks
-ansible-playbook playbooks/configure-unattended-upgrades.yml -e target=oci-main
+ansible-playbook playbooks/configure-system-services.yml -e target=oci-main
 
 # Install backup orchestrator and cron job
 ansible-playbook playbooks/install-backup.yml -e target=oci-main
@@ -452,15 +452,11 @@ ansible-playbook playbooks/install-backup.yml -e target=oci-main
 
 ---
 
-## Step 17 — Manual: Uptime Kuma 📋
+## Step 17 — Monitoring: Gatus ✅
 
-_See the Uptime Kuma Setup section in CLAUDE.md for full instructions._
-
-1. Log in at `https://status-admin.<your-domain>`
-2. Create admin account
-3. Add Telegram notification channel (bot token + chat ID from Infisical)
-4. Add HTTP monitors for each service (5 min interval, 3 retries)
-5. Add healthchecks.io push monitor
+Nothing manual to do — Gatus is config-driven and deployed like any other service
+by `deploy-versions.yml` (endpoints in `ansible/services/gatus/config.yaml.j2`,
+Telegram alerts using the bot from Step 8). Verify at `https://gatus.<your-domain>`.
 
 ---
 

@@ -11,7 +11,7 @@ Your playbook is now configured to pull secrets from Infisical Cloud instead of 
    - Key: `HEALTHCHECKS_API_KEY`
      Value: (your healthchecks.io API key)
    - Key: `HEALTHCHECKS_HEARTBEAT_CHECK_UUID`
-     Value: (your Kuma heartbeat check UUID)
+     Value: (your healthchecks.io heartbeat check UUID)
 
 ## Step 2: Create Machine Identity Credentials File
 
@@ -75,11 +75,8 @@ When you run the playbook, Ansible:
 Run a test to verify everything works:
 
 ```bash
-cd ansible-docker
-ansible-playbook playbooks/update-service.yml \
-  -e "service_name=immich" \
-  -e "new_version=v1.117.0" \
-  --check
+cd ansible
+ansible-playbook playbooks/deploy-versions.yml --check
 ```
 
 The `--check` flag does a dry run without making changes.

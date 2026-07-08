@@ -1,8 +1,8 @@
 ---
 # Configure host-level system services:
 #   - unattended-upgrades for automatic security patches
-#   - pre-reboot hook: pause healthchecks.io, stop Uptime Kuma, notify Telegram
-#   - post-boot hook: wait for Uptime Kuma, resume healthchecks.io, notify Telegram
+#   - pre-reboot hook: pause healthchecks.io, notify Telegram
+#   - post-boot hook: wait for Gatus, resume healthchecks.io (Telegram alert on failure)
 #   - boot-notify hook: send a Telegram message on every boot (catches crashes
 #     and watchdog-triggered reboots, not just planned shutdowns)
 #

@@ -51,7 +51,7 @@ For **each** service identified in step 1, check three things:
 stat -c '%y %n' /home/neil/swintronics/docker-services/<service-dir>/compose.yml
 ```
 
-Map service → directory using the table in `CLAUDE.md` (e.g. `immich` → `immich-app`, `kuma` → `uptime-kuma`).
+Map service → directory using the table in `CLAUDE.md` (e.g. `immich` → `immich-app`, `traefik` → `networking`).
 
 **(b) Container is running.** `State` must be `running`, not `exited`/`restarting`/`created`:
 
@@ -86,6 +86,6 @@ If anything fails, lead with the failure and the next debugging step (usually `d
 
 ## What this skill does *not* cover
 
-- Service-specific behavior checks (curl health endpoints, trigger a test notification). Those belong in Gatus/Kuma, not this skill.
+- Service-specific behavior checks (curl health endpoints, trigger a test notification). Those belong in Gatus, not this skill.
 - Rollback. If a deploy lands but the container crashes, the operator decides whether to revert `versions.yml` or fix forward.
 - Multi-host fan-out. For now, assumes a single target host per invocation.
