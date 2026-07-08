@@ -54,14 +54,6 @@ endpoints:
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 
-  - name: Memos
-    enabled: {{ ('memos' not in disabled_services | default([])) | lower }}
-    group: Services
-    url: https://memos.{{ server_domain }}/healthz
-    interval: 5m
-    conditions: ["[STATUS] == 200"]
-    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
-
   # ── System Monitoring (5m, 3 retries) ─────────────────────────────────────
   - name: Traefik
     enabled: {{ ('traefik' not in disabled_services | default([])) | lower }}
@@ -126,14 +118,6 @@ external-endpoints:
 
   - name: Home Assistant
     enabled: {{ ('homeassistant' not in disabled_services | default([])) | lower }}
-    group: Backups
-    token: ${GATUS_BACKUP_PUSH_TOKEN}
-    heartbeat:
-      interval: 25h
-    alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]
-
-  - name: Memos
-    enabled: {{ ('memos' not in disabled_services | default([])) | lower }}
     group: Backups
     token: ${GATUS_BACKUP_PUSH_TOKEN}
     heartbeat:
