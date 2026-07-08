@@ -207,11 +207,15 @@
       loop_control:
         label: "{{ item.item }}"
 
+    # A removed marker (changed=true) means the service was just re-enabled;
+    # its containers are down but its rendered files may be unchanged, so it
+    # must be folded into _changed_services below to get pulled and started.
     - name: Remove .disabled marker from enabled services
       ansible.builtin.file:
         path: "{{ docker_services_path }}/{{ _service_config[item].dir }}/.disabled"
         state: absent
       loop: "{{ _enabled_services }}"
+      register: _reenabled_results
 
     - name: Deploy shared networks.yml
       ansible.builtin.copy:
@@ -324,6 +328,10 @@
               | selectattr('changed')
               | map(attribute='item.service')
               | list
+              + (_reenabled_results.results
+                 | selectattr('changed')
+                 | map(attribute='item')
+                 | list)
               + (['homeassistant'] if _hacs_changed | default(false) else []))
              | unique | list }}
 
