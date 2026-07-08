@@ -4,16 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Repository Is
 
-Infrastructure-as-Code for a self-hosted server cluster. Primary server is a Dell XPS13 (`swintronics.com`). Cloud targets are Hetzner (DR) and Oracle Cloud OCI (`cactus-cantina.com`, experimental). All servers run Docker Compose services with Tailscale networking, Traefik reverse proxy, Infisical secrets, and Uptime Kuma / Beszel monitoring.
+Infrastructure-as-Code for a self-hosted server cluster. Primary server is a Dell XPS13 (`swintronics.com`). Cloud targets are Hetzner (DR) and Oracle Cloud OCI (`cactus-cantina.com`, experimental). All servers run Docker Compose services with Tailscale networking, Traefik reverse proxy, Infisical secrets, and Gatus / Beszel monitoring.
 
 ## Repository Structure
 
 - **`terraform/`** — Provisions the Hetzner Cloud server, Cloudflare DNS, Tailscale node, firewall, SSH keys, and Cloudflare R2 backend for Terraform state
 - **`ansible/`** — Manages rolling updates to Docker services from your local machine; connects via Tailscale
   - `versions.yml` — single file tracking all service versions; edit and run `deploy-versions.yml` to update
-  - `services/` — Docker Compose files as Jinja2 templates; Ansible renders and deploys these to the server
-- **`docker-services/`** — Non-versioned service config (networks.yml, env files, traefik config); compose files are deployed here by Ansible
-- **`server-scripts/`** — Backup scripts (Restic) and cron definitions that live on the server
+  - `services/` — Docker Compose files as Jinja2 templates; Ansible renders and deploys these to the server. Also holds shared non-templated files: `services/networking/networks.yml` and the backup orchestrator + logrotate template under `services/backup/`
 
 ## Infrastructure Context
 
@@ -52,11 +50,6 @@ ansible-playbook playbooks/deploy-versions.yml
 
 # Dry run (shows what would change)
 ansible-playbook playbooks/deploy-versions.yml --check
-
-# Update a single service manually
-ansible-playbook playbooks/update-service.yml \
-  -e "service_name=immich" \
-  -e "new_version=v1.117.0"
 ```
 
 ## Issue Triage
@@ -84,7 +77,7 @@ ansible-playbook playbooks/update-service.yml \
 - **Tailscale** — tailnet with an OAuth client (scopes: `auth_keys`, `devices:core`, `dns:read`, `oauth_keys`); a `container` tag must exist and be assigned to `devices:core`
 - **Infisical** — account + project; a Machine Identity with `admin` role for Terraform, and a separate Machine Identity (`docker_deploy`) created by Terraform for Ansible
 - **healthchecks.io** — account for backup monitoring (optional but referenced in `backup.env`)
-- **Telegram bot** — for Kuma notifications (token + chat ID stored in Infisical under `/server`)
+- **Telegram bot** — for Gatus alerts and reboot notifications (token + chat ID stored in Infisical under `/server`)
 
 ### Required gitignored files
 
@@ -152,8 +145,8 @@ hardware_watchdog_module: "iTCO_wdt"   # Intel: iTCO_wdt, AMD: sp5100_tco; omit 
 zigbee_dongle_path: /dev/serial/by-id/usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_<serial>-if00-port0
 ```
 
-_`docker-services/backup.env` is rendered by Ansible (`install-backup.yml`) from
-Infisical secrets — no manual file is required._
+_`backup.env` is rendered to the server's `docker-services/` directory by Ansible
+(`install-backup.yml`) from Infisical secrets — no manual file is required._
 
 ### Infisical secret structure
 
@@ -175,7 +168,7 @@ Terraform reads from the **Terraform project** (existing, pre-created):
 | `/terraform` | `B2_MASTER_KEY_ID` | Backblaze B2 master/admin key ID (must have `writeKeys` + `listKeys`) |
 | `/terraform` | `B2_MASTER_KEY` | Backblaze B2 master/admin key secret |
 | `/terraform` | `HEALTHCHECKS_API_KEY` | healthchecks.io project API key (read/write); copied to runtime by Terraform |
-| `/server` | `TELEGRAM_BOT_TOKEN` | Telegram bot token for Kuma notifications |
+| `/server` | `TELEGRAM_BOT_TOKEN` | Telegram bot token for alerts (Gatus, reboot hooks) |
 | `/server` | `TELEGRAM_CHAT_ID` | Telegram chat ID |
 | `/server` | `Z2M_FRONTEND_AUTH_TOKEN` | Zigbee2MQTT web UI auth token |
 
@@ -205,7 +198,7 @@ Terraform creates the **Runtime project** and populates it with generated secret
 9. `ansible-playbook playbooks/setup-storage.yml` — creates btrfs subvolumes for stateful services
 10. `ansible-playbook playbooks/deploy-versions.yml` — deploys and starts all services
 11. `ansible-playbook playbooks/install-backup.yml` — renders `backup.env` from Infisical and installs the backup cron job
-12. Complete manual setup: Kuma (see below), Beszel (see below)
+12. Complete manual setup: Beszel (see below)
 
 ### Importing or migrating existing backup state
 
@@ -309,10 +302,8 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 **Preferred:** Edit `ansible/versions.yml` and run `deploy-versions.yml`. The playbook:
 1. Renders Jinja2 compose templates from `ansible/services/` to the server
 2. Detects which service files actually changed
-3. If anything changed: pauses healthchecks.io, stops Kuma, pulls+restarts changed services, starts Kuma, resumes healthchecks.io
+3. If anything changed: pulls new images and restarts the changed services (Traefik first)
 4. If nothing changed: exits cleanly with no restarts
-
-**Single-service update:** `update-service.yml -e service_name=X -e new_version=Y` (same orchestration flow for one service).
 
 ### Service Name Mapping
 
@@ -362,33 +353,15 @@ a temporary disable, but pre-disable snapshots eventually rotate out.
 ### Networking
 
 - All services share an external Docker network named `proxy`
-- Traefik handles TLS termination and reverse proxy (defined in `docker-services/networking/`)
+- Traefik handles TLS termination and reverse proxy (templates in `ansible/services/networking/`)
 - Tailscale provides VPN access; Ansible connects via `ts.swintronics.com`
 - Cloudflare manages public DNS
 
 ### Backup
 
-Restic-based backup scripts in `server-scripts/` are installed as cron jobs (`neil.crontab`). Each stateful service (Immich, Paperless, Uptime Kuma) has its own backup script with healthchecks.io pings.
+Backups are restic-based. The orchestrator `ansible/services/backup/backup.sh` is installed by `install-backup.yml` as a 04:00 cron job; it iterates the server's service directories and runs per-service hooks (`backup-prepare`, `backup-execute`, `backup-remote`) that `deploy-versions.yml` deploys alongside each stateful service's compose file. The healthchecks.io heartbeat is paused during the snapshot phase, and `backup-remote` hooks ping per-service healthchecks.io checks.
 
-### Uptime Kuma Setup
-
-Kuma configuration is manual (no API automation). Use SQLite (the default) — no external DB needed.
-
-**First-time setup on a new machine:**
-1. Run `deploy-versions.yml` — Kuma starts with a fresh SQLite database
-2. Log into the admin UI at `https://status-admin.<server_domain>`
-3. Create an account (first user becomes admin)
-4. Add a **Telegram** notification channel: Settings → Notifications → Add → Telegram
-   - Bot token and chat ID are in Infisical
-   - Test before saving
-5. Add **HTTP monitors** for each service — interval: 5 minutes, retries: 3:
-   - `https://photos.<domain>` — Immich
-   - `https://paperless.<domain>` — Paperless
-   - `https://beszel.<domain>` — Beszel
-   - `https://status-admin.<domain>` — Kuma itself
-   - healthchecks.io ping URL (from Infisical as `HC_KUMA_PING_URL`) — confirms Kuma is alive
-
-**Subsequent deploys:** Kuma data persists in `/docker-data/volumes/uptime-kuma/data` (SQLite file).
+Monitoring is **Gatus** (config-driven, deployed like any other service from `ansible/services/gatus/config.yaml.j2`) with Telegram alerts — no manual monitor setup is needed.
 
 ### HACS Setup
 
@@ -517,9 +490,9 @@ ansible-playbook playbooks/tailscale.yml -e target=oci-main
 # subsequent connections via Tailscale SSH
 ansible-playbook playbooks/setup-storage.yml -e target=oci-main
 ansible-playbook playbooks/deploy-versions.yml -e target=oci-main
-ansible-playbook playbooks/configure-unattended-upgrades.yml -e target=oci-main
+ansible-playbook playbooks/configure-system-services.yml -e target=oci-main
 ansible-playbook playbooks/install-backup.yml -e target=oci-main
-# manual: Uptime Kuma setup, Beszel agent bootstrap
+# manual: Beszel agent bootstrap
 ```
 
 Each new deployment has its own Infisical project with its own secrets. Services start fresh with no data.
@@ -543,11 +516,10 @@ This scenario requires additional planning around Restic repo sharing and is def
 
 ### Backlog
 
-- Update Kuma monitors on XPS13: add all services, Telegram notifications, healthchecks.io ping
 - Consider Renovate bot for automatic Docker image version PRs
 - Add nginx autoindex service to serve `data_disk_mountpoint/logs` over HTTPS
 - Automate restore procedure
 - Long-term: phone-friendly server management — expose remaining service UIs, document mobile access patterns
 
 ### Upstream Compose File Convention
-Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, uptime-kuma, beszel. Not tracked: networking/traefik (fully custom), dockhand (single-container, written from scratch)
+Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, beszel. Not tracked: networking/traefik (fully custom), dockhand (single-container, written from scratch)

@@ -29,7 +29,7 @@ stateless web app, `paperless` for stateful with DB + backups).
 - `ansible/services/<name>/compose.yml.j2` — adapt from upstream:
   - image tag from `{{ versions.<name> }}`
   - join the external `proxy` network (defined in
-    `docker-services/networks.yml`)
+    `ansible/services/networking/networks.yml`)
   - Traefik labels for HTTPS routing (`Host(\`<dns-name>.{{ server_domain }}\`)`,
     cert resolver from `{{ cert_resolver }}`) — copy a working service's label
     block

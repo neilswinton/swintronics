@@ -8,8 +8,7 @@
 # their files, config, volumes, and network are left intact. A `.disabled`
 # marker is written into the service's compose directory so backup.sh skips
 # its backup hooks (and removed again when the service is re-enabled).
-# Traefik is always restarted first. Uptime Kuma is stopped before any
-# restart and started after, with healthchecks.io paused for the duration.
+# Traefik is always restarted first.
 #
 # Usage:
 #   ansible-playbook playbooks/deploy-versions.yml -e target=swintronics
@@ -212,7 +211,7 @@
 
     - name: Deploy shared networks.yml
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../docker-services/networks.yml"
+        src: "{{ playbook_dir }}/../services/networking/networks.yml"
         dest: "{{ docker_services_path }}/networks.yml"
         owner: "{{ admin_user }}"
         mode: '0644'

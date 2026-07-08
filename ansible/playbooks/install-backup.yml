@@ -56,7 +56,7 @@
 
     - name: Deploy backup orchestrator
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../docker-services/backup.sh"
+        src: "{{ playbook_dir }}/../services/backup/backup.sh"
         dest: "{{ docker_services_path }}/backup.sh"
         owner: "{{ admin_user }}"
         group: "{{ admin_user }}"
@@ -72,7 +72,7 @@
 
     - name: Install logrotate config for backup logs
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/../../server-scripts/logrotate-cron.conf.j2"
+        src: "{{ playbook_dir }}/../services/backup/logrotate-cron.conf.j2"
         dest: /etc/logrotate.d/swintronics-backup
         owner: root
         group: root

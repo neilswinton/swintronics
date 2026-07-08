@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 # Stop immich, dump postgres, snapshot library volume, restart immich.
-# Kuma is already stopped and healthchecks paused by the orchestrator.
+# The healthchecks.io heartbeat is paused by the orchestrator during this phase.
 
 DATA="${DATA_MOUNTPOINT:-/mnt/docker-data}"
 SOURCE="${DATA}/volumes/immich/library"

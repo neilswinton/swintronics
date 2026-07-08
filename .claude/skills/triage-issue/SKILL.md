@@ -45,7 +45,7 @@ Common shapes for this repo:
 - **Version bump for a service** → edit `ansible/versions.yml`; if upstream compose changed, also diff `ansible/services/<svc>/upstream.yml` and update `compose.yml.j2` (see `feedback_upstream_diffs` memory).
 - **New monitor / config tweak** → likely edits under `ansible/services/gatus/` (for Gatus endpoints) or per-service compose.
 - **Terraform change** → edits under `terraform/`, run `terraform plan` locally before committing.
-- **Backup or cron logic** → likely under `server-scripts/` plus rendering via `ansible/services/backup/backup.env.j2`.
+- **Backup or cron logic** → likely under `ansible/services/backup/` (orchestrator `backup.sh`, `backup.env.j2`, logrotate template) or a service's `backup-*` hooks.
 
 Stay scoped to what the issue asks for. Don't refactor surrounding code or fix unrelated style issues — those belong in separate issues/PRs.
 
