@@ -1,0 +1,57 @@
+#!/bin/bash
+# Daily dockhand self-update. Dockhand updates other containers but cannot
+# update itself, so this cron script pulls the floating tag and recreates the
+# container only when the image actually changed. An update sends a Telegram
+# message so silent updates leave a visible trail.
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+# Same convention as backup.sh: a .disabled marker means deploy-versions has
+# stopped this service — don't pull or restart it.
+if [ -e .disabled ]; then
+    echo "dockhand is disabled; skipping update."
+    exit 0
+fi
+
+IMAGE="fnsys/dockhand:{{ versions.dockhand }}"
+
+{% raw %}
+image_id()      { docker image inspect --format '{{.Id}}' "${IMAGE}" 2>/dev/null || echo "none"; }
+image_version() { docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' "$1" 2>/dev/null || true; }
+{% endraw %}
+short() { case "$1" in sha256:*) echo "${1:7:12}" ;; *) echo "$1" ;; esac; }
+
+before_id=$(image_id)
+before_version=$(image_version "${before_id}")
+
+echo "$(date -Is) pulling ${IMAGE}..."
+docker compose pull --quiet
+docker compose up -d
+
+after_id=$(image_id)
+if [ "${before_id}" = "${after_id}" ]; then
+    echo "dockhand is up to date (${before_version:-$(short "${before_id}")})."
+    exit 0
+fi
+
+after_version=$(image_version "${after_id}")
+old="${before_version:-$(short "${before_id}")}"
+new="${after_version:-$(short "${after_id}")}"
+echo "dockhand updated: ${old} -> ${new}"
+
+# Telegram creds are deployed by configure-system-services.yml (root-only,
+# which is why this cron runs as root). Skip the notification on clusters
+# that don't have monitoring set up yet.
+if [ -r /etc/swintronics/monitoring.env ]; then
+    # shellcheck disable=SC1091
+    source /etc/swintronics/monitoring.env
+    curl -s -X POST \
+        --max-time 10 \
+        --retry 2 \
+        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+        -d "chat_id=${TELEGRAM_CHAT_ID}" \
+        --data-urlencode "text=⬆️ $(hostname -s): dockhand updated ${old} → ${new}" >/dev/null || \
+        echo "warning: Telegram notify failed"
+fi
