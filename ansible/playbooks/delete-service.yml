@@ -1,7 +1,9 @@
 ---
 # Completely delete a service from the target server: stop and remove its
 # containers (including named volumes), delete its compose project directory,
-# its data volumes, and its logs, and remove its Cloudflare DNS records.
+# its data volumes, its logs, and its local snapshot staging area
+# (<data_disk_mountpoint>/snapshots/<service>), and remove its Cloudflare DNS
+# records.
 #
 # Existing restic snapshots are NOT touched — deleting the compose directory
 # removes the service's backup-* hooks, so it simply stops being backed up.
@@ -71,6 +73,28 @@
       ansible.builtin.file:
         path: "{{ data_disk_mountpoint }}/logs/{{ _volume_dir }}"
         state: absent
+
+    # The backup hooks stage read-only btrfs snapshots here (backup-execute
+    # creates <dir>/backup, backup-remote archives it as <dir>/<Day>, possibly
+    # nested, e.g. immich/library/backup). `file: state: absent` cannot remove
+    # ro subvolumes, so flip ro off and delete each subvolume first.
+    - name: Delete local snapshot staging area
+      ansible.builtin.shell: |
+        set -euo pipefail
+        dir="{{ data_disk_mountpoint }}/snapshots/{{ _volume_dir }}"
+        [ -d "${dir}" ] || exit 0
+        if [ "$(stat -f --format=%T "${dir}")" = "btrfs" ]; then
+            find "${dir}" -depth -inum 256 -type d | while read -r snap; do
+                btrfs property set "${snap}" ro false
+                btrfs subvolume delete "${snap}"
+            done
+        fi
+        rm -rf "${dir}"
+        echo "removed ${dir}"
+      args:
+        executable: /bin/bash
+      register: _snapshot_cleanup
+      changed_when: _snapshot_cleanup.stdout | length > 0
 
     - name: Prune unused Docker images
       community.docker.docker_prune:
