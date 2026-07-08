@@ -16,7 +16,7 @@ push_gatus() {
 trap 'push_gatus false' ERR
 
 echo "Uploading paperless export to restic..."
-sudo -E restic backup --retry-lock 10m --tag paperless --tag "${DATE:-$(date +%F_%H-%M)}" "${EXPORT_PATH}"
+sudo -E restic backup --retry-lock 10m --tag paperless "${EXPORT_PATH}"
 sudo -E restic forget --retry-lock 10m --tag paperless --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
 sudo -E restic check --retry-lock 10m
 

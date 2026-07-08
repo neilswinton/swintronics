@@ -18,7 +18,7 @@ push_gatus() {
 trap 'push_gatus false' ERR
 
 echo "Uploading immich snapshot to restic..."
-sudo -E restic backup --retry-lock 10m --tag immich --tag "${DATE:-$(date +%F_%H-%M)}" "${SNAP_DIR}"
+sudo -E restic backup --retry-lock 10m --tag immich "${SNAP_DIR}"
 sudo -E restic forget --retry-lock 10m --tag immich --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
 sudo -E restic check --retry-lock 10m
 
