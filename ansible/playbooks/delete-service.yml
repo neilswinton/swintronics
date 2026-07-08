@@ -7,7 +7,7 @@
 #
 # Existing restic snapshots are NOT touched — deleting the compose directory
 # removes the service's backup-* hooks, so it simply stops being backed up.
-# Old snapshots remain restorable until pruned separately.
+# Old snapshots remain restorable until deleted with delete-backups.yml.
 #
 # This playbook takes explicit parameters instead of reading _service_config
 # from deploy-versions.yml, so it still works after the service has been

@@ -1,0 +1,102 @@
+---
+# Permanently delete a removed service's restic snapshots.
+#
+# delete-service.yml deliberately leaves restic snapshots untouched, and they
+# never age out on their own: forget --keep-* runs per-tag in each service's
+# backup-remote hook, so once a service is deleted its tag is no longer
+# forgotten or pruned. This playbook is the explicit second decision that
+# deletes that snapshot history and reclaims repository space.
+#
+# Lists the matching snapshots first and deletes nothing unless confirm=yes
+# is passed. Uses the server's existing backup.env credentials and runs
+# restic as root, matching the sudo -E restic invocations in the hooks.
+#
+# Usage:
+#   # List the snapshots that would be deleted:
+#   ansible-playbook playbooks/delete-backups.yml -e service_tag=memos
+#
+#   # Forget them and prune the repository:
+#   ansible-playbook playbooks/delete-backups.yml -e service_tag=memos -e confirm=yes
+#
+# Vars:
+#   service_tag  (required) restic tag the snapshots were created with — the
+#                service name used in its backup-remote hook
+#   confirm      (optional) must be "yes" to actually delete
+
+- name: Delete a removed service's restic snapshots
+  hosts: "{{ target | default('clusters') }}"
+  connection: "{{ 'local' if inventory_hostname in groups.get('local', []) else 'ssh' }}"
+  become: true
+
+  pre_tasks:
+    - name: Require service_tag
+      ansible.builtin.assert:
+        that:
+          - service_tag is defined
+          - service_tag | length > 0
+        fail_msg: "Pass -e service_tag=<restic tag> (the service name used by its backup-remote hook)"
+
+    - name: Check for backup.env
+      ansible.builtin.stat:
+        path: "{{ docker_services_path }}/backup.env"
+      register: _backup_env
+
+    - name: Require backup.env
+      ansible.builtin.assert:
+        that: _backup_env.stat.exists
+        fail_msg: "{{ docker_services_path }}/backup.env not found — run install-backup.yml first"
+
+  tasks:
+    - name: List snapshots matching tag
+      ansible.builtin.shell: |
+        set -euo pipefail
+        . "{{ docker_services_path }}/backup.env"
+        restic snapshots --retry-lock 10m --tag {{ service_tag | quote }}
+      args:
+        executable: /bin/bash
+      register: _snapshots
+      changed_when: false
+
+    - name: Collect snapshot IDs
+      ansible.builtin.shell: |
+        set -euo pipefail
+        . "{{ docker_services_path }}/backup.env"
+        restic snapshots --retry-lock 10m --tag {{ service_tag | quote }} --json |
+          python3 -c 'import json,sys; print(" ".join(s["id"] for s in (json.load(sys.stdin) or [])))'
+      args:
+        executable: /bin/bash
+      register: _snapshot_ids
+      changed_when: false
+
+    - name: Report when no snapshots match
+      ansible.builtin.debug:
+        msg: "No snapshots tagged '{{ service_tag }}' — nothing to delete."
+      when: _snapshot_ids.stdout | trim | length == 0
+
+    - name: End host when nothing to delete
+      ansible.builtin.meta: end_host
+      when: _snapshot_ids.stdout | trim | length == 0
+
+    - name: Show snapshots to be deleted
+      ansible.builtin.debug:
+        msg: "{{ _snapshots.stdout_lines }}"
+
+    - name: Require explicit confirmation
+      ansible.builtin.assert:
+        that: confirm | default(false) | bool
+        fail_msg: >-
+          Nothing deleted. Re-run with -e confirm=yes to forget the snapshots
+          listed above and prune the repository.
+
+    - name: Forget snapshots and prune repository
+      ansible.builtin.shell: |
+        set -euo pipefail
+        . "{{ docker_services_path }}/backup.env"
+        restic forget --retry-lock 10m --prune {{ _snapshot_ids.stdout | trim }}
+      args:
+        executable: /bin/bash
+      register: _forget
+
+    - name: Show forget output
+      ansible.builtin.debug:
+        msg: "{{ _forget.stdout_lines }}"
