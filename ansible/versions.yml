@@ -54,4 +54,5 @@ versions:
 # intact. Remove a name to re-enable — the next deploy redeploys and restarts
 # it. Names must match the service keys above / the playbook's _service_config
 # (e.g. bentopdf, dockhand).
-disabled_services: []
+disabled_services:
+  - memos
