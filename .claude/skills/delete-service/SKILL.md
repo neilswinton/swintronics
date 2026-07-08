@@ -59,7 +59,9 @@ ansible-playbook playbooks/delete-service.yml \
 
 `volume_dir` defaults to `service_dir`; pass it only when they differ. The
 playbook stops and removes containers + named volumes, deletes the compose
-directory, data volumes, and logs, prunes images, and deletes the CNAMEs.
+directory, data volumes, logs, and the local snapshot staging area
+(`<data_disk_mountpoint>/snapshots/<volume_dir>`), prunes images, and deletes
+the CNAMEs.
 
 Then run `deploy-versions.yml` (or `/deploy-and-verify gatus`) so Gatus is
 re-rendered without the deleted service's monitor.

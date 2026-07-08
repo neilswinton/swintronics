@@ -341,8 +341,9 @@ Matched pair of Claude Code skills drives the service lifecycle:
 - **`/delete-service <name>`** — the reverse: removes the repo config and doc
   references, then runs `ansible-playbook playbooks/delete-service.yml
   -e service_dir=<dir>` to tear down the server side (containers + named
-  volumes, compose directory, data volumes, logs, DNS CNAMEs). Existing restic
-  snapshots are never touched — the service just stops being backed up.
+  volumes, compose directory, data volumes, logs, local snapshot staging area,
+  DNS CNAMEs). Existing restic snapshots are never touched — the service just
+  stops being backed up.
 
 To temporarily disable a service instead (keep files and data, stop
 containers), add it to `disabled_services` in `ansible/versions.yml`. The
