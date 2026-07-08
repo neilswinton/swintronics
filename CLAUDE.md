@@ -343,7 +343,10 @@ Matched pair of Claude Code skills drives the service lifecycle:
   -e service_dir=<dir>` to tear down the server side (containers + named
   volumes, compose directory, data volumes, logs, local snapshot staging area,
   DNS CNAMEs). Existing restic snapshots are never touched — the service just
-  stops being backed up.
+  stops being backed up. To permanently delete the snapshot history later and
+  reclaim B2 space, run `ansible-playbook playbooks/delete-backups.yml
+  -e service_tag=<name>` (lists the matching snapshots; add `-e confirm=yes`
+  to forget and prune them).
 
 To temporarily disable a service instead (keep files and data, stop
 containers), add it to `disabled_services` in `ansible/versions.yml`. The
