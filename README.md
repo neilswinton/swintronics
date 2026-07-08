@@ -58,8 +58,9 @@ two standard automation tools do the heavy lifting.
 - **Ansible** (`ansible/`) installs and updates everything on the server.
   Service versions are pinned in one file (`ansible/versions.yml`); updating
   a service is a one-line edit plus one command.
-- **Backup scripts** (`server-scripts/`) snapshot each service's data with
-  restic and report success to healthchecks.io.
+- **Backup scripts** (`ansible/services/backup/` plus per-service hooks)
+  snapshot each service's data with restic and report success to
+  healthchecks.io.
 
 ## Learn more
 

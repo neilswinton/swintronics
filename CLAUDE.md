@@ -11,9 +11,7 @@ Infrastructure-as-Code for a self-hosted server cluster. Primary server is a Del
 - **`terraform/`** — Provisions the Hetzner Cloud server, Cloudflare DNS, Tailscale node, firewall, SSH keys, and Cloudflare R2 backend for Terraform state
 - **`ansible/`** — Manages rolling updates to Docker services from your local machine; connects via Tailscale
   - `versions.yml` — single file tracking all service versions; edit and run `deploy-versions.yml` to update
-  - `services/` — Docker Compose files as Jinja2 templates; Ansible renders and deploys these to the server
-- **`docker-services/`** — Shared files deployed to the server's `docker-services/` directory: `networks.yml` and the backup orchestrator `backup.sh`
-- **`server-scripts/`** — logrotate template for the backup cron logs
+  - `services/` — Docker Compose files as Jinja2 templates; Ansible renders and deploys these to the server. Also holds shared non-templated files: `services/networking/networks.yml` and the backup orchestrator + logrotate template under `services/backup/`
 
 ## Infrastructure Context
 
@@ -147,8 +145,8 @@ hardware_watchdog_module: "iTCO_wdt"   # Intel: iTCO_wdt, AMD: sp5100_tco; omit 
 zigbee_dongle_path: /dev/serial/by-id/usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_<serial>-if00-port0
 ```
 
-_`docker-services/backup.env` is rendered by Ansible (`install-backup.yml`) from
-Infisical secrets — no manual file is required._
+_`backup.env` is rendered to the server's `docker-services/` directory by Ansible
+(`install-backup.yml`) from Infisical secrets — no manual file is required._
 
 ### Infisical secret structure
 
@@ -361,7 +359,7 @@ a temporary disable, but pre-disable snapshots eventually rotate out.
 
 ### Backup
 
-Backups are restic-based. The orchestrator `docker-services/backup.sh` is installed by `install-backup.yml` as a 04:00 cron job; it iterates the server's service directories and runs per-service hooks (`backup-prepare`, `backup-execute`, `backup-remote`) that `deploy-versions.yml` deploys alongside each stateful service's compose file. The healthchecks.io heartbeat is paused during the snapshot phase, and `backup-remote` hooks ping per-service healthchecks.io checks.
+Backups are restic-based. The orchestrator `ansible/services/backup/backup.sh` is installed by `install-backup.yml` as a 04:00 cron job; it iterates the server's service directories and runs per-service hooks (`backup-prepare`, `backup-execute`, `backup-remote`) that `deploy-versions.yml` deploys alongside each stateful service's compose file. The healthchecks.io heartbeat is paused during the snapshot phase, and `backup-remote` hooks ping per-service healthchecks.io checks.
 
 Monitoring is **Gatus** (config-driven, deployed like any other service from `ansible/services/gatus/config.yaml.j2`) with Telegram alerts — no manual monitor setup is needed.
 

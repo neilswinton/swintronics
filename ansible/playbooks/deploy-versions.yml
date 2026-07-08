@@ -211,7 +211,7 @@
 
     - name: Deploy shared networks.yml
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../docker-services/networks.yml"
+        src: "{{ playbook_dir }}/../services/networking/networks.yml"
         dest: "{{ docker_services_path }}/networks.yml"
         owner: "{{ admin_user }}"
         mode: '0644'
