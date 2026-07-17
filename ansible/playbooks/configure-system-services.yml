@@ -1,10 +1,13 @@
 ---
 # Configure host-level system services:
 #   - unattended-upgrades for automatic security patches
-#   - pre-reboot hook: pause healthchecks.io, notify Telegram
+#   - reboot-scheduled hook: Telegram notice when updates flag a pending reboot
+#   - pre-reboot hook: runs at shutdown while the network is still up (ExecStop
+#     pattern); records the shutdown reason, pauses healthchecks.io, notifies Telegram
 #   - post-boot hook: wait for Gatus, resume healthchecks.io (Telegram alert on failure)
-#   - boot-notify hook: send a Telegram message on every boot (catches crashes
-#     and watchdog-triggered reboots, not just planned shutdowns)
+#   - boot-notify hook: send a Telegram message on every boot including the
+#     recorded shutdown reason (catches crashes and watchdog-triggered reboots,
+#     not just planned shutdowns)
 #
 # Usage:
 #   ansible-playbook playbooks/configure-system-services.yml
@@ -106,6 +109,82 @@
         mode: '0600'
       when: _has_monitoring_secrets
 
+    # ── Reboot-scheduled hook (advance notice) ────────────────────────────────
+    # unattended-upgrades installs updates in the morning but reboots at 03:00
+    # the following night. A path unit watches for /run/reboot-required so the
+    # Telegram notice goes out when the reboot is flagged, not when it happens.
+
+    - name: Deploy reboot-scheduled script
+      when: _has_monitoring_secrets
+      copy:
+        dest: /usr/local/sbin/swintronics-reboot-scheduled.sh
+        content: |
+          #!/bin/bash
+          # Telegram notice that installed updates require a reboot; unattended-upgrades
+          # will reboot at its configured 03:00 window.
+          # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+          set -euo pipefail
+
+          PKGS="unknown"
+          if [[ -s /run/reboot-required.pkgs ]]; then
+              PKGS=$(sort -u /run/reboot-required.pkgs | tr '\n' ' ')
+          fi
+
+          MESSAGE="🕒 $(hostname -s): updates require a reboot
+          unattended-upgrades will reboot at 03:00 tonight
+          Packages: ${PKGS}"
+
+          curl -s -X POST \
+              --max-time 10 \
+              --retry 2 \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode "text=${MESSAGE}" >/dev/null
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Deploy reboot-scheduled systemd service
+      when: _has_monitoring_secrets
+      copy:
+        dest: /etc/systemd/system/swintronics-reboot-scheduled.service
+        content: |
+          [Unit]
+          Description=Swintronics: Telegram notice that a reboot is pending
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/swintronics-reboot-scheduled.sh
+          EnvironmentFile=/etc/swintronics/monitoring.env
+        mode: '0644'
+      notify: reload systemd
+
+    - name: Deploy reboot-scheduled systemd path unit
+      when: _has_monitoring_secrets
+      copy:
+        dest: /etc/systemd/system/swintronics-reboot-scheduled.path
+        content: |
+          [Unit]
+          Description=Swintronics: watch for pending reboot flag
+
+          [Path]
+          PathExists=/run/reboot-required
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+      notify: reload systemd
+
+    - name: Enable and start reboot-scheduled path unit
+      systemd:
+        name: swintronics-reboot-scheduled.path
+        enabled: yes
+        state: started
+        daemon_reload: yes   # unit may have been written just above, before handlers run
+      when: _has_monitoring_secrets
+      # In check mode the unit file hasn't actually been written yet
+      ignore_errors: "{{ ansible_check_mode }}"
+
     # ── Pre-reboot hook ───────────────────────────────────────────────────────
 
     - name: Deploy pre-reboot script
@@ -114,9 +193,27 @@
         dest: /usr/local/sbin/swintronics-pre-reboot.sh
         content: |
           #!/bin/bash
-          # Pause healthchecks.io before reboot.
+          # Runs as ExecStop of a boot-time unit, so it fires early in shutdown
+          # while the network is still up. Records the shutdown reason for
+          # boot-notify, pauses healthchecks.io, and notifies Telegram.
           # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
           set -euo pipefail
+
+          # ExecStop also fires on manual `systemctl stop`/deploy restarts —
+          # only act when the whole system is actually shutting down.
+          if [[ "$(systemctl is-system-running)" != "stopping" ]]; then
+              echo "swintronics-pre-reboot: not a system shutdown, skipping."
+              exit 0
+          fi
+
+          REASON="planned shutdown (manual or unscheduled)"
+          if [[ -f /run/reboot-required ]]; then
+              PKGS=$(sort -u /run/reboot-required.pkgs 2>/dev/null | tr '\n' ' ' || true)
+              REASON="unattended-upgrades (packages: ${PKGS:-unknown})"
+          fi
+          echo "swintronics-pre-reboot: recording shutdown reason: ${REASON}"
+          mkdir -p /var/lib/swintronics
+          printf '%s — %s\n' "$(date -Is)" "${REASON}" > /var/lib/swintronics/shutdown-reason
 
           echo "swintronics-pre-reboot: pausing healthchecks.io monitor..."
           curl -s -X POST \
@@ -132,7 +229,7 @@
             --retry 1 \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d "chat_id=${TELEGRAM_CHAT_ID}" \
-            -d "text=🔄 swintronics: security updates applied, rebooting..." || \
+            --data-urlencode "text=🔄 $(hostname -s): shutting down — ${REASON}" || \
             echo "swintronics-pre-reboot: warning: Telegram notify failed (proceeding anyway)"
 
           echo "swintronics-pre-reboot: done."
@@ -146,20 +243,37 @@
         dest: /etc/systemd/system/swintronics-pre-reboot.service
         content: |
           [Unit]
-          Description=Swintronics pre-reboot: pause healthchecks.io monitoring
-          DefaultDependencies=no
-          Before=shutdown.target reboot.target halt.target
-          After=docker.service
+          Description=Swintronics pre-reboot: record shutdown reason, pause healthchecks.io
+          # ExecStop pattern: the unit starts (a no-op) at boot and its ExecStop
+          # runs at shutdown. systemd stops units in reverse start order, so
+          # ordering After= the network stack means the script runs while the
+          # network is still up — unlike a shutdown.target unit, which ran only
+          # after NetworkManager/tailscaled were already down (issue #113).
+          After=network-online.target systemd-resolved.service
+          Wants=network-online.target
 
           [Service]
           Type=oneshot
-          ExecStart=/usr/local/sbin/swintronics-pre-reboot.sh
+          RemainAfterExit=yes
+          ExecStart=/bin/true
+          ExecStop=/usr/local/sbin/swintronics-pre-reboot.sh
           EnvironmentFile=/etc/swintronics/monitoring.env
-          TimeoutStartSec=60
+          TimeoutStopSec=60
 
           [Install]
-          WantedBy=reboot.target halt.target shutdown.target
+          WantedBy=multi-user.target
         mode: '0644'
+      notify: reload systemd
+
+    - name: Remove stale pre-reboot symlinks from shutdown targets
+      file:
+        path: "/etc/systemd/system/{{ item }}.wants/swintronics-pre-reboot.service"
+        state: absent
+      loop:
+        - reboot.target
+        - halt.target
+        - shutdown.target
+      when: _has_monitoring_secrets
       notify: reload systemd
 
     # ── Post-boot hook ────────────────────────────────────────────────────────
@@ -250,10 +364,13 @@
         mode: '0644'
       notify: reload systemd
 
-    - name: Enable pre-reboot service
+    - name: Enable and start pre-reboot service
+      # Must be started, not just enabled: ExecStop only runs at shutdown if
+      # the unit is active. Starting is a no-op (ExecStart=/bin/true).
       service:
         name: swintronics-pre-reboot
         enabled: yes
+        state: started
       when: _has_monitoring_secrets
 
     - name: Enable post-boot service
@@ -290,10 +407,20 @@
               SHUTDOWN_NOTE="(no prior boot in journal)"
           fi
 
+          # Shutdown reason recorded by swintronics-pre-reboot.sh; absent on
+          # unclean shutdowns (crash/watchdog/power loss).
+          REASON_FILE=/var/lib/swintronics/shutdown-reason
+          REASON_NOTE="(no shutdown reason recorded)"
+          if [[ -f "${REASON_FILE}" ]]; then
+              REASON_NOTE="Reason: $(cat "${REASON_FILE}")"
+              rm -f "${REASON_FILE}"
+          fi
+
           MESSAGE="🟢 ${HOSTNAME} booted
           Kernel: ${KERNEL}
           Boot time: ${BOOT_TIME}
-          ${SHUTDOWN_NOTE}"
+          ${SHUTDOWN_NOTE}
+          ${REASON_NOTE}"
 
           curl -s -X POST \
               --max-time 10 \
