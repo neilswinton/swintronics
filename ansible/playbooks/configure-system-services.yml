@@ -125,6 +125,14 @@
           # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
           set -euo pipefail
 
+          # The path unit uses PathExists=/run/reboot-required, which re-triggers
+          # this oneshot for as long as the flag exists. Guard with a per-boot
+          # stamp so the notice is sent only once. /run is tmpfs, so the stamp
+          # clears on reboot and the next update cycle re-arms cleanly.
+          STAMP=/run/swintronics-reboot-notified
+          [[ -e "$STAMP" ]] && exit 0
+          touch "$STAMP"
+
           PKGS="unknown"
           if [[ -s /run/reboot-required.pkgs ]]; then
               PKGS=$(sort -u /run/reboot-required.pkgs | tr '\n' ' ')
