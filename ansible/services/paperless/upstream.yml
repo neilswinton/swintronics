@@ -1,5 +1,5 @@
-# Upstream docker-compose.postgres.yml from paperless-ngx v2.20.15
-# Source: https://github.com/paperless-ngx/paperless-ngx/blob/v2.20.15/docker/compose/docker-compose.postgres.yml
+# Upstream docker-compose.postgres.yml from paperless-ngx v3.0.5
+# Source: https://github.com/paperless-ngx/paperless-ngx/blob/v3.0.5/docker/compose/docker-compose.postgres.yml
 # Saved for diffing against compose.yml.j2
 
 # Docker Compose file for running paperless from the Docker Hub.
@@ -30,7 +30,7 @@
 # documentation.
 services:
   broker:
-    image: docker.io/library/redis:8
+    image: docker.io/valkey/valkey:9-alpine
     restart: unless-stopped
     volumes:
       - redisdata:/data
@@ -60,6 +60,7 @@ services:
     environment:
       PAPERLESS_REDIS: redis://broker:6379
       PAPERLESS_DBHOST: db
+      PAPERLESS_DBENGINE: postgresql
 volumes:
   data:
   media:

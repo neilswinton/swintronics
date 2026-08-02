@@ -6,7 +6,7 @@ include:
 
 services:
   broker:
-    image: docker.io/library/redis:8
+    image: docker.io/valkey/valkey:9-alpine
     restart: always
     volumes:
       - redisdata:/data
@@ -37,6 +37,7 @@ services:
     environment:
       PAPERLESS_REDIS: redis://broker:6379
       PAPERLESS_DBHOST: db
+      PAPERLESS_DBENGINE: postgresql
       PAPERLESS_TIME_ZONE: "${TZ:-UTC}"
     labels:
       traefik.enable: true
