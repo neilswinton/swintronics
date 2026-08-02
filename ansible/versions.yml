@@ -16,8 +16,8 @@ versions:
   # https://github.com/immich-app/immich/releases — floating major (upgrade via dockhand)
   immich: "v3"
 
-  # https://github.com/paperless-ngx/paperless-ngx/releases — floating minor
-  paperless: "2.20"
+  # https://github.com/paperless-ngx/paperless-ngx/releases — "latest" (upgrade via dockhand)
+  paperless: "latest"
 
   # https://github.com/TwiN/gatus/releases — floating (stable tag tracks latest stable)
   gatus: "stable"
