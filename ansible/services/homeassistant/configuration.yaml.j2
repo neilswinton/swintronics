@@ -4,11 +4,9 @@
 # Loads default set of integrations. Do not remove.
 default_config:
 
-http:
-  use_x_forwarded_for: true
-  trusted_proxies:
-    - 172.16.0.0/12   # Docker bridge networks (covers 172.16–172.31)
-    - 100.64.0.0/10   # Tailscale
+# NOTE: reverse-proxy trust (use_x_forwarded_for / trusted_proxies) is no longer
+# configured here. Home Assistant imported the old `http:` block into the UI and
+# now ignores it in YAML — see Settings > System > Network.
 
 # Load frontend themes from the themes folder
 frontend:

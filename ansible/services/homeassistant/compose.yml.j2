@@ -1,13 +1,4 @@
 # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
-#
-# NOTE: After first start, add the following to /config/configuration.yaml to
-# trust Traefik's X-Forwarded-For headers (avoids "Your system is potentially
-# exposed to the Internet" warning):
-#
-#   http:
-#     use_x_forwarded_for: true
-#     trusted_proxies:
-#       - 172.16.0.0/12
 
 include:
   - ../networks.yml
