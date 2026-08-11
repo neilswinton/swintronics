@@ -20,7 +20,7 @@ gatus_delay_start_seconds: 120
 # terraform/backup.tf — the post-boot hook restores the check to this value.
 # Terraform owns the steady-state value; if the post-boot hook ever fails to
 # restore it, the next `terraform apply` resets it (self-healing drift).
-heartbeat_grace_seconds: 1060
+heartbeat_grace_seconds: 960
 #
 # Widened window applied by the pre-reboot hook. The check stays armed across a
 # reboot rather than being paused (issue #118): a normal reboot finishes well

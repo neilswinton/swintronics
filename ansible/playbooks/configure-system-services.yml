@@ -205,7 +205,8 @@
           #!/bin/bash
           # Runs as ExecStop of a boot-time unit, so it fires early in shutdown
           # while the network is still up. Records the shutdown reason for
-          # boot-notify, pauses healthchecks.io, and notifies Telegram.
+          # boot-notify, widens the healthchecks.io grace window, and notifies
+          # Telegram.
           # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
           set -euo pipefail
 
@@ -307,9 +308,10 @@
         dest: /usr/local/sbin/swintronics-post-boot.sh
         content: |
           #!/bin/bash
-          # Wait for Gatus to come back up, then resume healthchecks.io monitoring.
+          # Wait for Gatus to come back up, then restore the healthchecks.io grace
+          # window widened by swintronics-pre-reboot.sh.
           # Containers themselves are restarted by dockerd (restart: always); this script
-          # just gates the healthchecks resume on Gatus being ready to ping it.
+          # just gates the grace restore on Gatus being ready to ping again.
           # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
           set -euo pipefail
 
