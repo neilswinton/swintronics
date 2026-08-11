@@ -14,7 +14,12 @@
 locals {
   backup_bucket_name         = var.backup_bucket_name != "" ? var.backup_bucket_name : "${var.project_name}-restic"
   heartbeat_interval_minutes = 5
-  heartbeat_grace_seconds    = local.heartbeat_interval_minutes * 60 * 3 + 60
+  # Steady-state grace. Mirrored as heartbeat_grace_seconds in
+  # ansible/inventory/group_vars/all.yml: the pre-reboot hook widens the grace
+  # over a reboot (rather than pausing the check — issue #118) and the post-boot
+  # hook restores this value. Keep the two in sync; if the post-boot hook ever
+  # fails to restore it, the next `terraform apply` resets it.
+  heartbeat_grace_seconds = local.heartbeat_interval_minutes * 60 * 3 + 60
 }
 
 resource "b2_bucket" "backups" {
