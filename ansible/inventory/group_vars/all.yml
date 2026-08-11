@@ -13,3 +13,17 @@ timezone: "America/New_York"
 data_disk_mountpoint: /docker-data
 cert_resolver: "staging"
 gatus_delay_start_seconds: 120
+
+# healthchecks.io heartbeat grace windows, in seconds.
+#
+# heartbeat_grace_seconds MUST match local.heartbeat_grace_seconds in
+# terraform/backup.tf — the post-boot hook restores the check to this value.
+# Terraform owns the steady-state value; if the post-boot hook ever fails to
+# restore it, the next `terraform apply` resets it (self-healing drift).
+heartbeat_grace_seconds: 1060
+#
+# Widened window applied by the pre-reboot hook. The check stays armed across a
+# reboot rather than being paused (issue #118): a normal reboot finishes well
+# inside this window and doesn't page, but a box that never comes back still
+# alerts once the window expires.
+heartbeat_reboot_grace_seconds: 2700
