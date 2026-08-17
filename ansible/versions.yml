@@ -48,6 +48,14 @@ versions:
   # https://hub.docker.com/_/mosquitto — floating major (extremely stable)
   mosquitto: "2"
 
+  # https://manual.seafile.com/13.0/ — floating patch within 13.0. Major
+  # upgrades need a database migration; bump the major deliberately.
+  seafile: "13.0-latest"
+
+  # https://hub.docker.com/r/seafileltd/sdoc-server/tags — SeaDoc collaborative
+  # editor. Ships inside the seafile stack, not a service of its own.
+  seadoc: "2.0-latest"
+
 # Services listed here are stopped by deploy-versions (`docker compose down`)
 # while their compose files, config, volumes, and Docker network are left
 # intact. Remove a name to re-enable — the next deploy redeploys and restarts

@@ -1,0 +1,137 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+#
+# Adapted from upstream.yml (Seafile CE 13 seafile-server.yml + seadoc.yml).
+# Local changes:
+#   - caddy.yml and the caddy labels are dropped; Traefik terminates TLS
+#   - db/redis renamed to seafile-db/seafile-redis: every stack shares the
+#     external `proxy` network and paperless already publishes a `db` alias
+#   - container_name overrides dropped so compose namespaces them
+#   - SEAFILE_SERVER_PROTOCOL=https so Seahub generates https:// links
+#   - file data bind-mounted to the btrfs data disk; MariaDB in a named volume
+
+name: seafile
+include:
+  - ../networks.yml
+
+services:
+  seafile-db:
+    image: mariadb:10.11
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=${SEAFILE_MYSQL_ROOT_PASSWORD:?Variable is not set or empty}
+      - MYSQL_LOG_CONSOLE=true
+      - MARIADB_AUTO_UPGRADE=1
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/usr/local/bin/healthcheck.sh",
+          "--connect",
+          "--mariadbupgrade",
+          "--innodb_initialized",
+        ]
+      interval: 20s
+      start_period: 30s
+      timeout: 5s
+      retries: 10
+
+  seafile-redis:
+    image: redis:8-alpine
+    restart: always
+    command:
+      - /bin/sh
+      - -c
+      - exec redis-server --requirepass "$$REDIS_PASSWORD" --save "" --appendonly no
+    environment:
+      - REDIS_PASSWORD=${SEAFILE_REDIS_PASSWORD:?Variable is not set or empty}
+
+  seafile:
+    image: seafileltd/seafile-mc:{{ versions.seafile }}
+    restart: always
+    volumes:
+      - {{ data_disk_mountpoint }}/volumes/seafile/data:/shared
+    environment:
+      - SEAFILE_MYSQL_DB_HOST=seafile-db
+      - SEAFILE_MYSQL_DB_PORT=3306
+      - SEAFILE_MYSQL_DB_USER=seafile
+      - SEAFILE_MYSQL_DB_PASSWORD=${SEAFILE_MYSQL_DB_PASSWORD:?Variable is not set or empty}
+      - INIT_SEAFILE_MYSQL_ROOT_PASSWORD=${SEAFILE_MYSQL_ROOT_PASSWORD:?Variable is not set or empty}
+      - SEAFILE_MYSQL_DB_CCNET_DB_NAME=ccnet_db
+      - SEAFILE_MYSQL_DB_SEAFILE_DB_NAME=seafile_db
+      - SEAFILE_MYSQL_DB_SEAHUB_DB_NAME=seahub_db
+      - TIME_ZONE=${TZ:-Etc/UTC}
+      - INIT_SEAFILE_ADMIN_EMAIL=${SEAFILE_ADMIN_EMAIL:?Variable is not set or empty}
+      - INIT_SEAFILE_ADMIN_PASSWORD=${SEAFILE_ADMIN_PASSWORD:?Variable is not set or empty}
+      - SEAFILE_SERVER_HOSTNAME={{ _service_config.seafile.dns_names[0] }}.{{ server_domain }}
+      - SEAFILE_SERVER_PROTOCOL=https
+      - SITE_ROOT=/
+      - NON_ROOT=false
+      - JWT_PRIVATE_KEY=${SEAFILE_JWT_PRIVATE_KEY:?Variable is not set or empty}
+      - SEAFILE_LOG_TO_STDOUT=false
+      - ENABLE_GO_FILESERVER=true
+      - ENABLE_SEADOC=true
+      - SEADOC_SERVER_URL=https://{{ _service_config.seafile.dns_names[0] }}.{{ server_domain }}/sdoc-server
+      - CACHE_PROVIDER=redis
+      - REDIS_HOST=seafile-redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${SEAFILE_REDIS_PASSWORD:?Variable is not set or empty}
+      - ENABLE_NOTIFICATION_SERVER=false
+      - ENABLE_SEAFILE_AI=false
+      - ENABLE_FACE_RECOGNITION=false
+      - MD_FILE_COUNT_LIMIT=100000
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    depends_on:
+      seafile-db:
+        condition: service_healthy
+      seafile-redis:
+        condition: service_started
+    labels:
+      traefik.enable: true
+      traefik.http.routers.seafile.entrypoints: websecure
+      traefik.http.routers.seafile.rule: Host(`{{ _service_config.seafile.dns_names[0] }}.{{ server_domain }}`)
+      traefik.http.routers.seafile.tls.certresolver: ${CERT_RESOLVER}
+      traefik.http.services.seafile.loadbalancer.server.port: 80
+
+  seadoc:
+    image: seafileltd/sdoc-server:{{ versions.seadoc }}
+    restart: always
+    volumes:
+      - {{ data_disk_mountpoint }}/volumes/seafile/seadoc:/shared
+    environment:
+      - DB_HOST=seafile-db
+      - DB_PORT=3306
+      - DB_USER=seafile
+      - DB_PASSWORD=${SEAFILE_MYSQL_DB_PASSWORD:?Variable is not set or empty}
+      - DB_NAME=seahub_db
+      - TIME_ZONE=${TZ:-Etc/UTC}
+      - JWT_PRIVATE_KEY=${SEAFILE_JWT_PRIVATE_KEY:?Variable is not set or empty}
+      - NON_ROOT=false
+      - SEAHUB_SERVICE_URL=http://seafile
+    depends_on:
+      seafile-db:
+        condition: service_healthy
+    # Upstream proxies these two paths to seadoc:80 via caddy `handle_path`:
+    # /sdoc-server has its prefix stripped, /socket.io keeps it. Traefik sorts
+    # routers by rule specificity, so both win over the plain Host() router.
+    labels:
+      traefik.enable: true
+      traefik.http.routers.seadoc.entrypoints: websecure
+      traefik.http.routers.seadoc.rule: Host(`{{ _service_config.seafile.dns_names[0] }}.{{ server_domain }}`) && PathPrefix(`/sdoc-server`)
+      traefik.http.routers.seadoc.tls.certresolver: ${CERT_RESOLVER}
+      traefik.http.routers.seadoc.middlewares: seadoc-strip
+      traefik.http.middlewares.seadoc-strip.stripprefix.prefixes: /sdoc-server
+      traefik.http.routers.seadoc-socketio.entrypoints: websecure
+      traefik.http.routers.seadoc-socketio.rule: Host(`{{ _service_config.seafile.dns_names[0] }}.{{ server_domain }}`) && PathPrefix(`/socket.io`)
+      traefik.http.routers.seadoc-socketio.tls.certresolver: ${CERT_RESOLVER}
+      traefik.http.routers.seadoc-socketio.service: seadoc
+      traefik.http.services.seadoc.loadbalancer.server.port: 80
+
+volumes:
+  dbdata:
