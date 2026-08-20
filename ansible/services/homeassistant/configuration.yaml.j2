@@ -9,8 +9,10 @@ default_config:
 # now ignores it in YAML — see Settings > System > Network.
 
 # Split-config YAML lives in packages/, deployed out of the ha-claude-project
-# repo. The directory is created by the deploy playbook: !include_dir_named on a
-# missing directory is a hard startup failure.
+# repo. The deploy playbook creates the directory owned by admin_user so that
+# repo's rsync has a writable target. A missing directory is not fatal: HA walks
+# these includes with os.walk and yields an empty mapping, so the packages would
+# just be silently absent (themes/ below is referenced but does not exist).
 homeassistant:
   packages: !include_dir_named packages
 
