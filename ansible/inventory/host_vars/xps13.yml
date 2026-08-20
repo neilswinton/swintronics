@@ -15,7 +15,7 @@ zigbee_dongle_path: /dev/serial/by-id/usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plu
 
 # Seafile superuser, created on first startup only. The password is generated
 # by Terraform and stored in Infisical as SEAFILE_ADMIN_PASSWORD.
-seafile_admin_email: "neil25@swintonhome.com"
+seafile_admin_email: "neil@swintronics.com"
 
 git_user_name: "Neil Swinton"
 git_user_email: "5995552+neilswinton@users.noreply.github.com"
