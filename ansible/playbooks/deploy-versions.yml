@@ -232,14 +232,20 @@
         mode: '0755'
       loop: "{{ _enabled_services }}"
 
-    # Owned by admin_user (not root like the HACS dirs below) so the
-    # ha-claude-project deploy can rsync package YAML straight into it.
-    - name: Ensure Home Assistant packages directory exists
+    # Both directories are referenced by configuration.yaml. Owned by
+    # admin_user (not root like the HACS dirs below) because ha-claude-project
+    # deploys packages/ with an unprivileged `rsync -a`, which preserves group
+    # as well as owner. HA runs as root in-container and can still write themes/.
+    - name: Ensure Home Assistant config include directories exist
       ansible.builtin.file:
-        path: "{{ data_disk_mountpoint }}/volumes/homeassistant/packages"
+        path: "{{ data_disk_mountpoint }}/volumes/homeassistant/{{ item }}"
         state: directory
         owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
         mode: '0755'
+      loop:
+        - packages
+        - themes
       when: "'homeassistant' in _enabled_services"
 
     - name: Ensure traefik-data directories exist
