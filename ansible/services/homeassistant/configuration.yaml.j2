@@ -8,6 +8,12 @@ default_config:
 # configured here. Home Assistant imported the old `http:` block into the UI and
 # now ignores it in YAML — see Settings > System > Network.
 
+# Split-config YAML lives in packages/, deployed out of the ha-claude-project
+# repo. The directory is created by the deploy playbook: !include_dir_named on a
+# missing directory is a hard startup failure.
+homeassistant:
+  packages: !include_dir_named packages
+
 # Load frontend themes from the themes folder
 frontend:
   themes: !include_dir_merge_named themes
