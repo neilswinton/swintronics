@@ -105,6 +105,14 @@
         files:
           - { src: compose.yml.j2,    dest: compose.yml }
           - { src: mosquitto.conf.j2, dest: mosquitto.conf }
+      # SeaDoc ships inside this stack; versions.seadoc supplies its tag but it
+      # is deliberately not a _service_config key of its own.
+      seafile:
+        dir: seafile
+        dns_names: [seafile]
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
 
   pre_tasks:
     - name: Determine disabled services

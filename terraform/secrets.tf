@@ -172,6 +172,54 @@ resource "random_password" "z2m_frontend_auth_token" {
   }
 }
 
+# Seafile — all alphanumeric (special = false): these values are read back
+# through a compose `.env` file, where `$` and quotes are a foot-gun.
+resource "random_password" "seafile_mysql_root_password" {
+  length  = 24
+  special = false
+
+  lifecycle {
+    ignore_changes = [length, special, override_special, min_lower, min_upper, min_numeric, min_special, keepers]
+  }
+}
+
+resource "random_password" "seafile_mysql_db_password" {
+  length  = 24
+  special = false
+
+  lifecycle {
+    ignore_changes = [length, special, override_special, min_lower, min_upper, min_numeric, min_special, keepers]
+  }
+}
+
+# Seafile requires a JWT key of at least 32 characters.
+resource "random_password" "seafile_jwt_private_key" {
+  length  = 48
+  special = false
+
+  lifecycle {
+    ignore_changes = [length, special, override_special, min_lower, min_upper, min_numeric, min_special, keepers]
+  }
+}
+
+resource "random_password" "seafile_redis_password" {
+  length  = 32
+  special = false
+
+  lifecycle {
+    ignore_changes = [length, special, override_special, min_lower, min_upper, min_numeric, min_special, keepers]
+  }
+}
+
+resource "random_password" "seafile_admin_password" {
+  length  = 24
+  special = false
+
+  lifecycle {
+    ignore_changes = [length, special, override_special, min_lower, min_upper, min_numeric, min_special, keepers]
+  }
+}
+
 resource "random_uuid" "gatus_backup_push_token" {}
 
 # Immich
@@ -205,6 +253,49 @@ resource "infisical_secret" "dockhand_encryption_key" {
 resource "infisical_secret" "z2m_frontend_auth_token" {
   name         = "Z2M_FRONTEND_AUTH_TOKEN"
   value        = random_password.z2m_frontend_auth_token.result
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
+# Seafile
+# INIT_* values are only consumed on first startup; they are kept here so a
+# re-pave reproduces the same admin login and database credentials.
+resource "infisical_secret" "seafile_mysql_root_password" {
+  name         = "SEAFILE_MYSQL_ROOT_PASSWORD"
+  value        = random_password.seafile_mysql_root_password.result
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
+resource "infisical_secret" "seafile_mysql_db_password" {
+  name         = "SEAFILE_MYSQL_DB_PASSWORD"
+  value        = random_password.seafile_mysql_db_password.result
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
+resource "infisical_secret" "seafile_jwt_private_key" {
+  name         = "SEAFILE_JWT_PRIVATE_KEY"
+  value        = random_password.seafile_jwt_private_key.result
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
+resource "infisical_secret" "seafile_redis_password" {
+  name         = "SEAFILE_REDIS_PASSWORD"
+  value        = random_password.seafile_redis_password.result
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
+resource "infisical_secret" "seafile_admin_password" {
+  name         = "SEAFILE_ADMIN_PASSWORD"
+  value        = random_password.seafile_admin_password.result
   env_slug     = "dev"
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"

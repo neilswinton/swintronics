@@ -320,6 +320,7 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 | beszel         | beszel         | services/beszel/compose.yml.j2        |
 | dockhand       | dockhand       | services/dockhand/compose.yml.j2      |
 | gatus          | gatus          | services/gatus/compose.yml.j2         |
+| seafile        | seafile        | services/seafile/compose.yml.j2       |
 
 ### Adding and Deleting Services
 
@@ -522,4 +523,6 @@ This scenario requires additional planning around Restic repo sharing and is def
 - Long-term: phone-friendly server management — expose remaining service UIs, document mobile access patterns
 
 ### Upstream Compose File Convention
-Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, beszel. Not tracked: networking/traefik (fully custom), dockhand (single-container, written from scratch)
+Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, beszel, seafile. Not tracked: networking/traefik (fully custom), dockhand (single-container, written from scratch)
+
+Seafile's `upstream.yml` is a concatenation of upstream's `seafile-server.yml` and `seadoc.yml`; `caddy.yml` is intentionally omitted since Traefik handles TLS.
