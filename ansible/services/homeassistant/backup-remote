@@ -21,7 +21,7 @@ trap 'push_gatus false' ERR
 
 echo "Uploading homeassistant snapshots to restic..."
 sudo -E restic backup --retry-lock 10m --tag homeassistant "${HA_SNAP}" "${Z2M_SNAP}"
-sudo -E restic forget --retry-lock 10m --tag homeassistant --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+sudo -E restic forget --retry-lock 10m --tag homeassistant --keep-daily 7 --keep-weekly 2 --keep-monthly 1 --prune
 sudo -E restic check --retry-lock 10m
 
 for pair in "${HA_SNAP}:${HA_ARCHIVE}" "${Z2M_SNAP}:${Z2M_ARCHIVE}"; do

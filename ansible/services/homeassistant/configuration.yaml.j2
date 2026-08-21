@@ -4,6 +4,12 @@
 # Loads default set of integrations. Do not remove.
 default_config:
 
+# History detail retention. Long-term statistics live in separate tables and are
+# not affected, so the Energy dashboard and the kiln/EV utility meters keep their
+# full history regardless of this value. See issue #127.
+recorder:
+  purge_keep_days: 7
+
 # NOTE: reverse-proxy trust (use_x_forwarded_for / trusted_proxies) is no longer
 # configured here. Home Assistant imported the old `http:` block into the UI and
 # now ignores it in YAML — see Settings > System > Network.
