@@ -9,6 +9,19 @@ default_config:
 # full history regardless of this value. See issue #127.
 recorder:
   purge_keep_days: 7
+  exclude:
+    entities:
+      # Threshold helpers. Each exposes a `sensor_value` attribute mirroring its
+      # source sensor's current reading, and the recorder writes a states row on
+      # any state *or attribute* change — so every source update writes a row
+      # even though the boolean itself is stable. Excluding them is safe: the
+      # kiln/EV automations read `last_changed` off the live state machine, which
+      # is not recorder-derived, and session durations are stored as values in
+      # input_datetime rather than reconstructed from history. The cost is losing
+      # logbook/history for two entities that change state about twice a day.
+      # See neilswinton/homeassistent#4.
+      - binary_sensor.span_panel_kiln_running
+      - binary_sensor.span_panel_ev_charging
 
 # NOTE: reverse-proxy trust (use_x_forwarded_for / trusted_proxies) is no longer
 # configured here. Home Assistant imported the old `http:` block into the UI and
