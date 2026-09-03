@@ -32,6 +32,10 @@ services:
       - {{ data_disk_mountpoint }}/volumes/beszel/beszel_agent_data:/var/lib/beszel-agent
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - {{ data_disk_mountpoint }}:/extra-filesystems/sdb1__DockerData-1:ro
+    # Since v0.19.0 the agent verifies the hub's HTTPS certificate. The agent
+    # reaches the hub over its public Traefik URL, so the host needs
+    # cert_resolver: production — a Let's Encrypt *staging* cert is untrusted and
+    # the connection is rejected (or set CA_CERT_FILE to the staging CA).
     environment:
       LISTEN: 45876
       KEY: "{{ beszel_agent_key }}"
