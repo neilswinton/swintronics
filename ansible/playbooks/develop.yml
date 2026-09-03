@@ -2,6 +2,51 @@
   hosts: "{{ target | default('clusters') }}"
   connection: "{{ 'local' if inventory_hostname in groups.get('local', []) else 'ssh' }}"
   become: true
+
+  vars:
+    # The play runs with become: true, so ansible_facts['env']['HOME'] is
+    # /root. Anything that belongs to the human developer must be addressed
+    # explicitly and deployed with become: false.
+    _admin_home: "/home/{{ admin_user }}"
+
+  pre_tasks:
+    - name: Login to Infisical
+      infisical.vault.login:
+        url: "https://app.infisical.com"
+        auth_method: universal_auth
+        universal_auth_client_id: "{{ infisical_client_id }}"
+        universal_auth_client_secret: "{{ infisical_client_secret }}"
+      register: infisical_login
+      delegate_to: localhost
+      become: false
+      check_mode: false
+
+    - name: Fetch secrets from Infisical
+      infisical.vault.read_secrets:
+        login_data: "{{ infisical_login.login_data }}"
+        project_id: "{{ infisical_project_id }}"
+        env_slug: "{{ infisical_environment }}"
+        path: "/"
+        as_dict: true
+      register: infisical_secrets
+      delegate_to: localhost
+      become: false
+      check_mode: false
+
+    # Telegram alerting for the nightly Claude Code updater is optional — a
+    # cluster that hasn't set up the bot still gets the updater, just with
+    # journald as the only record of a failure.
+    - name: Check whether Telegram alerting secrets are available
+      ansible.builtin.set_fact:
+        _has_telegram_secrets: >-
+          {{ 'SERVER_TELEGRAM_BOT_TOKEN' in infisical_secrets.secrets
+             and 'SERVER_TELEGRAM_CHAT_ID' in infisical_secrets.secrets }}
+
+    - name: Look up the admin user's UID
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ admin_user }}"
+
   tasks:
     - name: Install developer packages
       ansible.builtin.apt:
@@ -83,10 +128,181 @@
         state: present
         extra_args: "--break-system-packages"
 
+    # ── Claude Code ───────────────────────────────────────────────────────────
+    # Installed as the admin user, never as root. The original task guarded on
+    # ansible_facts['env']['HOME'], which is /root under this play's
+    # become: true — so it installed Claude Code into /root, the `creates:`
+    # guard was satisfied forever by that copy, and the admin user's install
+    # was left entirely unmanaged (issue #137).
+
     - name: Install Claude Code via native installer
+      become: false
       ansible.builtin.shell:
         cmd: curl -fsSL https://claude.ai/install.sh | bash
-        creates: "{{ ansible_facts['env']['HOME'] }}/.local/bin/claude"
+        creates: "{{ _admin_home }}/.local/bin/claude"
+
+    - name: Read the active Claude Code version before updating
+      become: false
+      ansible.builtin.stat:
+        path: "{{ _admin_home }}/.local/bin/claude"
+      register: _claude_before
+
+    # Not purely creates:-guarded any more — a develop.yml run brings the CLI
+    # current, and the nightly timer below keeps it there between runs. This
+    # deliberately does NOT restart the Remote Control sessions: the repo is
+    # often driven from one of them, and restarting mid-play would kill the
+    # session running the playbook. The nightly job handles that instead.
+    - name: Update Claude Code to the latest release
+      become: false
+      ansible.builtin.command:
+        cmd: "{{ _admin_home }}/.local/bin/claude update"
+      register: _claude_update
+      changed_when: false
+
+    - name: Report whether the Claude Code version changed
+      become: false
+      ansible.builtin.stat:
+        path: "{{ _admin_home }}/.local/bin/claude"
+      register: _claude_after
+      # The native installer swaps the symlink target on update, so comparing
+      # link targets is the reliable signal that a new release landed.
+      changed_when: _claude_after.stat.lnk_target | default('')
+                    != _claude_before.stat.lnk_target | default('')
+
+    # ── Nightly Claude Code updater ───────────────────────────────────────────
+    # systemd *user* units, matching the existing claude-rc*.service pattern:
+    # no sudo needed, and lingering is already enabled for the admin user.
+
+    - name: Create directories for the nightly Claude Code updater
+      become: false
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        # ~/.local/bin already exists (the installer above creates it) and its
+        # mode is the user's business — don't churn it.
+        mode: "{{ item.mode | default(omit) }}"
+      loop:
+        - path: "{{ _admin_home }}/.local/bin"
+        - path: "{{ _admin_home }}/.config/systemd/user"
+          mode: '0755'
+        - path: "{{ _admin_home }}/.config/swintronics"
+          mode: '0700'
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Deploy the nightly Claude Code update script
+      become: false
+      ansible.builtin.copy:
+        src: ../files/claude-update.sh
+        dest: "{{ _admin_home }}/.local/bin/claude-update.sh"
+        mode: '0755'
+      notify: restart claude-update timer
+
+    - name: Deploy Telegram credentials for the updater
+      when: _has_telegram_secrets
+      become: false
+      ansible.builtin.copy:
+        dest: "{{ _admin_home }}/.config/swintronics/telegram.env"
+        content: |
+          TELEGRAM_BOT_TOKEN={{ infisical_secrets.secrets.SERVER_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID={{ infisical_secrets.secrets.SERVER_TELEGRAM_CHAT_ID }}
+        mode: '0600'
+      no_log: true
+
+    - name: Deploy the updater failure notification script
+      when: _has_telegram_secrets
+      become: false
+      ansible.builtin.copy:
+        dest: "{{ _admin_home }}/.local/bin/claude-update-failed.sh"
+        content: |
+          #!/bin/bash
+          # Telegram alert when the nightly Claude Code update fails.
+          # Managed by Ansible (playbooks/develop.yml). Do not edit — changes
+          # will be overwritten on the next deployment.
+          curl -sf -X POST \
+              --max-time 10 \
+              --retry 2 \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode "text=❌ $(hostname -s): nightly Claude Code update FAILED.
+          Check: journalctl --user -u claude-update -n 50" >/dev/null
+        mode: '0755'
+
+    - name: Deploy the updater failure notification unit
+      when: _has_telegram_secrets
+      become: false
+      ansible.builtin.copy:
+        dest: "{{ _admin_home }}/.config/systemd/user/claude-update-failed.service"
+        content: |
+          [Unit]
+          Description=Telegram alert for a failed nightly Claude Code update
+          # Managed by Ansible (playbooks/develop.yml). Do not edit.
+
+          [Service]
+          Type=oneshot
+          ExecStart=%h/.local/bin/claude-update-failed.sh
+          EnvironmentFile=%h/.config/swintronics/telegram.env
+          TimeoutStartSec=30
+        mode: '0644'
+      notify: restart claude-update timer
+
+    - name: Deploy the nightly Claude Code update unit
+      become: false
+      ansible.builtin.copy:
+        dest: "{{ _admin_home }}/.config/systemd/user/claude-update.service"
+        content: |
+          [Unit]
+          Description=Nightly Claude Code update
+          # Managed by Ansible (playbooks/develop.yml). Do not edit.
+          After=network-online.target
+          Wants=network-online.target
+          {% if _has_telegram_secrets %}
+          OnFailure=claude-update-failed.service
+          {% endif %}
+
+          [Service]
+          Type=oneshot
+          ExecStart=%h/.local/bin/claude-update.sh
+          TimeoutStartSec=600
+        mode: '0644'
+      notify: restart claude-update timer
+
+    - name: Deploy the nightly Claude Code update timer
+      become: false
+      ansible.builtin.copy:
+        dest: "{{ _admin_home }}/.config/systemd/user/claude-update.timer"
+        content: |
+          [Unit]
+          Description=Nightly Claude Code update
+          # Managed by Ansible (playbooks/develop.yml). Do not edit.
+
+          [Timer]
+          # 01:00 ±30m keeps clear of the rest of the overnight schedule:
+          # 02:00 immich DB dump, 03:00 unattended-upgrades reboot window,
+          # 04:00 restic backup cron.
+          OnCalendar=*-*-* 01:00:00
+          RandomizedDelaySec=30m
+          # This is a laptop and may be asleep at 01:00 — run the missed job on
+          # the next wake rather than silently skipping the night.
+          Persistent=true
+
+          [Install]
+          WantedBy=timers.target
+        mode: '0644'
+      notify: restart claude-update timer
+
+    - name: Enable the nightly Claude Code update timer
+      become: false
+      ansible.builtin.systemd_service:
+        name: claude-update.timer
+        scope: user
+        enabled: true
+        state: started
+        daemon_reload: true
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts['getent_passwd'][admin_user][1] }}"
+      # In check mode the unit files haven't been written yet.
+      ignore_errors: "{{ ansible_check_mode }}"
 
     - name: Configure git user name
       community.general.git_config:
@@ -101,3 +317,16 @@
         value: "{{ git_user_email }}"
         scope: global
       become: false
+
+  handlers:
+    - name: restart claude-update timer
+      become: false
+      ansible.builtin.systemd_service:
+        name: claude-update.timer
+        scope: user
+        state: restarted
+        daemon_reload: true
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts['getent_passwd'][admin_user][1] }}"
+      # In check mode the unit files haven't been written yet.
+      ignore_errors: "{{ ansible_check_mode }}"
