@@ -7,7 +7,7 @@
 #   - Pinned tags (e.g. "v2.7.5") are used for fast-moving or pre-1.0 software
 #     where minor/patch upgrades have a real chance of breaking things.
 #   - Tag prefix conventions vary across registries — match what each image
-#     publishes (e.g. traefik uses "v3.6", paperless uses "2.20", beszel "0.18.7").
+#     publishes (e.g. traefik uses "v3.6", paperless uses "2.20", autoheal "1.2.0").
 
 versions:
   # https://github.com/traefik/traefik/releases — floating minor
@@ -25,8 +25,9 @@ versions:
   # https://github.com/alam00000/bentopdf/releases — pinned (fast-moving)
   bentopdf: "v2.8.5"
 
-  # https://github.com/henrygd/beszel/releases — pinned (pre-1.0)
-  beszel: "0.18.7"
+  # https://github.com/henrygd/beszel/releases — "latest" (upgrade via dockhand).
+  # Releases are slow and deliberate, and release emails give advance notice.
+  beszel: "latest"
 
   # https://hub.docker.com/r/fnsys/dockhand/tags — "latest": dockhand updates
   # other containers but not itself, so a daily root cron (update-dockhand,
