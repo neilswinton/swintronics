@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+# One-shot health check for the persistent Claude Code Remote Control sessions.
+# Exits 0 only if every session's service is active, its tmux session exists,
+# and its transcript shows the bridge currently connected.
+#
+# Deployed by ansible/playbooks/develop.yml — do not edit on the host, changes
+# will be overwritten on the next run.
+#
+# Sessions are discovered from the claude-rc*.service units rather than listed
+# here, the same way claude-update.sh finds them. The unit is the single source
+# of truth for which sessions exist, which tmux socket each uses, where it runs
+# and what it's called — so adding a session to claude_rc_sessions doesn't need
+# a matching edit here.
+set -uo pipefail
+
+ok=0
+
+# Bridge state comes from the session transcript, not from scraping the tmux
+# pane. Scraping gave both false positives (any text on screen mentioning the
+# banner matches — including this script's own source while it's being edited)
+# and false negatives (the banner scrolls off a busy session within minutes).
+# The transcript keeps a structured record instead: a bridge_status entry when
+# the bridge connects, a system warning when it drops. The later of the two
+# wins. Matching on "type":"system" keeps conversation *about* Remote Control
+# from being read as its state.
+#
+# Prints "<state> [url]" — active, disconnected, or unknown.
+bridge_info() {
+    local workdir=$1 proj newest last
+
+    proj="${HOME}/.claude/projects/${workdir//\//-}"
+    newest=$(find "${proj}" -maxdepth 1 -name '*.jsonl' -printf '%T@ %p\n' 2>/dev/null \
+             | sort -rn | head -1 | cut -d' ' -f2-)
+    [[ -n "${newest}" ]] || { echo unknown; return; }
+
+    # Last structured bridge event in the transcript wins.
+    last=$(grep -E '"subtype":"bridge_status"|"type":"system","subtype":"informational","content":"Remote Control disconnected' \
+           "${newest}" | tail -1)
+
+    case "${last}" in
+        *bridge_status*)
+            # Take the URL from this entry's own url field, not from anywhere in
+            # the file — a transcript that merely discusses Remote Control (this
+            # one does) is full of other session links.
+            echo "active $(sed -n 's/.*"url":"\([^"]*\)".*/\1/p' <<<"${last}")"
+            ;;
+        *disconnected*) echo disconnected ;;
+        *)              echo unknown ;;
+    esac
+}
+
+mapfile -t units < <(
+    systemctl --user list-unit-files --no-legend 'claude-rc*.service' 2>/dev/null | awk '{print $1}'
+)
+
+if (( ${#units[@]} == 0 )); then
+    echo "no claude-rc*.service units on this machine."
+    exit 0
+fi
+
+for unit in "${units[@]}"; do
+    # ExecStart shows as: { path=/usr/bin/tmux ; argv[]=/usr/bin/tmux -L <socket>
+    # new-session -d -s <session> <script> '<label>' <workdir> ; ... }
+    argv=$(systemctl --user show "${unit}" -p ExecStart --value 2>/dev/null \
+           | sed -n 's/.*argv\[\]=\([^;]*\).*/\1/p')
+    socket=$(sed -n 's/.* -L \([^ ]*\).*/\1/p' <<<"${argv}")
+    session=$(sed -n 's/.* -s \([^ ]*\).*/\1/p' <<<"${argv}")
+    workdir=$(awk '{print $NF}' <<<"${argv}")
+
+    # "Claude Code Remote Control in tmux (Homelab)" -> "Homelab"
+    label=$(systemctl --user show "${unit}" -p Description --value 2>/dev/null \
+            | sed -n 's/.*(\(.*\))$/\1/p')
+    label=${label:-${unit%.service}}
+
+    if [[ -z "${socket}" || -z "${session}" ]]; then
+        printf '%-16s could not parse tmux socket/session from %s\n' "${label}" "${unit}"
+        ok=1
+        continue
+    fi
+
+    svc_state=$(systemctl --user is-active "${unit}" 2>/dev/null)
+    printf '%-16s service=%-8s' "${label}" "${svc_state}"
+    [[ "${svc_state}" == "active" ]] || ok=1
+
+    if ! tmux -L "${socket}" has-session -t "${session}" 2>/dev/null; then
+        printf ' tmux=missing rc=down\n'
+        ok=1
+        continue
+    fi
+    printf ' tmux=ok'
+
+    read -r rc_state rc_url < <(bridge_info "${workdir}")
+    case "${rc_state}" in
+        active)
+            printf ' rc=active %s\n' "${rc_url}"
+            ;;
+        disconnected)
+            printf ' rc=DISCONNECTED (restart with: systemctl --user restart %s)\n' "${unit}"
+            ok=1
+            ;;
+        *)
+            printf ' rc=unknown (no readable transcript under %s)\n' "${workdir}"
+            ok=1
+            ;;
+    esac
+done
+
+exit "${ok}"

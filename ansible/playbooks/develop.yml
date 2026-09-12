@@ -339,18 +339,32 @@
     # instead of creating a parallel set — and claude-update.sh keeps finding
     # them by its claude-rc*.service glob.
 
-    - name: Deploy the Remote Control session supervisor script
+    - name: Deploy the Remote Control helper scripts
       when: claude_rc_sessions | length > 0
       become: false
       ansible.builtin.copy:
-        src: ../files/claude-rc-session.sh
-        dest: "{{ _admin_home }}/.local/bin/claude-rc-session.sh"
+        src: "../files/{{ item }}"
+        dest: "{{ _admin_home }}/.local/bin/{{ item }}"
         mode: '0755'
+      loop:
+        # Respawn loop, run by the units below.
+        - claude-rc-session.sh
+        # On-demand health check, run by hand. Discovers sessions from the
+        # units, so it needs no list of its own.
+        - claude-rc-status
 
-    # Superseded by the parameterised script above. Safe to remove while a
-    # session is running: copy/file replace the directory entry, and the
-    # running bash keeps reading the inode it started with.
-    - name: Remove the per-session Remote Control scripts they replace
+    # Superseded helpers. Safe to remove while a session is running: copy and
+    # file replace the directory entry, and a running bash keeps reading the
+    # inode it started with.
+    #
+    #   claude-rc.sh, claude-rc-ha.sh — two near-identical wrappers, replaced by
+    #     the parameterised claude-rc-session.sh.
+    #   claude-sessions — the pre-service launcher, which started
+    #     `claude --continue --remote-control` for ~/git/swintronics on the
+    #     DEFAULT tmux socket. Nothing invoked it any more, but running it would
+    #     have raced a second Remote Control session against claude-rc.service
+    #     for the same directory.
+    - name: Remove the superseded Remote Control helper scripts
       when: claude_rc_sessions | length > 0
       become: false
       ansible.builtin.file:
@@ -359,6 +373,7 @@
       loop:
         - claude-rc.sh
         - claude-rc-ha.sh
+        - claude-sessions
 
     - name: Deploy the Remote Control session units
       become: false
