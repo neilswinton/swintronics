@@ -31,7 +31,15 @@ cd "${workdir}" || exit 1
 # CLI stays up in a disconnected state — so the loop cannot recover a failed
 # connect. That case is prevented in the unit instead, by waiting for the
 # network before launching.
+#
+# --continue picks up the most recent conversation in ${workdir}, so a reboot or
+# a nightly restart resumes where the session left off instead of opening a
+# blank one. Two things follow from "most recent in this directory":
+#   * it is not necessarily the previous *Remote Control* conversation — an
+#     ad-hoc `claude` run in the same directory is newer and wins;
+#   * with no conversation there at all it starts a fresh one rather than
+#     failing, so this is safe on a first launch and cannot spin the loop.
 while true; do
-    claude --remote-control "${label}"
+    claude --continue --remote-control "${label}"
     sleep 5
 done
