@@ -19,3 +19,17 @@ seafile_admin_email: "neil@swintronics.com"
 
 git_user_name: "Neil Swinton"
 git_user_email: "5995552+neilswinton@users.noreply.github.com"
+
+# Long-lived Claude Code Remote Control sessions, one systemd user unit and one
+# tmux server socket each. `unit` and `socket` match the units that were
+# hand-built on this machine, so Ansible adopts them rather than replacing them;
+# `workdir` is relative to the admin user's home.
+claude_rc_sessions:
+  - unit: claude-rc
+    socket: claude
+    name: "Homelab"
+    workdir: git/swintronics
+  - unit: claude-rc-ha
+    socket: claude-ha
+    name: "Home Assistant"
+    workdir: git/ha-claude-project

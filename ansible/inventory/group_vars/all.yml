@@ -27,3 +27,7 @@ heartbeat_grace_seconds: 960
 # inside this window and doesn't page, but a box that never comes back still
 # alerts once the window expires.
 heartbeat_reboot_grace_seconds: 2700
+
+# Claude Code Remote Control sessions to keep alive (playbooks/develop.yml).
+# Empty by default — a host opts in from its host_vars. See host_vars/xps13.yml.
+claude_rc_sessions: []
