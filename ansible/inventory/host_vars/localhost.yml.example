@@ -23,3 +23,12 @@ docker_gid: "984"                    # Check with: getent group docker | cut -d:
 
 # Hardware (optional)
 # hardware_watchdog_module: "iTCO_wdt"
+
+# Claude Code Remote Control (optional)
+# One long-lived `claude --remote-control` session per entry, each supervised by
+# a systemd user unit named <unit>.service. Requires NetworkManager on the host.
+# claude_rc_sessions:
+#   - unit: claude-rc                 # unit name; must match claude-rc*.service
+#     socket: claude                  # dedicated tmux server socket
+#     name: "Homelab"                 # session label shown in Claude
+#     workdir: git/swintronics        # relative to the admin user's home

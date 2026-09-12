@@ -56,6 +56,7 @@
           - gnupg-agent
           - python3-pip
           - shellcheck
+          - tmux
         state: present
         update_cache: true
 
@@ -173,7 +174,7 @@
     # systemd *user* units, matching the existing claude-rc*.service pattern:
     # no sudo needed, and lingering is already enabled for the admin user.
 
-    - name: Create directories for the nightly Claude Code updater
+    - name: Create directories for the Claude Code user units
       become: false
       ansible.builtin.file:
         path: "{{ item.path }}"
@@ -303,6 +304,106 @@
         XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts['getent_passwd'][admin_user][1] }}"
       # In check mode the unit files haven't been written yet.
       ignore_errors: "{{ ansible_check_mode }}"
+
+    # ── Claude Code Remote Control sessions ───────────────────────────────────
+    # Long-lived `claude --remote-control` sessions, one detached tmux server
+    # each, supervised by a systemd *user* unit. Hosts opt in by setting
+    # claude_rc_sessions (see inventory/host_vars/xps13.yml); the default is an
+    # empty list, so a host that runs no sessions gets no units.
+    #
+    # These units were hand-built on the XPS13 and unmanaged until now. Unit and
+    # socket names are preserved exactly, so this adopts the running sessions
+    # instead of creating a parallel set — and claude-update.sh keeps finding
+    # them by its claude-rc*.service glob.
+
+    - name: Deploy the Remote Control session supervisor script
+      when: claude_rc_sessions | length > 0
+      become: false
+      ansible.builtin.copy:
+        src: ../files/claude-rc-session.sh
+        dest: "{{ _admin_home }}/.local/bin/claude-rc-session.sh"
+        mode: '0755'
+
+    # Superseded by the parameterised script above. Safe to remove while a
+    # session is running: copy/file replace the directory entry, and the
+    # running bash keeps reading the inode it started with.
+    - name: Remove the per-session Remote Control scripts they replace
+      when: claude_rc_sessions | length > 0
+      become: false
+      ansible.builtin.file:
+        path: "{{ _admin_home }}/.local/bin/{{ item }}"
+        state: absent
+      loop:
+        - claude-rc.sh
+        - claude-rc-ha.sh
+
+    - name: Deploy the Remote Control session units
+      become: false
+      ansible.builtin.copy:
+        dest: "{{ _admin_home }}/.config/systemd/user/{{ item.unit }}.service"
+        content: |
+          [Unit]
+          Description=Claude Code Remote Control in tmux ({{ item.name }})
+          # Managed by Ansible (playbooks/develop.yml). Do not edit.
+
+          [Service]
+          Type=forking
+          # -L {{ item.socket }} = a dedicated tmux server socket, isolated from the
+          # other Remote Control sessions and from ad-hoc tmux work.
+          #
+          # The bridge session is created within seconds of launch and is not
+          # retried, so wait for the network before starting. Without this the
+          # unit starts at default.target while Wi-Fi is still associating: on
+          # 2026-09-12 the Home Assistant session lost that race by 300ms and
+          # sat in "Session creation failed" for 7h40m — a dead bridge doesn't
+          # exit the CLI, so nothing supervised it back to life.
+          #
+          # A timeout here fails the unit, and Restart=on-failure retries it —
+          # which is the behaviour we want on a box whose network is slow to
+          # arrive. Requires NetworkManager on the host.
+          ExecStartPre=/usr/bin/nm-online -s -q --timeout=60
+          ExecStart=/usr/bin/tmux -L {{ item.socket }} new-session -d -s claude "%h/.local/bin/claude-rc-session.sh '{{ item.name }}' %h/{{ item.workdir }}"
+          ExecStop=/usr/bin/tmux -L {{ item.socket }} kill-server
+          Restart=on-failure
+          RestartSec=5
+
+          [Install]
+          WantedBy=default.target
+        mode: '0644'
+      loop: "{{ claude_rc_sessions }}"
+      loop_control:
+        label: "{{ item.unit }}"
+      register: _claude_rc_units
+
+    # enabled + started only: `state: restarted` would kill the session running
+    # this playbook. A changed unit file is reported below for a manual restart,
+    # and the nightly updater restarts them all anyway when a release lands.
+    - name: Enable the Remote Control session units
+      become: false
+      ansible.builtin.systemd_service:
+        name: "{{ item.unit }}.service"
+        scope: user
+        enabled: true
+        state: started
+        daemon_reload: true
+      loop: "{{ claude_rc_sessions }}"
+      loop_control:
+        label: "{{ item.unit }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts['getent_passwd'][admin_user][1] }}"
+      # In check mode the unit files haven't been written yet.
+      ignore_errors: "{{ ansible_check_mode }}"
+
+    - name: Report Remote Control units that need a manual restart
+      when: _claude_rc_units.results | selectattr('changed') | list | length > 0
+      ansible.builtin.debug:
+        msg: >-
+          Unit files changed for
+          {{ _claude_rc_units.results | selectattr('changed')
+             | map(attribute='item.unit') | join(', ') }}.
+          The running sessions still use the old definition — restart each with
+          `systemctl --user restart <unit>`, from outside the session being
+          restarted.
 
     - name: Configure git user name
       community.general.git_config:
