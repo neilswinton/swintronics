@@ -48,35 +48,13 @@
         key: "{{ admin_user }}"
 
   tasks:
-    - name: Install developer packages
-      ansible.builtin.apt:
-        name:
-          - apache2-utils
-          - git
-          - gnupg-agent
-          - python3-pip
-          - shellcheck
-          - tmux
-        state: present
-        update_cache: true
-
-    - name: Add GitHub CLI apt signing key
-      ansible.builtin.get_url:
-        url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
-        dest: /etc/apt/keyrings/githubcli-archive-keyring.gpg
-        mode: '0644'
-
-    - name: Add GitHub CLI apt repository
-      ansible.builtin.apt_repository:
-        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main"
-        filename: github-cli
-        state: present
-
-    - name: Install GitHub CLI
-      ansible.builtin.apt:
-        name: gh
-        state: present
-        update_cache: true
+    # ── apt repositories ──────────────────────────────────────────────────────
+    # Every third-party keyring and repository is configured BEFORE the first
+    # package install. `apt update` validates the whole sources list at once, so
+    # a single stale key fails every apt task in the play — including the ones
+    # that would have repaired it. With the installs first, the play could not
+    # fix repo config it had itself installed: a rotated HashiCorp key (#141)
+    # broke the very first task and never reached the task that re-fetches it.
 
     - name: Remove conflicting VSCode sources file if present
       ansible.builtin.file:
@@ -88,11 +66,54 @@
         path: /usr/share/keyrings/microsoft.gpg
         state: absent
 
+    # Keys are fetched every run rather than creates:-guarded, so a rotation
+    # upstream self-heals on the next run instead of breaking apt until someone
+    # investigates by hand.
+    - name: Add GitHub CLI apt signing key
+      ansible.builtin.get_url:
+        url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+        dest: /etc/apt/keyrings/githubcli-archive-keyring.gpg
+        mode: '0644'
+
     - name: Add Microsoft apt signing key
       ansible.builtin.get_url:
         url: https://packages.microsoft.com/keys/microsoft.asc
         dest: /etc/apt/keyrings/microsoft.asc
         mode: '0644'
+
+    - name: Add HashiCorp apt signing key
+      ansible.builtin.get_url:
+        url: https://apt.releases.hashicorp.com/gpg
+        dest: /etc/apt/keyrings/hashicorp-archive-keyring.asc
+        mode: '0644'
+
+    # HashiCorp rotated to an ASCII-armored key; the dearmored .gpg this play
+    # used to write holds only the superseded AA16FCBCA621E701.
+    #
+    # The old source line has to go explicitly. apt_repository keys on the whole
+    # repo spec, so changing signed-by APPENDS a second line rather than
+    # replacing the first — leaving two entries for the same repo with
+    # different keyrings, which apt refuses to parse at all:
+    #   E:Conflicting values set for option Signed-By regarding source
+    #   https://apt.releases.hashicorp.com/ noble
+    # Removing the entry before the keyring keeps the sources list valid at
+    # every point in between.
+    - name: Remove the superseded HashiCorp apt repository entry
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ ansible_facts['distribution_release'] }} main"
+        filename: hashicorp
+        state: absent
+
+    - name: Remove the superseded HashiCorp binary keyring
+      ansible.builtin.file:
+        path: /etc/apt/keyrings/hashicorp-archive-keyring.gpg
+        state: absent
+
+    - name: Add GitHub CLI apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main"
+        filename: github-cli
+        state: present
 
     - name: Add VSCode apt repository
       ansible.builtin.apt_repository:
@@ -100,38 +121,28 @@
         filename: vscode
         state: present
 
-    - name: Install VSCode
-      ansible.builtin.apt:
-        name: code
-        state: present
-        update_cache: true
-
-    # Fetched every run rather than creates:-guarded. HashiCorp rotated their
-    # signing key (AA16FCBCA621E701 -> FC9CA96ACA026560); the guard was
-    # satisfied forever by the stale keyring, so `apt update` failed with
-    # NO_PUBKEY and took the whole play down on its first task, since
-    # "Install developer packages" sets update_cache. get_url re-fetches when
-    # the remote key changes, the same way the Microsoft key above is handled.
-    - name: Add HashiCorp apt signing key
-      ansible.builtin.get_url:
-        url: https://apt.releases.hashicorp.com/gpg
-        dest: /etc/apt/keyrings/hashicorp-archive-keyring.asc
-        mode: '0644'
-
-    - name: Remove the superseded HashiCorp binary keyring
-      ansible.builtin.file:
-        path: /etc/apt/keyrings/hashicorp-archive-keyring.gpg
-        state: absent
-
     - name: Add HashiCorp apt repository
       ansible.builtin.apt_repository:
         repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.asc] https://apt.releases.hashicorp.com {{ ansible_facts['distribution_release'] }} main"
         filename: hashicorp
         state: present
 
-    - name: Install Terraform
+    # ── apt packages ──────────────────────────────────────────────────────────
+    # One cache refresh covers the lot: every repository above is in place
+    # before this runs, so the later installs don't each re-run `apt update`.
+
+    - name: Install developer packages
       ansible.builtin.apt:
-        name: terraform
+        name:
+          - apache2-utils
+          - code
+          - gh
+          - git
+          - gnupg-agent
+          - python3-pip
+          - shellcheck
+          - terraform
+          - tmux
         state: present
         update_cache: true
 
