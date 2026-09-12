@@ -553,6 +553,15 @@ project (environment: `dev`). Use the dashboard to check each folder.
 | `SMTP_PASSWORD` | Step 1.6 |
 | `SMTP_FROM` | Step 1.6 |
 
+Optional — only if you want Azure remote OCR for Paperless (see
+*Optional: Paperless Remote OCR* in Part 4). Paperless works fine without them;
+the env block is not rendered when they are absent.
+
+| Secret name | Added in |
+|-------------|----------|
+| `PAPERLESS_REMOTE_OCR_API_KEY` | Part 4 (optional) |
+| `PAPERLESS_REMOTE_OCR_ENDPOINT` | Part 4 (optional) |
+
 ### Folder `/terraform`
 | Secret name | Added in |
 |-------------|----------|
@@ -654,6 +663,81 @@ _See the Beszel Agent Bootstrap section in CLAUDE.md for full instructions._
 5. Click "Add System" → copy the SSH public key shown (don't submit the form)
 6. Set `BESZEL_AGENT_KEY` and `BESZEL_AGENT_TOKEN` in the Infisical Runtime project
 7. Re-run `deploy-versions.yml` — agent deploys and auto-registers
+
+---
+
+## Optional: Paperless Remote OCR 📋
+
+Lets you escalate individual badly-scanned documents to Azure AI Document
+Intelligence. Local Tesseract stays the default for everything else. Skip this
+section entirely if you don't want it — paperless is fully functional without it.
+
+### Create the Azure resource
+
+1. In the Azure portal, create an **AI Document Intelligence** resource
+2. Choose the **S0 (pay-as-you-go)** pricing tier, **not** free F0 — F0 processes
+   only the **first 2 pages** of any document, caps files at 4 MB, and allows 500
+   pages/month, so it would silently truncate most real documents. S0 is roughly
+   $1.50 per 1,000 pages on the Read model; selective use costs cents per year.
+   Optionally add a budget alert.
+3. From the resource's *Keys and Endpoint* page, copy **Key 1** and the
+   **Endpoint** (`https://<name>.cognitiveservices.azure.com/`)
+
+### Check the paperless version
+
+`workflow_only` mode requires paperless-ngx **>= 3.1.0**. We track `latest` and
+upgrade via dockhand, so verify what is actually running:
+
+```bash
+docker exec paperless-webserver-1 python -c \
+  "from paperless.version import __full_version_str__ as v; print(v)"
+```
+
+On 3.0.x the only available behaviour is all-or-nothing (every document to
+Azure) — don't enable it there.
+
+### Add the secrets and deploy
+
+In the Infisical Runtime project, folder `/`:
+
+| Secret name | Value |
+|-------------|-------|
+| `PAPERLESS_REMOTE_OCR_API_KEY` | Azure Document Intelligence Key 1 |
+| `PAPERLESS_REMOTE_OCR_ENDPOINT` | Azure resource endpoint URL |
+
+```bash
+ansible-playbook playbooks/deploy-versions.yml -e target=<target>
+```
+
+Verify the rendered file on the server actually picked them up:
+
+```bash
+grep REMOTE_OCR ~/<cluster_name>/docker-services/paperless/docker-compose.env
+```
+
+You should see four lines, including `PAPERLESS_REMOTE_OCR_MODE=workflow_only`.
+
+### Using it
+
+Both paths are per document:
+
+- **Reprocess** — open a badly-OCR'd document → Reprocess → tick "use remote
+  OCR". API equivalent:
+  `{"method": "reprocess", "parameters": {"remote_ocr": true}}`
+- **Workflow** — if a pattern emerges (e.g. anything tagged `bad-scan`), add a
+  paperless workflow that enables remote OCR at consume time for matching
+  documents only
+
+Worth doing once: reprocess a document known to have OCR'd poorly and compare the
+text. That validates the wiring and shows whether the quality gain is real for
+your scans.
+
+Set these only via Ansible. The same settings exist under Administration →
+Application Configuration, which persists to the database and overrides the env
+var, causing drift from the repo.
+
+**Rollback:** delete the two Infisical secrets and re-deploy. The env block
+vanishes and paperless returns to pure local Tesseract. No data migration.
 
 ---
 

@@ -400,6 +400,40 @@ Beszel agents authenticate with the hub using the hub's SSH public key (`KEY`) a
 
 **Additional servers:** the same `BESZEL_AGENT_KEY`/`BESZEL_AGENT_TOKEN` work for every agent — each one auto-registers as a separate system on first connect.
 
+### Paperless Remote OCR (optional)
+
+Paperless can escalate individual documents to Azure AI Document Intelligence
+when local Tesseract does a poor job (handwriting, low-contrast receipts, angled
+photos, table-heavy layouts). The feature is gated on Infisical secrets the same
+way the Beszel agent is — absent secrets mean the env block is never rendered and
+paperless stays on pure local OCR.
+
+To enable, add both to the Infisical Runtime project at path `/`:
+
+- `PAPERLESS_REMOTE_OCR_API_KEY` — Azure Document Intelligence key
+- `PAPERLESS_REMOTE_OCR_ENDPOINT` — `https://<name>.cognitiveservices.azure.com/`
+
+then re-run `deploy-versions.yml`. To disable, delete the secrets and re-deploy.
+
+Notes:
+
+- Use the Azure **S0** tier, not free **F0** — F0 OCRs only the first 2 pages of
+  a document and caps files at 4 MB, silently truncating real documents.
+- `PAPERLESS_REMOTE_OCR_MODE=workflow_only` is hardcoded in
+  `services/paperless/docker-compose.env.j2`. The paperless default is `always`,
+  which routes **every** document to Azure. `workflow_only` requires paperless
+  >= 3.1.0; on older versions the setting is unrecognized and the mode falls
+  back to `always`.
+- Usage is per document: either Reprocess a document with "use remote OCR"
+  ticked (API: `{"method": "reprocess", "parameters": {"remote_ocr": true}}`), or
+  add a paperless workflow that enables remote OCR for matching documents at
+  consume time.
+- These settings are also editable under Administration → Application
+  Configuration, which persists to the database and overrides the env var. Set
+  them only via Ansible to avoid drift.
+- Privacy: reprocessed documents leave the server and go to Microsoft. Selective
+  mode makes that a per-document choice rather than a blanket policy.
+
 ## Current Work In Progress
 
 ### Context
