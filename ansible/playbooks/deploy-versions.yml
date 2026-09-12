@@ -166,6 +166,14 @@
         - "'BESZEL_AGENT_KEY' in infisical_secrets.secrets"
         - "'BESZEL_AGENT_TOKEN' in infisical_secrets.secrets"
 
+    - name: Set paperless remote OCR secrets from Infisical
+      ansible.builtin.set_fact:
+        paperless_remote_ocr_key: "{{ infisical_secrets.secrets.PAPERLESS_REMOTE_OCR_API_KEY }}"
+        paperless_remote_ocr_endpoint: "{{ infisical_secrets.secrets.PAPERLESS_REMOTE_OCR_ENDPOINT }}"
+      when:
+        - "'PAPERLESS_REMOTE_OCR_API_KEY' in infisical_secrets.secrets"
+        - "'PAPERLESS_REMOTE_OCR_ENDPOINT' in infisical_secrets.secrets"
+
   tasks:
     # ── Ensure service directories exist ─────────────────────────────────────
 
