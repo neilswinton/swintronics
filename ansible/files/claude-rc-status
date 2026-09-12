@@ -11,6 +11,13 @@
 # of truth for which sessions exist, which tmux socket each uses, where it runs
 # and what it's called — so adding a session to claude_rc_sessions doesn't need
 # a matching edit here.
+#
+# Discovery takes the units that actually launch a session, not every unit the
+# glob matches: on 2026-09-12 a one-shot helper run as a transient
+# claude-rc-restart-verify.service was counted as a session, failed the parse
+# below, and made this script exit 1 — which a caller polling it read as "the
+# session never came back" and alerted on, while the session was healthy
+# throughout.
 set -uo pipefail
 
 ok=0
@@ -49,12 +56,20 @@ bridge_info() {
     esac
 }
 
+# Narrowing the glob instead would be the wrong fix: a unit that no longer runs
+# claude-rc-session.sh isn't a session to report on, whereas a session unit that
+# fails to parse still deserves the loud parse-failure branch below.
 mapfile -t units < <(
-    systemctl --user list-unit-files --no-legend 'claude-rc*.service' 2>/dev/null | awk '{print $1}'
+    systemctl --user list-unit-files --no-legend 'claude-rc*.service' 2>/dev/null \
+    | awk '{print $1}' \
+    | while read -r candidate; do
+          systemctl --user show "${candidate}" -p ExecStart --value 2>/dev/null \
+          | grep -q claude-rc-session.sh && echo "${candidate}"
+      done
 )
 
 if (( ${#units[@]} == 0 )); then
-    echo "no claude-rc*.service units on this machine."
+    echo "no Remote Control session units on this machine."
     exit 0
 fi
 
