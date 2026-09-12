@@ -106,14 +106,26 @@
         state: present
         update_cache: true
 
+    # Fetched every run rather than creates:-guarded. HashiCorp rotated their
+    # signing key (AA16FCBCA621E701 -> FC9CA96ACA026560); the guard was
+    # satisfied forever by the stale keyring, so `apt update` failed with
+    # NO_PUBKEY and took the whole play down on its first task, since
+    # "Install developer packages" sets update_cache. get_url re-fetches when
+    # the remote key changes, the same way the Microsoft key above is handled.
     - name: Add HashiCorp apt signing key
-      ansible.builtin.shell:
-        cmd: curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg
-        creates: /etc/apt/keyrings/hashicorp-archive-keyring.gpg
+      ansible.builtin.get_url:
+        url: https://apt.releases.hashicorp.com/gpg
+        dest: /etc/apt/keyrings/hashicorp-archive-keyring.asc
+        mode: '0644'
+
+    - name: Remove the superseded HashiCorp binary keyring
+      ansible.builtin.file:
+        path: /etc/apt/keyrings/hashicorp-archive-keyring.gpg
+        state: absent
 
     - name: Add HashiCorp apt repository
       ansible.builtin.apt_repository:
-        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ ansible_facts['distribution_release'] }} main"
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.asc] https://apt.releases.hashicorp.com {{ ansible_facts['distribution_release'] }} main"
         filename: hashicorp
         state: present
 
