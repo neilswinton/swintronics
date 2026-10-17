@@ -341,7 +341,10 @@ Matched pair of Claude Code skills drives the service lifecycle:
   to forget and prune them).
 
 To temporarily disable a service instead (keep files and data, stop
-containers), add it to `disabled_services` in `ansible/versions.yml`. The
+containers), add it to `disabled_services` in the cluster's inventory
+group_vars (e.g. `ansible/inventory/group_vars/swintronics.yml`; a host_vars
+value replaces the group list for that host). It is per-cluster so a service
+can be off on one deployment and running on another. The
 Gatus config template reads the same list, so the service's monitors —
 including its Backups heartbeat endpoint — are disabled on the same deploy
 (and re-enabled when the name is removed). The deploy also writes a

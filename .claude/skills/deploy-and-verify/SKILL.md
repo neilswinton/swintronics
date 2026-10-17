@@ -25,7 +25,7 @@ Note the touched paths under `ansible/services/<service>/` and any version bumps
 
 There is only one deploy playbook — `deploy-versions.yml`. It renders every service's templates, detects which rendered files actually changed, and restarts only those services. A service-name arg to this skill scopes *verification* (step 3); it does not change the deploy command.
 
-Always pass `-e target=<cluster>` — without it the playbook defaults to the `clusters` group, which fans out to both `swintronics` and `cactus_cantina` (experimental). The XPS13 / production target is `swintronics`. Use `cactus_cantina` only when the user is explicitly working on OCI.
+Always pass `-e target=<cluster>` — without it the playbook defaults to the `clusters` group, which fans out to every cluster in the inventory. The XPS13 / production target is `swintronics`.
 
 ```bash
 cd /home/neil/git/swintronics/ansible
