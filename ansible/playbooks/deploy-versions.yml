@@ -4,15 +4,14 @@
 # or .env actually changes will be restarted.
 #
 # Services not defined in versions.yml are skipped entirely. Services listed in
-# versions.yml's `disabled_services` are stopped (`docker compose down`) while
-# their files, config, volumes, and network are left intact. A `.disabled`
+# the inventory's `disabled_services` (group_vars/host_vars, per cluster) are
+# stopped (`docker compose down`) while their files, config, volumes, and network are left intact. A `.disabled`
 # marker is written into the service's compose directory so backup.sh skips
 # its backup hooks (and removed again when the service is re-enabled).
 # Traefik is always restarted first.
 #
 # Usage:
 #   ansible-playbook playbooks/deploy-versions.yml -e target=swintronics
-#   ansible-playbook playbooks/deploy-versions.yml -e target=cactus_cantina
 #
 # Dry run:
 #   ansible-playbook playbooks/deploy-versions.yml --check

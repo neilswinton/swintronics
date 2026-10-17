@@ -21,6 +21,14 @@ use_btrfs: true                      # false to use plain directories instead of
 # Docker
 docker_gid: "984"                    # Check with: getent group docker | cut -d: -f3
 
+# Services to leave stopped on this host (overrides the cluster group_vars
+# list rather than merging with it). The Home Assistant stack needs a Zigbee
+# dongle and a home network, so it is off by default — remove these to run it.
+disabled_services:
+  - homeassistant
+  - zigbee2mqtt
+  - mosquitto
+
 # Hardware (optional)
 # hardware_watchdog_module: "iTCO_wdt"
 

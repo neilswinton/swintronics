@@ -4,3 +4,12 @@ server_domain: "swintronics.com"
 cert_resolver: "production"
 docker_services_path: "/home/{{ admin_user }}/{{ cluster_name }}/docker-services"
 immich_data_location: "{{ data_disk_mountpoint }}/volumes/immich"
+
+# Services listed here are stopped by deploy-versions (`docker compose down`)
+# while their compose files, config, volumes, and Docker network are left
+# intact; their Gatus monitors are disabled too. Remove a name to re-enable —
+# the next deploy redeploys and restarts it. Names must match the playbook's
+# _service_config keys (e.g. bentopdf, dockhand). Clusters that don't set this
+# run every service in versions.yml.
+disabled_services:
+  - seafile

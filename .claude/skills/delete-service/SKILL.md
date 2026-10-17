@@ -1,6 +1,6 @@
 ---
 name: delete-service
-description: Completely delete a service — repo config, docs, server files, containers, data, and DNS. Use when the user says `/delete-service <name>` or asks to remove a service entirely (not just disable it; for that, add the service to disabled_services in versions.yml). Existing restic snapshots are preserved. Mirrors /add-service.
+description: Completely delete a service — repo config, docs, server files, containers, data, and DNS. Use when the user says `/delete-service <name>` or asks to remove a service entirely (not just disable it; for that, add the service to disabled_services in the cluster's inventory group_vars). Existing restic snapshots are preserved. Mirrors /add-service.
 ---
 
 # Delete Service
@@ -12,7 +12,8 @@ hooks are deleted with its compose directory), but old snapshots stay
 restorable until pruned separately.
 
 Disabling vs deleting: if the user may want the service back with its data,
-add it to `disabled_services` in `ansible/versions.yml` instead. Deletion is
+add it to `disabled_services` in the cluster's inventory group_vars (e.g.
+`ansible/inventory/group_vars/swintronics.yml`) instead. Deletion is
 for services that are gone for good.
 
 ## 1. Collect the service's identity BEFORE editing anything
@@ -35,7 +36,8 @@ is gone from the repo.
 
 Remove every trace of the service:
 
-- `ansible/versions.yml` — version entry; also remove from `disabled_services`
+- `ansible/versions.yml` — version entry
+- `ansible/inventory/group_vars/*.yml` / `host_vars/*.yml` — remove from any `disabled_services` list
 - `ansible/playbooks/deploy-versions.yml` — `_service_config` entry
 - `ansible/playbooks/setup-storage.yml` — `_service_storage` entry
 - `ansible/services/<dir>/` — delete the whole directory

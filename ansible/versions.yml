@@ -57,9 +57,6 @@ versions:
   # editor. Ships inside the seafile stack, not a service of its own.
   seadoc: "2.0-latest"
 
-# Services listed here are stopped by deploy-versions (`docker compose down`)
-# while their compose files, config, volumes, and Docker network are left
-# intact. Remove a name to re-enable — the next deploy redeploys and restarts
-# it. Names must match the service keys above / the playbook's _service_config
-# (e.g. bentopdf, dockhand).
-disabled_services: []
+# Per-cluster service disabling lives in inventory group_vars/host_vars as
+# `disabled_services` (see inventory/group_vars/swintronics.yml) — not here,
+# because vars_files would override every inventory value.
