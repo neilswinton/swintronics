@@ -6,7 +6,11 @@ set -euo pipefail
 DATA="${DATA_MOUNTPOINT:-/mnt/docker-data}"
 SOURCE="${DATA}/volumes/immich/library"
 SNAP_DIR="${DATA}/snapshots/immich/library/backup"
-DB_DUMP="${SOURCE}/immich_db.sql"
+# Write the dump where immich's restore UI looks (UPLOAD_LOCATION/backups), named
+# like its own dumps so it shows the version-compatibility badge. The swintronics-
+# prefix keeps it out of immich's retention cleanup (immich-db-backup-* only).
+BACKUPS_DIR="${SOURCE}/backups"
+DUMP_PREFIX="swintronics-db-backup-"
 
 mkdir -p "$(dirname "${SNAP_DIR}")"
 
@@ -19,12 +23,24 @@ if [ -e "${SNAP_DIR}" ]; then
     echo "ERROR: could not remove previous snapshot at ${SNAP_DIR}" >&2; exit 1
 fi
 
+# Read the server version before stopping it
+IMMICH_VERSION=$(docker compose exec -T immich-server node -p "require('/usr/src/app/server/package.json').version")
+
 echo "Stopping Immich services..."
 docker compose stop immich-server immich-machine-learning
 
 echo "Dumping Immich database..."
 docker compose up -d database
-docker compose exec database pg_dumpall --clean --if-exists -U postgres > "${DB_DUMP}"
+PG_VERSION=$(docker compose exec -T database sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SHOW server_version"' | cut -d' ' -f1)
+DB_DUMP="${BACKUPS_DIR}/${DUMP_PREFIX}$(date +%Y%m%dT%H%M%S)-v${IMMICH_VERSION}-pg${PG_VERSION}.sql.gz"
+docker compose exec -T database sh -c 'pg_dump --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+    | gzip > "${DB_DUMP}.tmp"
+mv "${DB_DUMP}.tmp" "${DB_DUMP}"
+
+# Keep only the newest dump; restic holds the history
+find "${BACKUPS_DIR}" -maxdepth 1 -name "${DUMP_PREFIX}*.sql.gz" ! -path "${DB_DUMP}" -delete
+# Legacy pg_dumpall location (pre-restore-UI format)
+rm -f "${SOURCE}/immich_db.sql"
 
 echo "Creating btrfs snapshot at ${SNAP_DIR}..."
 sudo btrfs subvolume snapshot -r "${SOURCE}" "${SNAP_DIR}"
