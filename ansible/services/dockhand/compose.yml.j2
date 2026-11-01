@@ -10,6 +10,8 @@ services:
     container_name: dockhand
     restart: always
     env_file: .env
+    environment:
+      ORIGIN: "https://{{ _service_config.dockhand.dns_names[0] }}.{{ server_domain }}"
     group_add:
       - "{{ docker_gid }}"
     volumes:
