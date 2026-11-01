@@ -12,88 +12,103 @@ alerting:
     token: ${GATUS_TELEGRAM_BOT_TOKEN}
     id: ${GATUS_TELEGRAM_CHAT_ID}
 
+{# Disabled services' endpoints are omitted, not set enabled: false — Gatus
+   keeps stored history for any configured endpoint (even disabled), so the
+   dashboard would show the last pre-disable result forever. Omitting the
+   endpoint makes Gatus purge its history on the next start. #}
+{% set _disabled = disabled_services | default([]) %}
 endpoints:
   # ── Services (5m, 3 retries) ──────────────────────────────────────────────
+{% if 'immich' not in _disabled %}
   - name: Immich
-    enabled: {{ ('immich' not in disabled_services | default([])) | lower }}
     group: Services
     url: https://photos.{{ server_domain }}/api/server/ping
     interval: 5m
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+{% endif %}
 
+{% if 'paperless' not in _disabled %}
   - name: Paperless
-    enabled: {{ ('paperless' not in disabled_services | default([])) | lower }}
     group: Services
     url: https://paperless.{{ server_domain }}/accounts/login/
     interval: 5m
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+{% endif %}
 
+{% if 'bentopdf' not in _disabled %}
   - name: BentoPDF
-    enabled: {{ ('bentopdf' not in disabled_services | default([])) | lower }}
     group: Services
     url: https://bentopdf.{{ server_domain }}/
     interval: 5m
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+{% endif %}
 
+{% if 'seafile' not in _disabled %}
   - name: Seafile
-    enabled: {{ ('seafile' not in disabled_services | default([])) | lower }}
     group: Services
     url: https://seafile.{{ server_domain }}/accounts/login/
     interval: 5m
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+{% endif %}
 
+{% if 'homeassistant' not in _disabled %}
   - name: Home Assistant
-    enabled: {{ ('homeassistant' not in disabled_services | default([])) | lower }}
     group: Services
     url: https://ha.{{ server_domain }}/
     interval: 5m
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+{% endif %}
 
+{% if 'zigbee2mqtt' not in _disabled %}
   - name: Zigbee2MQTT
-    enabled: {{ ('zigbee2mqtt' not in disabled_services | default([])) | lower }}
     group: Services
     url: https://z2m.{{ server_domain }}/
     interval: 5m
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+{% endif %}
 
   # ── System Monitoring (5m, 3 retries) ─────────────────────────────────────
+{% if 'traefik' not in _disabled %}
   - name: Traefik
-    enabled: {{ ('traefik' not in disabled_services | default([])) | lower }}
     group: System Monitoring
     url: https://traefik.{{ server_domain }}/api/version
     interval: 5m
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+{% endif %}
 
+{% if 'dockhand' not in _disabled %}
   - name: Dockhand
-    enabled: {{ ('dockhand' not in disabled_services | default([])) | lower }}
     group: System Monitoring
     url: https://dockhand.{{ server_domain }}/api/health
     interval: 5m
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+{% endif %}
 
+{% if 'beszel' not in _disabled %}
   - name: Beszel
-    enabled: {{ ('beszel' not in disabled_services | default([])) | lower }}
     group: System Monitoring
     url: https://beszel.{{ server_domain }}/api/health
     interval: 5m
     conditions: ["[STATUS] == 200"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+{% endif %}
 
+{% if 'beszel' not in _disabled %}
   - name: Beszel agent
-    enabled: {{ ('beszel' not in disabled_services | default([])) | lower }}
     group: System Monitoring
     url: tcp://host.docker.internal:45876
     interval: 5m
     conditions: ["[CONNECTED] == true"]
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
+{% endif %}
 
   # ── Healthchecks.io heartbeat (60s, 3 retries) ────────────────────────────
   - name: Healthchecks.io heartbeat
@@ -107,27 +122,30 @@ endpoints:
 external-endpoints:
   # ── Backups (push from backup-remote scripts, alert if no ping in 25h) ─────
   # Disabled services skip their backup hooks (.disabled marker), so their
-  # heartbeat endpoints are disabled too — otherwise they'd alert after 25h.
+  # heartbeat endpoints are omitted too — otherwise they'd alert after 25h.
+{% if 'immich' not in _disabled %}
   - name: Immich
-    enabled: {{ ('immich' not in disabled_services | default([])) | lower }}
     group: Backups
     token: ${GATUS_BACKUP_PUSH_TOKEN}
     heartbeat:
       interval: 25h
     alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]
+{% endif %}
 
+{% if 'paperless' not in _disabled %}
   - name: Paperless
-    enabled: {{ ('paperless' not in disabled_services | default([])) | lower }}
     group: Backups
     token: ${GATUS_BACKUP_PUSH_TOKEN}
     heartbeat:
       interval: 25h
     alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]
+{% endif %}
 
+{% if 'homeassistant' not in _disabled %}
   - name: Home Assistant
-    enabled: {{ ('homeassistant' not in disabled_services | default([])) | lower }}
     group: Backups
     token: ${GATUS_BACKUP_PUSH_TOKEN}
     heartbeat:
       interval: 25h
     alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]
+{% endif %}

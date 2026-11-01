@@ -53,9 +53,9 @@ stateless web app, `paperless` for stateful with DB + backups).
   (`stateful: true` → btrfs subvolume; `false` → logs dir only)
 - `ansible/services/gatus/config.yaml.j2` — endpoint block (copy an existing
   one; use a lightweight health/status URL, Telegram alerts); lowercase keys;
-  make `enabled:` conditional on the service key so disabling the service
-  also pauses its monitor:
-  `enabled: {{ ('<service-key>' not in disabled_services | default([])) | lower }}`
+  wrap the block in `{% if '<service-key>' not in _disabled %}` …
+  `{% endif %}` so disabling the service removes its monitor (don't use
+  `enabled: false` — Gatus keeps showing a disabled endpoint's stale history)
 - `CLAUDE.md` — row in the Service Name Mapping table; update the
   upstream-compose convention list
 

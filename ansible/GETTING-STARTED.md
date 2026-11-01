@@ -118,9 +118,10 @@ ansible-playbook playbooks/deploy-versions.yml -e target=swintronics
 ```
 
 **Temporarily disable a service** (stop containers, keep files and data):
-add its name to `disabled_services` in `versions.yml` and deploy. Remove the
-name and deploy again to re-enable. Gatus monitors for the service are
-disabled and re-enabled on the same deploys.
+add its name to `disabled_services` in the cluster's inventory group_vars
+(e.g. `inventory/group_vars/swintronics.yml`) and deploy. Remove the name and
+deploy again to re-enable. Gatus monitors for the service are removed and
+restored on the same deploys (history restarts empty on re-enable).
 
 **Verbose output (for debugging):**
 ```bash
