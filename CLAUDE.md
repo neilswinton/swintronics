@@ -346,8 +346,11 @@ group_vars (e.g. `ansible/inventory/group_vars/swintronics.yml`; a host_vars
 value replaces the group list for that host). It is per-cluster so a service
 can be off on one deployment and running on another. The
 Gatus config template reads the same list, so the service's monitors —
-including its Backups heartbeat endpoint — are disabled on the same deploy
-(and re-enabled when the name is removed). The deploy also writes a
+including its Backups heartbeat endpoint — are omitted from the config on the
+same deploy (and restored when the name is removed). They're omitted rather
+than set `enabled: false` because Gatus keeps history for any configured
+endpoint, so a disabled one would sit on the dashboard showing its last
+pre-disable result; omitting it makes Gatus purge that history on restart. The deploy also writes a
 `.disabled` marker into the service's compose directory, which makes
 `backup.sh` skip its backup hooks (the containers are down; running the hooks
 would fail or restart them). Trade-off: while disabled, the service's restic
