@@ -149,3 +149,25 @@ external-endpoints:
       interval: 25h
     alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]
 {% endif %}
+
+  # ── System Updates (push from host systemd units) ────────────────────────
+  # Pushed by swintronics-security-updates-check.sh (nightly, after
+  # apt-daily-upgrade) and swintronics-full-upgrade.sh (weekly). Keys:
+  # system-updates_security-updates, system-updates_full-upgrade. Heartbeats
+  # use hours: Go durations have no "d" unit (192h = 8 days). Rendered only once
+  # Terraform has created GATUS_PUSH_TOKEN.
+{% if 'GATUS_PUSH_TOKEN' in infisical_secrets.secrets %}
+  - name: Security updates
+    group: System Updates
+    token: ${GATUS_PUSH_TOKEN}
+    heartbeat:
+      interval: 26h
+    alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]
+
+  - name: Full upgrade
+    group: System Updates
+    token: ${GATUS_PUSH_TOKEN}
+    heartbeat:
+      interval: 192h
+    alerts: [{type: telegram, failure-threshold: 1, success-threshold: 1, send-on-resolved: true}]
+{% endif %}

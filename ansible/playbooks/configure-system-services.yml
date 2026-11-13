@@ -48,6 +48,7 @@
         name:
           - unattended-upgrades
           - apt-listchanges
+          - jq   # parses the HA state response in updates-common.sh
         state: present
         update_cache: yes
 
@@ -89,6 +90,7 @@
       ansible.builtin.set_fact:
         _has_monitoring_secrets: "{{ 'HEALTHCHECKS_API_KEY' in infisical_secrets.secrets }}"
 
+    # Unconditional: also holds the away flag, which works without any secrets.
     - name: Create /etc/swintronics directory
       file:
         path: /etc/swintronics
@@ -96,7 +98,6 @@
         owner: root
         group: root
         mode: '0700'
-      when: _has_monitoring_secrets
 
     - name: Deploy monitoring credentials
       copy:
@@ -110,6 +111,547 @@
         group: root
         mode: '0600'
       when: _has_monitoring_secrets
+
+    # ── OS update monitoring + away mode: shared pieces (issue #153) ──────────
+    # The nightly security-updates check and the weekly full-upgrade report to
+    # Gatus external endpoints with GATUS_PUSH_TOKEN; both are skipped until
+    # Terraform has created that secret. HA_AWAY_MODE_TOKEN is a manually
+    # created HA long-lived token (see CLAUDE.md); without it, away_source=ha
+    # resolves presence as "unknown", so the weekly upgrade skips and alerts.
+
+    - name: Check if update-monitoring secrets are available
+      ansible.builtin.set_fact:
+        _has_update_secrets: "{{ 'GATUS_PUSH_TOKEN' in infisical_secrets.secrets }}"
+
+    - name: Deploy update-monitoring credentials
+      copy:
+        dest: /etc/swintronics/updates.env
+        content: |
+          # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+          GATUS_BASE_URL=https://gatus.{{ server_domain }}
+          GATUS_PUSH_TOKEN={{ infisical_secrets.secrets.GATUS_PUSH_TOKEN }}
+          AWAY_SOURCE={{ away_source }}
+          HA_URL=https://ha.{{ server_domain }}
+          {% if 'HA_AWAY_MODE_TOKEN' in infisical_secrets.secrets %}
+          HA_AWAY_MODE_TOKEN={{ infisical_secrets.secrets.HA_AWAY_MODE_TOKEN }}
+          {% endif %}
+        owner: root
+        group: root
+        mode: '0600'
+      when: _has_update_secrets
+
+    - name: Create /usr/local/lib/swintronics directory
+      file:
+        path: /usr/local/lib/swintronics
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Deploy update-jobs shared helpers
+      copy:
+        dest: /usr/local/lib/swintronics/updates-common.sh
+        content: |
+          # Shared helpers for the swintronics OS-update jobs. Sourced, not run.
+          # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+
+          SWINTRONICS_ETC=/etc/swintronics
+          AWAY_FLAG="${SWINTRONICS_ETC}/away"
+          UPDATES_ENV="${SWINTRONICS_ETC}/updates.env"
+
+          # Read directly rather than via EnvironmentFile= so the systemd units
+          # and the interactive swintronics-away CLI see the same settings.
+          if [[ -r "${UPDATES_ENV}" ]]; then
+              set -a
+              # shellcheck source=/dev/null
+              . "${UPDATES_ENV}"
+              set +a
+          fi
+
+          log() { echo "$(basename "$0"): $*"; }
+
+          # push_gatus <endpoint-key> <true|false> [error message]
+          # Gatus is the only alert path for these jobs; a failed push is
+          # logged, and the endpoint's heartbeat catches a job that never
+          # reports.
+          push_gatus() {
+              local key="$1" success="$2" error="${3:-}"
+              if [[ -z "${GATUS_BASE_URL:-}" || -z "${GATUS_PUSH_TOKEN:-}" ]]; then
+                  log "warning: Gatus push not configured; not reporting ${key} success=${success}"
+                  return 0
+              fi
+              local args=(--data-urlencode "success=${success}")
+              [[ -n "${error}" ]] && args+=(--data-urlencode "error=${error}")
+              log "pushing to Gatus: ${key} success=${success}${error:+ error=${error}}"
+              curl -fsS -o /dev/null --max-time 15 --retry 3 -G -X POST \
+                  -H "Authorization: Bearer ${GATUS_PUSH_TOKEN}" \
+                  "${args[@]}" \
+                  "${GATUS_BASE_URL}/api/v1/endpoints/${key}/external" \
+                  || log "warning: Gatus push failed for ${key}"
+          }
+
+          # resolve_presence sets PRESENCE to:
+          #   home     — a clear "home" answer; the only value that allows the
+          #              weekly upgrade
+          #   away     — explicitly away (flag file, or HA away_mode=on)
+          #   unknown  — couldn't be determined; callers treat it as away
+          # and PRESENCE_REASON to a human-readable explanation.
+          resolve_presence() {
+              PRESENCE=unknown
+              PRESENCE_REASON=""
+              local source="${AWAY_SOURCE:-file}"
+
+              if [[ ! -d "${SWINTRONICS_ETC}" || ! -r "${SWINTRONICS_ETC}" || ! -x "${SWINTRONICS_ETC}" ]]; then
+                  PRESENCE_REASON="${SWINTRONICS_ETC} missing or unreadable"
+              elif [[ -e "${AWAY_FLAG}" ]]; then
+                  # The flag overrides HA (manual override), whatever the source.
+                  PRESENCE=away
+                  PRESENCE_REASON="flag file ${AWAY_FLAG} present"
+              elif [[ "${source}" == "file" ]]; then
+                  PRESENCE=home
+                  PRESENCE_REASON="flag file ${AWAY_FLAG} absent"
+              elif [[ "${source}" == "ha" ]]; then
+                  _presence_from_ha
+              else
+                  PRESENCE_REASON="unknown away_source '${source}'"
+              fi
+              log "presence: source=${source} result=${PRESENCE} (${PRESENCE_REASON})"
+          }
+
+          _presence_from_ha() {
+              if [[ -z "${HA_URL:-}" || -z "${HA_AWAY_MODE_TOKEN:-}" ]]; then
+                  PRESENCE_REASON="HA_URL or HA_AWAY_MODE_TOKEN not configured"
+                  return
+              fi
+              local body code state
+              body=$(mktemp)
+              code=$(curl -sS -o "${body}" -w '%{http_code}' --max-time 15 --retry 2 \
+                  -H "Authorization: Bearer ${HA_AWAY_MODE_TOKEN}" \
+                  "${HA_URL}/api/states/input_boolean.away_mode" 2>/dev/null) || code="000"
+              if [[ "${code}" != "200" ]]; then
+                  PRESENCE_REASON="HA input_boolean.away_mode returned HTTP ${code}"
+              else
+                  state=$(jq -r '.state // empty' "${body}" 2>/dev/null) || state=""
+                  case "${state}" in
+                      off) PRESENCE=home; PRESENCE_REASON="HA away_mode=off" ;;
+                      on)  PRESENCE=away; PRESENCE_REASON="HA away_mode=on" ;;
+                      *)   PRESENCE_REASON="HA away_mode state '${state:-<none>}'" ;;
+                  esac
+              fi
+              rm -f "${body}"
+          }
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Deploy swintronics-away CLI
+      copy:
+        dest: /usr/local/sbin/swintronics-away
+        content: |
+          #!/bin/bash
+          # Manage the local away flag that gates the weekly full-upgrade.
+          #   swintronics-away on      — set the flag (away, overrides HA)
+          #   swintronics-away off     — clear the flag
+          #   swintronics-away status  — show the resolved presence (default)
+          # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+          set -euo pipefail
+
+          # /etc/swintronics is root-only (0700).
+          if [[ ${EUID} -ne 0 ]]; then
+              exec sudo "$0" "$@"
+          fi
+
+          # shellcheck source=/dev/null
+          . /usr/local/lib/swintronics/updates-common.sh
+
+          case "${1:-status}" in
+              on)
+                  touch "${AWAY_FLAG}"
+                  echo "Away flag set: the weekly full-upgrade will skip until 'swintronics-away off'."
+                  ;;
+              off)
+                  rm -f "${AWAY_FLAG}"
+                  echo "Away flag cleared."
+                  [[ "${AWAY_SOURCE:-file}" == "ha" ]] && echo "Presence now follows HA input_boolean.away_mode."
+                  ;;
+              status)
+                  ;;
+              *)
+                  echo "usage: $(basename "$0") on|off|status" >&2
+                  exit 2
+                  ;;
+          esac
+          resolve_presence
+          if [[ "${PRESENCE}" == "home" ]]; then
+              echo "Weekly full-upgrade: will run."
+          else
+              echo "Weekly full-upgrade: will skip (${PRESENCE})."
+          fi
+        owner: root
+        group: root
+        mode: '0755'
+
+    # ── Nightly security updates: Gatus heartbeat ─────────────────────────────
+    # Installs and the 03:00 reboot are unchanged (unattended-upgrades config
+    # above). A drop-in on apt-daily-upgrade.service reports each run to the
+    # Gatus "Security updates" endpoint (26h heartbeat). apt.systemd.daily
+    # doesn't reliably exit non-zero when unattended-upgrades fails, so the
+    # check reads the stamp, the log and the remaining security updates.
+
+    - name: Deploy security-updates check script
+      when: _has_update_secrets
+      copy:
+        dest: /usr/local/sbin/swintronics-security-updates-check.sh
+        content: |
+          #!/bin/bash
+          # Report the nightly unattended-upgrades run to Gatus. Hooked into
+          # apt-daily-upgrade.service by a drop-in:
+          #   --mark-start      ExecStartPre: record when this run started
+          #   (no argument)     ExecStartPost: check the run, push the result
+          #   --service-failed  OnFailure= unit: the service itself failed
+          # Always exits 0 so a check problem never fails the apt service.
+          # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+          set -uo pipefail
+
+          # shellcheck source=/dev/null
+          . /usr/local/lib/swintronics/updates-common.sh
+
+          KEY=system-updates_security-updates
+          MARKER=/run/swintronics/security-updates-start
+          # Written by unattended-upgrade itself on each run.
+          UU_STAMP=/var/lib/apt/periodic/unattended-upgrades-stamp
+          # apt.systemd.daily's own gate: unattended-upgrade runs at most once
+          # per calendar day, keyed on this stamp's date.
+          GATE_STAMP=/var/lib/apt/periodic/upgrade-stamp
+          UU_LOG=/var/log/unattended-upgrades/unattended-upgrades.log
+
+          case "${1:-}" in
+              --mark-start)
+                  mkdir -p "$(dirname "${MARKER}")"
+                  touch "${MARKER}"
+                  exit 0
+                  ;;
+              --service-failed)
+                  push_gatus "${KEY}" false "apt-daily-upgrade.service failed"
+                  exit 0
+                  ;;
+              "")
+                  ;;
+              *)
+                  echo "usage: $(basename "$0") [--mark-start|--service-failed]" >&2
+                  exit 0
+                  ;;
+          esac
+
+          if [[ ! -e "${MARKER}" ]]; then
+              push_gatus "${KEY}" false "start marker missing; drop-in ExecStartPre did not run"
+              exit 0
+          fi
+
+          if [[ ! "${UU_STAMP}" -nt "${MARKER}" ]]; then
+              # A second start on the same day (manual `systemctl start`, or a
+              # Persistent= catch-up) legitimately skips unattended-upgrade.
+              # The day's first run already reported, so stay quiet.
+              if [[ -e "${GATE_STAMP}" && "$(date -r "${GATE_STAMP}" +%F)" == "$(date +%F)" ]]; then
+                  log "unattended-upgrade already ran today; not reporting"
+                  exit 0
+              fi
+              push_gatus "${KEY}" false "unattended-upgrades did not run (stamp not updated)"
+              exit 0
+          fi
+
+          # This run's section of the log: from its last "Starting" line on.
+          errors=$(tac "${UU_LOG}" 2>/dev/null \
+              | sed '/Starting unattended upgrades script/q' \
+              | tac | grep ' ERROR ' || true)
+          if [[ -n "${errors}" ]]; then
+              count=$(wc -l <<<"${errors}")
+              first=$(head -n1 <<<"${errors}" | sed 's/^.* ERROR //' | cut -c1-200)
+              push_gatus "${KEY}" false "unattended-upgrades logged ${count} ERROR line(s): ${first}"
+              exit 0
+          fi
+
+          # dist-upgrade, not upgrade: upgrade lists new kernel packages as
+          # "kept back", so pending kernel security updates would be missed.
+          # A pending reboot doesn't count — installed packages are current.
+          if ! sim=$(apt-get -s dist-upgrade 2>&1); then
+              push_gatus "${KEY}" false "apt-get -s dist-upgrade failed: $(tail -n1 <<<"${sim}" | cut -c1-200)"
+              exit 0
+          fi
+          pending=$(awk '/^Inst / && /-security/ {print $2}' <<<"${sim}" | sort -u | tr '\n' ' ')
+          if [[ -n "${pending}" ]]; then
+              push_gatus "${KEY}" false "security updates still pending: ${pending% }"
+              exit 0
+          fi
+
+          push_gatus "${KEY}" true
+          exit 0
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Deploy security-updates failure systemd unit
+      when: _has_update_secrets
+      copy:
+        dest: /etc/systemd/system/swintronics-security-updates-failed.service
+        content: |
+          [Unit]
+          Description=Swintronics: report apt-daily-upgrade.service failure to Gatus
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/swintronics-security-updates-check.sh --service-failed
+        mode: '0644'
+      notify: reload systemd
+
+    - name: Create apt-daily-upgrade.service drop-in directory
+      when: _has_update_secrets
+      file:
+        path: /etc/systemd/system/apt-daily-upgrade.service.d
+        state: directory
+        mode: '0755'
+
+    - name: Deploy apt-daily-upgrade.service Gatus drop-in
+      when: _has_update_secrets
+      copy:
+        dest: /etc/systemd/system/apt-daily-upgrade.service.d/swintronics-gatus.conf
+        content: |
+          # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+          # Report each nightly unattended-upgrades run to Gatus (issue #153).
+          # "-" prefixes: a problem in the check must never fail the apt run.
+          [Unit]
+          OnFailure=swintronics-security-updates-failed.service
+
+          [Service]
+          ExecStartPre=-/usr/local/sbin/swintronics-security-updates-check.sh --mark-start
+          ExecStartPost=-/usr/local/sbin/swintronics-security-updates-check.sh
+        mode: '0644'
+      notify: reload systemd
+
+    # ── Weekly full-upgrade (away-aware) ──────────────────────────────────────
+    # Applies everything unattended-upgrades leaves alone (-updates pocket,
+    # Docker and Tailscale repos), only when presence resolves to "home".
+    # Runs as its own systemd unit so it's outside any SSH session and outside
+    # tailscaled's cgroup: a dropped connection can't kill it mid-dpkg.
+    # Reports to the Gatus "Full upgrade" endpoint (8d heartbeat).
+
+    - name: Deploy full-upgrade script
+      when: _has_update_secrets
+      copy:
+        dest: /usr/local/sbin/swintronics-full-upgrade.sh
+        content: |
+          #!/bin/bash
+          # Weekly away-aware full-upgrade. Tailscale is held during the main
+          # upgrade and upgraded last, alone. Every exit path reports to Gatus.
+          # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+          set -uo pipefail
+
+          # shellcheck source=/dev/null
+          . /usr/local/lib/swintronics/updates-common.sh
+
+          KEY=system-updates_full-upgrade
+          export DEBIAN_FRONTEND=noninteractive
+          # needrestart isn't installed today; if it ever is, "l" (list only)
+          # stops it restarting tailscaled or dockerd mid-upgrade.
+          export NEEDRESTART_MODE=l
+          APT_OPTS=(-y -o DPkg::Lock::Timeout=600
+                    -o Dpkg::Options::=--force-confdef
+                    -o Dpkg::Options::=--force-confold)
+
+          STEP="startup"
+          REPORTED=0
+          HELD=0
+
+          report() {
+              REPORTED=1
+              push_gatus "${KEY}" "$@"
+          }
+
+          # shellcheck disable=SC2317  # reached via the EXIT trap
+          release_hold() {
+              if (( HELD )); then
+                  apt-mark unhold tailscale >/dev/null && HELD=0
+              fi
+          }
+
+          # shellcheck disable=SC2317  # reached via the EXIT trap
+          on_exit() {
+              local rc=$?
+              release_hold
+              if (( ! REPORTED )); then
+                  report false "exited unexpectedly (exit ${rc}) during ${STEP}"
+              fi
+          }
+          trap on_exit EXIT
+          # Without these, SIGTERM/SIGINT would kill bash without running the
+          # EXIT trap (hold left in place, nothing reported).
+          trap 'exit 143' TERM
+          trap 'exit 130' INT
+
+          fail() {
+              report false "$1"
+              exit 1
+          }
+
+          # run <step description> <command...>
+          run() {
+              STEP="$1"
+              shift
+              log "step: ${STEP}"
+              "$@" || fail "${STEP} failed (exit $?)"
+          }
+
+          # retry_for <seconds> <command...>: retry every 5s until success.
+          retry_for() {
+              local deadline=$(( SECONDS + $1 ))
+              shift
+              until "$@" >/dev/null 2>&1; do
+                  (( SECONDS >= deadline )) && return 1
+                  sleep 5
+              done
+          }
+
+          # 1. Presence. Only a clear "home" proceeds.
+          STEP="presence"
+          resolve_presence
+          case "${PRESENCE}" in
+              home)
+                  ;;
+              away)
+                  # A deliberate skip is healthy: keep the endpoint green.
+                  log "skipped: away (${PRESENCE_REASON})"
+                  report true
+                  exit 0
+                  ;;
+              *)
+                  report false "skipped: presence could not be determined (${PRESENCE_REASON})"
+                  exit 0
+                  ;;
+          esac
+
+          HAS_TAILSCALE=0
+          dpkg-query -W -f='${Status}' tailscale 2>/dev/null | grep -q 'install ok installed' && HAS_TAILSCALE=1
+
+          # 2. Clear a stale hold left by a run killed by SIGKILL / power loss,
+          #    whose trap never ran.
+          if (( HAS_TAILSCALE )); then
+              run "clear stale tailscale hold" apt-mark unhold tailscale
+          fi
+
+          # 3. Finish any interrupted dpkg run. dpkg has no lock timeout, so
+          #    retry for up to 10 min in case apt-daily is mid-run.
+          STEP="dpkg --configure -a"
+          log "step: ${STEP}"
+          retry_for 600 dpkg --configure -a || fail "${STEP} failed"
+
+          # 4.
+          run "apt-get update" apt-get "${APT_OPTS[@]}" update
+
+          # 5. Hold tailscale for the main upgrade; the EXIT trap releases it.
+          if (( HAS_TAILSCALE )); then
+              run "hold tailscale" apt-mark hold tailscale
+              HELD=1
+          fi
+
+          # 6. Simulate. Removals need a human.
+          STEP="simulate full-upgrade"
+          log "step: ${STEP}"
+          if ! sim=$(apt-get -s full-upgrade 2>&1); then
+              fail "${STEP} failed: $(tail -n1 <<<"${sim}" | cut -c1-200)"
+          fi
+          removals=$(awk '/^Remv / {print $2}' <<<"${sim}" | sort -u | tr '\n' ' ')
+          if [[ -n "${removals}" ]]; then
+              fail "aborted: plan removes packages: ${removals% }"
+          fi
+
+          # 7. Main upgrade, no prompts, keep existing config files. Packages
+          #    "kept back" by phased updates are expected.
+          run "apt-get full-upgrade" apt-get "${APT_OPTS[@]}" full-upgrade
+
+          # 8.
+          run "apt-get autoremove" apt-get "${APT_OPTS[@]}" autoremove
+
+          # 9. Tailscale last and alone: a connection drop now is harmless.
+          if (( HAS_TAILSCALE )); then
+              run "unhold tailscale" apt-mark unhold tailscale
+              HELD=0
+              run "upgrade tailscale" apt-get "${APT_OPTS[@]}" install --only-upgrade tailscale
+          fi
+
+          # 10. Health checks. Upgraded daemons may still be restarting.
+          STEP="health checks"
+          log "step: ${STEP}"
+          if (( HAS_TAILSCALE )) && ! retry_for 120 tailscale status; then
+              fail "tailscale status failed after upgrade"
+          fi
+          retry_for 120 docker info || fail "docker info failed after upgrade"
+
+          # A Docker Engine upgrade restarts every container, Gatus included,
+          # and Gatus delays its start. Wait so the result isn't lost.
+          if ! retry_for 600 curl -fsS --max-time 10 "${GATUS_BASE_URL}/health"; then
+              log "warning: Gatus not reachable after 10 min; pushing anyway"
+          fi
+          report true
+
+          # 11. The job only runs when someone is home; the pre-reboot and
+          #     boot-notify hooks cover the reboot itself.
+          if [[ -e /run/reboot-required ]]; then
+              log "reboot required; rebooting"
+              systemctl reboot
+          fi
+          exit 0
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Deploy full-upgrade systemd service
+      when: _has_update_secrets
+      copy:
+        dest: /etc/systemd/system/swintronics-full-upgrade.service
+        content: |
+          [Unit]
+          Description=Swintronics weekly full-upgrade (away-aware)
+          After=network-online.target docker.service
+          Wants=network-online.target
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/swintronics-full-upgrade.sh
+          TimeoutStartSec=2h
+          # As apt-daily-upgrade.service: on stop, signal only the script (its
+          # trap reports and releases the hold) rather than killing dpkg.
+          KillMode=process
+        mode: '0644'
+      notify: reload systemd
+
+    - name: Deploy full-upgrade systemd timer
+      when: _has_update_secrets
+      copy:
+        dest: /etc/systemd/system/swintronics-full-upgrade.timer
+        content: |
+          [Unit]
+          Description=Swintronics weekly full-upgrade
+
+          [Timer]
+          OnCalendar={{ full_upgrade_on_calendar }}
+          # No catch-up: a missed run would otherwise fire at boot, possibly
+          # overnight. The Gatus 8d heartbeat alerts on a missed week.
+          Persistent=false
+
+          [Install]
+          WantedBy=timers.target
+        mode: '0644'
+      notify: reload systemd
+
+    - name: Enable and start full-upgrade timer
+      systemd:
+        name: swintronics-full-upgrade.timer
+        enabled: yes
+        state: started
+        daemon_reload: yes   # unit may have been written just above, before handlers run
+      when: _has_update_secrets
+      # In check mode the unit file hasn't actually been written yet
+      ignore_errors: "{{ ansible_check_mode }}"
 
     # ── Reboot-scheduled hook (advance notice) ────────────────────────────────
     # unattended-upgrades installs updates in the morning but reboots at 03:00

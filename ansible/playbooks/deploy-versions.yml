@@ -240,7 +240,7 @@
       loop: "{{ _enabled_services }}"
 
     # Both directories are referenced by configuration.yaml. Owned by
-    # admin_user (not root like the HACS dirs below) because ha-claude-project
+    # admin_user (not root) because ha-claude-project
     # deploys packages/ with an unprivileged `rsync -a`, which preserves group
     # as well as owner. HA runs as root in-container and can still write themes/.
     - name: Ensure Home Assistant config include directories exist
@@ -296,52 +296,6 @@
         mode: '0644'
       when: "'traefik' in _enabled_services"
 
-    # ── Install HACS into Home Assistant custom_components ───────────────────
-    # HACS is delivered as a release zip from GitHub, not a Docker image. We
-    # extract it under HA's config volume and use a version marker so reinstall
-    # only happens on a version bump. A changed marker registers homeassistant
-    # as changed below, triggering a restart.
-
-    - name: Read installed HACS version marker
-      ansible.builtin.slurp:
-        src: "{{ data_disk_mountpoint }}/volumes/homeassistant/custom_components/hacs/.installed-version"
-      register: _hacs_installed
-      failed_when: false
-      when: "'homeassistant' in _enabled_services"
-
-    - name: Install or upgrade HACS
-      when:
-        - "'homeassistant' in _enabled_services"
-        - (_hacs_installed.content | default('') | b64decode | trim) != versions.hacs
-      block:
-        - name: Ensure HACS directory exists
-          ansible.builtin.file:
-            path: "{{ data_disk_mountpoint }}/volumes/homeassistant/custom_components/hacs"
-            state: directory
-            owner: root
-            group: root
-            mode: '0755'
-
-        - name: Extract HACS release zip
-          ansible.builtin.unarchive:
-            src: "https://github.com/hacs/integration/releases/download/{{ versions.hacs }}/hacs.zip"
-            dest: "{{ data_disk_mountpoint }}/volumes/homeassistant/custom_components/hacs"
-            remote_src: true
-            owner: root
-            group: root
-
-        - name: Write HACS version marker
-          ansible.builtin.copy:
-            content: "{{ versions.hacs }}\n"
-            dest: "{{ data_disk_mountpoint }}/volumes/homeassistant/custom_components/hacs/.installed-version"
-            owner: root
-            group: root
-            mode: '0644'
-
-        - name: Mark homeassistant as changed for HACS install
-          ansible.builtin.set_fact:
-            _hacs_changed: true
-
     # ── Determine what changed ────────────────────────────────────────────────
 
     - name: Determine changed services
@@ -354,8 +308,7 @@
               + (_reenabled_results.results
                  | selectattr('changed')
                  | map(attribute='item')
-                 | list)
-              + (['homeassistant'] if _hacs_changed | default(false) else []))
+                 | list))
              | unique | list }}
 
     - name: Nothing to do

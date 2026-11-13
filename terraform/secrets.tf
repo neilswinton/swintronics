@@ -222,6 +222,10 @@ resource "random_password" "seafile_admin_password" {
 
 resource "random_uuid" "gatus_backup_push_token" {}
 
+# General-purpose Gatus external-endpoint push token (host-level jobs such as
+# the OS update heartbeats). Kept separate from the backup token.
+resource "random_uuid" "gatus_push_token" {}
+
 # Immich
 resource "infisical_secret" "immich_postgres_password" {
   name         = "IMMICH_DB_PASSWORD"
@@ -305,6 +309,14 @@ resource "infisical_secret" "seafile_admin_password" {
 resource "infisical_secret" "gatus_backup_push_token" {
   name         = "GATUS_BACKUP_PUSH_TOKEN"
   value        = random_uuid.gatus_backup_push_token.result
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
+resource "infisical_secret" "gatus_push_token" {
+  name         = "GATUS_PUSH_TOKEN"
+  value        = random_uuid.gatus_push_token.result
   env_slug     = "dev"
   workspace_id = infisical_project.runtime_secrets.id
   folder_path  = "/"

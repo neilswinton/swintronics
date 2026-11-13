@@ -9,6 +9,9 @@ use_btrfs: true
 docker_gid: "984"
 hardware_watchdog_module: "iTCO_wdt"
 
+# Presence for the weekly full-upgrade: read input_boolean.away_mode from HA.
+away_source: ha
+
 # Zigbee USB dongle — stable by-id path, independent of which USB port is used.
 # Find with: ls /dev/serial/by-id/   (ZBDongle-P plugged in)
 zigbee_dongle_path: /dev/serial/by-id/usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_eecce27957a4ef11abc3a78086a24396-if00-port0
