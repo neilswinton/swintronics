@@ -182,6 +182,7 @@ Terraform writes these to the **Runtime project** for Ansible to consume:
 | `/` | `RESTIC_PASSWORD` | `random_password` (importable to preserve existing repos) |
 | `/` | `HEALTHCHECKS_HEARTBEAT_CHECK_UUID` | `healthchecksio_check.heartbeat` UUID |
 | `/` | `HEALTHCHECKS_API_KEY` | Pass-through from `/terraform` |
+| `/` | `GATUS_PUSH_TOKEN` | `random_uuid`; general-purpose Gatus push token (OS update heartbeats) |
 
 Terraform creates the **Runtime project** and populates it with generated secrets (DB passwords, encryption keys, auth keys). Ansible reads from the Runtime project.
 
@@ -370,21 +371,64 @@ Backups are restic-based. The orchestrator `ansible/services/backup/backup.sh` i
 
 Monitoring is **Gatus** (config-driven, deployed like any other service from `ansible/services/gatus/config.yaml.j2`) with Telegram alerts — no manual monitor setup is needed.
 
-### HACS Setup
+### OS Updates and Away Mode
 
-HACS (Home Assistant Community Store) is installed by `deploy-versions.yml` from
-the GitHub release pinned in `versions.yml` (`hacs:`). Files land in
-`/docker-data/volumes/homeassistant/custom_components/hacs/` and a
-`.installed-version` marker drives idempotency — bumping the version triggers a
-re-extract and HA restart on the next deploy.
+Two host-level update paths, both deployed by `configure-system-services.yml`
+and both reporting to Gatus external endpoints in the **System Updates** group
+(push token `GATUS_PUSH_TOKEN`). Gatus is the only alert path; neither job
+sends Telegram messages itself.
 
-The UI side is manual (one-time per HA install):
+| Job | Schedule | What it installs | Gatus endpoint (key, heartbeat) |
+|---|---|---|---|
+| unattended-upgrades | nightly 06:00 (+≤60 min random), reboots at 03:00 | security pockets only | `system-updates_security-updates`, 26h |
+| `swintronics-full-upgrade` | weekly, `full_upgrade_on_calendar` (default Sat 10:00) | everything else: `-updates`, Docker and Tailscale repos | `system-updates_full-upgrade`, 192h |
 
-1. After the first deploy with HACS, restart HA finishes loading `custom_components/hacs/`
-2. In the HA UI: Settings → Devices & Services → Add Integration → search "HACS"
-3. Accept the prompts; HACS shows a GitHub device-code URL + code
-4. Open the URL on any browser signed into GitHub, paste the code, authorize
-5. HACS appears in the sidebar; integrations installed through it are managed by HACS from then on
+**Nightly security updates** are unaffected by away mode. A drop-in on
+`apt-daily-upgrade.service` runs `swintronics-security-updates-check.sh`, which
+pushes a failure if unattended-upgrades didn't run (stale stamp), logged
+`ERROR` lines, or left `-security` packages upgradable; an `OnFailure=` unit
+covers the service failing outright. A pending reboot isn't a failure.
+
+**Weekly full-upgrade** (`swintronics-full-upgrade.service` + `.timer`) runs
+only when presence resolves to **home**. It holds `tailscale` during the main
+`apt-get full-upgrade`, upgrades it last and alone, checks `tailscale status`
+and `docker info`, and reboots if `/run/reboot-required` exists. It aborts
+with a failure push if the plan would remove any package — review and run
+the upgrade by hand. Logs: `journalctl -u swintronics-full-upgrade`.
+
+**Presence** is set per host by `away_source` (inventory vars):
+
+- `ha` — reads `input_boolean.away_mode` from HA (`HA_AWAY_MODE_TOKEN`, a
+  long-lived token from a non-admin HA user, stored manually in the Infisical
+  Runtime project; the helper is defined in the homeassistent repo). Only a
+  state of exactly `off` counts as home.
+- `file` (default) — away while `/etc/swintronics/away` exists.
+
+The flag file forces away under either source. Fail-safe: if presence can't
+be determined (HA unreachable, bad/missing token, `unknown`/`unavailable`),
+the job treats it as away, skips, and pushes a **failure**. A deliberate away
+skip pushes **success**, so the endpoint stays green while travelling.
+
+```bash
+swintronics-away on       # skip weekly upgrades (overrides HA)
+swintronics-away off      # back to following away_source
+swintronics-away status   # resolved presence + whether Saturday's run would go
+sudo systemctl start swintronics-full-upgrade   # run the weekly upgrade now
+```
+
+Order on a new cluster: `terraform apply` (creates `GATUS_PUSH_TOKEN`) →
+`deploy-versions.yml` (Gatus endpoints) → `configure-system-services.yml`.
+All update-monitoring pieces are skipped until `GATUS_PUSH_TOKEN` exists.
+
+### Marketplace (formerly HACS)
+
+HACS is now part of Home Assistant core as the built-in **Marketplace**
+integration (`marketplace` domain). It ships with the HA image, so its version
+follows `versions.homeassistant` — nothing to pin or install. Its state lives
+in HA's `.storage/marketplace.*` and is backed up with the rest of the HA
+volume. Older HA installs migrated the HACS config entry automatically and
+removed `custom_components/hacs/`; `deploy-versions.yml` no longer installs
+the custom HACS release.
 
 ### Beszel Agent Bootstrap
 

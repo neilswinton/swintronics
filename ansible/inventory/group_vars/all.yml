@@ -31,3 +31,17 @@ heartbeat_reboot_grace_seconds: 2700
 # Claude Code Remote Control sessions to keep alive (playbooks/develop.yml).
 # Empty by default — a host opts in from its host_vars. See host_vars/xps13.yml.
 claude_rc_sessions: []
+
+# Weekly OS full-upgrade (configure-system-services.yml, issue #153).
+#
+# away_source decides whether the host owner is home; the upgrade runs only on
+# a clear "home". Values:
+#   ha   — read input_boolean.away_mode from Home Assistant (needs the
+#          HA_AWAY_MODE_TOKEN secret); /etc/swintronics/away still forces away
+#   file — away while /etc/swintronics/away exists (swintronics-away on|off)
+# Hosts that run Home Assistant set `ha` in their host_vars.
+away_source: file
+#
+# systemd OnCalendar for swintronics-full-upgrade.timer. Saturday daytime keeps
+# it clear of the 02:00 immich dump, 03:00 unattended reboot and 04:00 backup.
+full_upgrade_on_calendar: "Sat *-*-* 10:00:00"
