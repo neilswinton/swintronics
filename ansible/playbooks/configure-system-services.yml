@@ -706,6 +706,11 @@
 
           [Service]
           Type=oneshot
+          # Stay "active" after the run. Otherwise the path unit's PathExists=
+          # restarts the service as long as /run/reboot-required exists, which
+          # hits the start limit (5 in 10s) and leaves both units failed until
+          # the next reboot. The reboot resets this for the next cycle.
+          RemainAfterExit=yes
           ExecStart=/usr/local/sbin/swintronics-reboot-scheduled.sh
           EnvironmentFile=/etc/swintronics/monitoring.env
         mode: '0644'
