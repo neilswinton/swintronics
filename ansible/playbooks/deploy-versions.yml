@@ -10,6 +10,11 @@
 # its backup hooks (and removed again when the service is re-enabled).
 # Traefik is always restarted first.
 #
+# A host can instead set `enabled_services` (host_vars) — an allowlist: only
+# those services are deployed there, and the rest are simply absent (not
+# stopped or marked). `skip_dns_names` drops individual CNAMEs for that host,
+# e.g. `traefik` on a public host whose dashboard is off.
+#
 # Usage:
 #   ansible-playbook playbooks/deploy-versions.yml -e target=swintronics
 #
@@ -127,6 +132,7 @@
           {{ _service_config.keys()
              | reject('in', _disabled_services)
              | select('in', versions)
+             | select('in', enabled_services | default(_service_config.keys() | list))
              | list }}
 
     - name: Build deploy file list for enabled services
@@ -404,7 +410,9 @@
              | map('extract', _service_config)
              | selectattr('dns_names', 'defined')
              | map(attribute='dns_names')
-             | flatten | unique | list }}
+             | flatten | unique
+             | difference(skip_dns_names | default([]))
+             | list }}
 
     - name: Ensure CNAME records exist for enabled services
       community.general.cloudflare_dns:

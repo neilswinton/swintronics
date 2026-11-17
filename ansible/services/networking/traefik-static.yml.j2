@@ -1,16 +1,27 @@
 # Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+{% set _public = public_host | default(false) | bool %}
+{% if not _public %}
 api:
   dashboard: true
   insecure: true
   debug: true
+{% endif %}
 
 ping: {}
 
 entryPoints:
+{% if _public %}
+  # Public host: no dashboard or API. The internal entrypoint only serves
+  # /ping for the container healthcheck, on loopback.
+  traefik:
+    address: "127.0.0.1:8080"
+{% endif %}
   web:
     address: ":80"
+{% if not _public %}
     forwardedHeaders:
       insecure: true
+{% endif %}
     http:
       redirections:
         entryPoint:
@@ -18,8 +29,10 @@ entryPoints:
           scheme: https
   websecure:
     address: ":443"
+{% if not _public %}
     forwardedHeaders:
       insecure: true
+{% endif %}
     transport:
       respondingTimeouts: # Increase timeouts for large uploads
         readTimeout: 600s

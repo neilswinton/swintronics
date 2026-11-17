@@ -1,6 +1,15 @@
 [local]
 xps13 ansible_connection=local ansible_host=localhost
 
+# Public-facing hosts. Deliberately NOT a child of `swintronics`/`clusters`:
+# playbooks default to `clusters`, and several of them (install-backup,
+# develop, configure-system-services) must not land on a public host by
+# accident. Always target these explicitly: -e target=oci
+# SSH goes to the public address with the Terraform-generated admin key (the
+# OCI security list allows port 22 from the control node's IP only).
+[public]
+oci ansible_host=oci-pub.swintronics.com
+
 [swintronics:children]
 local
 
