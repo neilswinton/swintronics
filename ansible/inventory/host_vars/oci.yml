@@ -38,3 +38,7 @@ enabled_services:
   - ente
   - hawser
 disabled_services: []
+
+# Ente sign-ups are closed. To let someone join: set this to false, redeploy
+# (deploy-versions.yml -e target=oci), have them register, then set it back.
+ente_disable_registration: true
