@@ -60,8 +60,7 @@ resource "oci_core_security_list" "server" {
     }
   }
 
-  # HTTP/HTTPS from anywhere — this host serves public services through
-  # Traefik. Port 80 only redirects to 443 (certificates use the DNS challenge).
+  # HTTPS from anywhere — this host serves public services through Traefik.
   dynamic "ingress_security_rules" {
     for_each = var.public_web_ports
     content {
