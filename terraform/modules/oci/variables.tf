@@ -53,3 +53,9 @@ variable "my_ip" {
   type        = string
   description = "Caller public IP for SSH security list rule (without /32)."
 }
+
+variable "public_web_ports" {
+  type        = list(number)
+  default     = [443]
+  description = "TCP ports opened to the internet for Traefik. Port 80 stays closed: certificates use the DNS challenge and every published link is https. Set to [] for a tailnet-only host."
+}

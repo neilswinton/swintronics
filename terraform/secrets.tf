@@ -323,3 +323,53 @@ resource "infisical_secret" "gatus_push_token" {
 }
 
 
+
+# Public-host Tailscale auth key (tag:public) — see tailscale.tf
+resource "infisical_secret" "tailscale_public_auth_key" {
+  name         = "TS_PUBLIC_AUTH_KEY"
+  value        = tailscale_tailnet_key.public.key
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}
+
+# Ente (museum API server). Key formats follow Ente's self-hosting docs:
+#   key.encryption — 32 random bytes, standard base64
+#   key.hash       — 64 random bytes, standard base64
+#   jwt.secret     — 32 random bytes, URL-safe base64
+# Losing the encryption/hash keys makes existing accounts unusable, so they
+# live in Terraform state like the other generated secrets.
+resource "random_password" "ente_db_password" {
+  length  = 32
+  special = false
+}
+
+resource "random_bytes" "ente_key_encryption" {
+  length = 32
+}
+
+resource "random_bytes" "ente_key_hash" {
+  length = 64
+}
+
+resource "random_bytes" "ente_jwt_secret" {
+  length = 32
+}
+
+locals {
+  ente_secrets = {
+    ENTE_DB_PASSWORD    = random_password.ente_db_password.result
+    ENTE_KEY_ENCRYPTION = random_bytes.ente_key_encryption.base64
+    ENTE_KEY_HASH       = random_bytes.ente_key_hash.base64
+    ENTE_JWT_SECRET     = replace(replace(random_bytes.ente_jwt_secret.base64, "+", "-"), "/", "_")
+  }
+}
+
+resource "infisical_secret" "ente" {
+  for_each     = nonsensitive(toset(keys(local.ente_secrets)))
+  name         = each.key
+  value        = local.ente_secrets[each.key]
+  env_slug     = "dev"
+  workspace_id = infisical_project.runtime_secrets.id
+  folder_path  = "/"
+}

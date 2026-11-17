@@ -26,6 +26,14 @@ resource "b2_bucket" "backups" {
   bucket_name = local.backup_bucket_name
   bucket_type = "allPrivate"
 
+  # Server-side encryption at rest (SSE-B2). Enabled on the bucket in the B2
+  # console; declared here so an apply doesn't switch it back off. restic
+  # encrypts client-side regardless.
+  default_server_side_encryption {
+    mode      = "SSE-B2"
+    algorithm = "AES256"
+  }
+
   # B2 "Keep only the last version of the file" preset:
   # on overwrite, hide previous versions immediately; delete hidden versions after 1 day.
   lifecycle_rules {
