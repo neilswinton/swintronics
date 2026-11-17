@@ -120,6 +120,14 @@
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
           - { src: museum.yaml.j2,  dest: museum.yaml,        secret: true }
+      # Dockhand's agent for hosts managed from the main server's Dockhand
+      # (edge mode, outbound over the tailnet). No DNS name, no Traefik route.
+      hawser:
+        dir: hawser
+        public_only: true
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
       # SeaDoc ships inside this stack; versions.seadoc supplies its tag but it
       # is deliberately not a _service_config key of its own.
       seafile:
@@ -181,6 +189,16 @@
       register: infisical_secrets
       delegate_to: localhost
       check_mode: no
+
+    - name: Check the Hawser edge token exists
+      ansible.builtin.assert:
+        that: (hawser_token_secret | default('HAWSER_TOKEN')) in infisical_secrets.secrets
+        fail_msg: >-
+          hawser is enabled on {{ inventory_hostname }} but the secret
+          {{ hawser_token_secret | default('HAWSER_TOKEN') }} is missing from the
+          Infisical Runtime project. In Dockhand, add an environment of the
+          Hawser edge type, copy its token into that secret, then re-run.
+      when: "'hawser' in _enabled_services"
 
     - name: Set beszel agent secrets from Infisical
       ansible.builtin.set_fact:

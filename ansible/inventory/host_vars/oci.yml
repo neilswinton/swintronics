@@ -36,4 +36,5 @@ enabled_services:
   - traefik
   - autoheal
   - ente
+  - hawser
 disabled_services: []

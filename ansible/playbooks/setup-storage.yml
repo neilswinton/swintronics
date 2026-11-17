@@ -46,6 +46,7 @@
       mosquitto:     { dir: mosquitto,      stateful: true  }
       seafile:       { dir: seafile,        stateful: true  }
       ente:          { dir: ente,           stateful: true, public_only: true }
+      hawser:        { dir: hawser,         stateful: true, public_only: true }
 
   pre_tasks:
     - name: Load versions

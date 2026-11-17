@@ -323,6 +323,7 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 | gatus          | gatus          | services/gatus/compose.yml.j2         |
 | seafile        | seafile        | services/seafile/compose.yml.j2       |
 | ente           | ente           | services/ente/compose.yml.j2 (public host only) |
+| hawser         | hawser         | services/hawser/compose.yml.j2 (public host only) |
 
 ### Adding and Deleting Services
 
@@ -382,6 +383,12 @@ from everything else.
   internet-reachable; `public_host` turns off the Traefik dashboard and API.
 - **Monitoring:** Gatus on the XPS13 probes the public URLs (group **Public
   Services**).
+- **Container management:** there is no Dockhand UI on this host (it would be
+  public). Instead `hawser`, Dockhand's agent, runs in edge mode and dials the
+  XPS13's Dockhand over the tailnet, where the host appears as a second
+  environment. Its token comes from Dockhand (add an environment of the Hawser
+  edge type) and is stored in Infisical as `HAWSER_TOKEN`.
+- **Tailnet policy:** `tag:public` may only reach `tag:server` on tcp:443.
 - **Not yet set up:** backups, Beszel agent, OS-update heartbeats.
 
 **Ente** (photo sharing) runs there: `ente` (web app), `ente-api`,
@@ -642,6 +649,6 @@ This scenario requires additional planning around Restic repo sharing and is def
 - Long-term: phone-friendly server management — expose remaining service UIs, document mobile access patterns
 
 ### Upstream Compose File Convention
-Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, beszel, seafile, ente (extracted from upstream's `quickstart.sh`). Not tracked: networking/traefik (fully custom), dockhand (single-container, written from scratch)
+Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, beszel, seafile, ente (extracted from upstream's `quickstart.sh`). Not tracked: networking/traefik (fully custom), dockhand (single-container, written from scratch), hawser (upstream publishes only `docker run` examples)
 
 Seafile's `upstream.yml` is a concatenation of upstream's `seafile-server.yml` and `seadoc.yml`; `caddy.yml` is intentionally omitted since Traefik handles TLS.
