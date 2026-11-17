@@ -35,4 +35,5 @@ skip_dns_names: [traefik]
 enabled_services:
   - traefik
   - autoheal
+  - ente
 disabled_services: []
