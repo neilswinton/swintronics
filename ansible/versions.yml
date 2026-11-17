@@ -54,6 +54,12 @@ versions:
   # editor. Ships inside the seafile stack, not a service of its own.
   seadoc: "2.0-latest"
 
+  # https://github.com/ente-io/ente/releases — "latest": the server and web
+  # images are only published as "latest" plus per-commit SHA tags, so there is
+  # no release tag to float on. Runs on the public host only.
+  ente: "latest"
+  ente_web: "latest"
+
 # Per-cluster service disabling lives in inventory group_vars/host_vars as
 # `disabled_services` (see inventory/group_vars/swintronics.yml) — not here,
 # because vars_files would override every inventory value.

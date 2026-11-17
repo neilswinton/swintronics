@@ -1,0 +1,77 @@
+# Managed by Ansible. Do not edit — changes will be overwritten on next deployment.
+#
+# Ente (https://github.com/ente-io/ente), public photo sharing. Adapted from
+# upstream's quickstart compose (see upstream.yml). Differences: Traefik routes
+# instead of published ports, Postgres on the data disk, and no MinIO/socat —
+# object storage is an external S3 bucket configured in museum.yaml.
+
+name: ente
+include:
+  - ../networks.yml
+
+services:
+  museum:
+    image: ghcr.io/ente/server:{{ versions.ente }}
+    container_name: ente-museum
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./museum.yaml:/museum.yaml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/ping"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+    labels:
+      autoheal: "true"
+      traefik.enable: true
+      traefik.http.routers.ente-api.entrypoints: websecure
+      traefik.http.routers.ente-api.rule: Host(`{{ _service_config.ente.dns_names[1] }}.{{ server_domain }}`)
+      traefik.http.routers.ente-api.tls.certresolver: ${CERT_RESOLVER}
+      traefik.http.services.ente-api.loadbalancer.server.port: 8080
+
+  # One nginx container serves every web app, each on its own port.
+  web:
+    image: ghcr.io/ente/web:{{ versions.ente_web }}
+    container_name: ente-web
+    restart: always
+    environment:
+      ENTE_API_ORIGIN: https://{{ _service_config.ente.dns_names[1] }}.{{ server_domain }}
+    labels:
+      traefik.enable: true
+      # Photos web app
+      traefik.http.routers.ente-photos.entrypoints: websecure
+      traefik.http.routers.ente-photos.rule: Host(`{{ _service_config.ente.dns_names[0] }}.{{ server_domain }}`)
+      traefik.http.routers.ente-photos.tls.certresolver: ${CERT_RESOLVER}
+      traefik.http.routers.ente-photos.service: ente-photos
+      traefik.http.services.ente-photos.loadbalancer.server.port: 3000
+      # Accounts (passkeys, family invites)
+      traefik.http.routers.ente-accounts.entrypoints: websecure
+      traefik.http.routers.ente-accounts.rule: Host(`{{ _service_config.ente.dns_names[2] }}.{{ server_domain }}`)
+      traefik.http.routers.ente-accounts.tls.certresolver: ${CERT_RESOLVER}
+      traefik.http.routers.ente-accounts.service: ente-accounts
+      traefik.http.services.ente-accounts.loadbalancer.server.port: 3001
+      # Public album links
+      traefik.http.routers.ente-albums.entrypoints: websecure
+      traefik.http.routers.ente-albums.rule: Host(`{{ _service_config.ente.dns_names[3] }}.{{ server_domain }}`)
+      traefik.http.routers.ente-albums.tls.certresolver: ${CERT_RESOLVER}
+      traefik.http.routers.ente-albums.service: ente-albums
+      traefik.http.services.ente-albums.loadbalancer.server.port: 3002
+
+  postgres:
+    image: postgres:15
+    container_name: ente-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: pguser
+      POSTGRES_PASSWORD: ${ENTE_DB_PASSWORD:?Please set ENTE_DB_PASSWORD}
+      POSTGRES_DB: ente_db
+    healthcheck:
+      test: pg_isready -q -d ente_db -U pguser
+      start_period: 40s
+      start_interval: 1s
+    volumes:
+      - {{ data_disk_mountpoint }}/volumes/ente/postgres:/var/lib/postgresql/data

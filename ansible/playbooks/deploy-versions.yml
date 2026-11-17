@@ -109,6 +109,17 @@
         files:
           - { src: compose.yml.j2,    dest: compose.yml }
           - { src: mosquitto.conf.j2, dest: mosquitto.conf }
+      # Public photo sharing. public_only: deployed only on hosts with
+      # public_host: true. dns_names order is relied on by the templates:
+      # photos web app, API, accounts, public albums.
+      ente:
+        dir: ente
+        public_only: true
+        dns_names: [ente, ente-api, ente-accounts, albums]
+        files:
+          - { src: compose.yml.j2,  dest: compose.yml }
+          - { src: .env.j2,         dest: .env,               secret: true }
+          - { src: museum.yaml.j2,  dest: museum.yaml,        secret: true }
       # SeaDoc ships inside this stack; versions.seadoc supplies its tag but it
       # is deliberately not a _service_config key of its own.
       seafile:
@@ -117,6 +128,13 @@
         files:
           - { src: compose.yml.j2,  dest: compose.yml }
           - { src: .env.j2,         dest: .env,               secret: true }
+
+    # Services that only ever run on a public host (public_host: true).
+    _public_only_services: >-
+      {{ _service_config | dict2items
+         | selectattr('value.public_only', 'defined')
+         | selectattr('value.public_only')
+         | map(attribute='key') | list }}
 
   pre_tasks:
     - name: Determine disabled services
@@ -133,6 +151,7 @@
              | reject('in', _disabled_services)
              | select('in', versions)
              | select('in', enabled_services | default(_service_config.keys() | list))
+             | reject('in', [] if (public_host | default(false) | bool) else _public_only_services)
              | list }}
 
     - name: Build deploy file list for enabled services

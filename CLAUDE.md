@@ -322,6 +322,7 @@ All runtime secrets are stored in **Infisical** (project: "Swintronics Runtime",
 | dockhand       | dockhand       | services/dockhand/compose.yml.j2      |
 | gatus          | gatus          | services/gatus/compose.yml.j2         |
 | seafile        | seafile        | services/seafile/compose.yml.j2       |
+| ente           | ente           | services/ente/compose.yml.j2 (public host only) |
 
 ### Adding and Deleting Services
 
@@ -357,6 +358,40 @@ pre-disable result; omitting it makes Gatus purge that history on restart. The d
 would fail or restart them). Trade-off: while disabled, the service's restic
 snapshots age toward the retention window (`--keep-daily 7` etc.) — fine for
 a temporary disable, but pre-disable snapshots eventually rotate out.
+
+### Public Host (OCI)
+
+A second machine, `oci` (OCI ARM instance, Terraform `cloud_provider = "oci"`),
+serves **public** services under `swintronics.com`. It joins the tailnet for
+management only, tagged `tag:public` so the tailnet policy can keep it away
+from everything else.
+
+- **Inventory:** it is in the `public` group, deliberately outside
+  `swintronics`/`clusters`, so default-target playbooks never touch it.
+  Always pass `-e target=oci`. Ansible connects to `oci-pub.swintronics.com`
+  with the Terraform admin key (`terraform/artifacts/`); port 22 is open to the
+  control node's IP only.
+- **DNS:** `oci-pub.<domain>` → public IP (Terraform); `oci.<domain>` → tailnet
+  IP (`dns.yml`). Service CNAMEs on this host point at `oci-pub`
+  (`dns_cname_target`).
+- **Firewall:** only TCP 443 is open, in both the OCI security list
+  (`public_web_ports`) and the host's iptables (`public_tcp_ports`).
+- **Services:** `enabled_services` in `host_vars/oci.yml` is an allowlist.
+  Services marked `public_only: true` in `_service_config` deploy only on hosts
+  with `public_host: true`. Everything Traefik routes there is
+  internet-reachable; `public_host` turns off the Traefik dashboard and API.
+- **Monitoring:** Gatus on the XPS13 probes the public URLs (group **Public
+  Services**).
+- **Not yet set up:** backups, Beszel agent, OS-update heartbeats.
+
+**Ente** (photo sharing) runs there: `ente` (web app), `ente-api`,
+`ente-accounts`, `albums` (public links). Photos are stored end-to-end
+encrypted in a Cloudflare R2 bucket (`ENTE_S3_*` secrets, created by hand);
+the host itself holds only Postgres. Login codes are emailed via SMTP2GO when
+`ENTE_SMTP_USERNAME` / `ENTE_SMTP_PASSWORD` / `ENTE_SMTP_FROM` exist in
+Infisical, otherwise they appear in `docker logs ente-museum`. Set
+`ente_disable_registration: true` in `host_vars/oci.yml` and redeploy to stop
+new sign-ups.
 
 ### Networking
 
@@ -607,6 +642,6 @@ This scenario requires additional planning around Restic repo sharing and is def
 - Long-term: phone-friendly server management — expose remaining service UIs, document mobile access patterns
 
 ### Upstream Compose File Convention
-Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, beszel, seafile. Not tracked: networking/traefik (fully custom), dockhand (single-container, written from scratch)
+Services adapted from upstream compose files keep a reference copy at `ansible/services/<service>/upstream.yml`. Diff with `diff ansible/services/<service>/upstream.yml ansible/services/<service>/compose.yml.j2` to see local changes. Currently tracked: immich, paperless, beszel, seafile, ente (extracted from upstream's `quickstart.sh`). Not tracked: networking/traefik (fully custom), dockhand (single-container, written from scratch)
 
 Seafile's `upstream.yml` is a concatenation of upstream's `seafile-server.yml` and `seadoc.yml`; `caddy.yml` is intentionally omitted since Traefik handles TLS.
