@@ -60,6 +60,10 @@ versions:
   ente: "latest"
   ente_web: "latest"
 
+  # https://github.com/Finsys/hawser/releases — "latest", to stay in step with
+  # dockhand (also "latest"); the agent and server versions move together.
+  hawser: "latest"
+
 # Per-cluster service disabling lives in inventory group_vars/host_vars as
 # `disabled_services` (see inventory/group_vars/swintronics.yml) — not here,
 # because vars_files would override every inventory value.
