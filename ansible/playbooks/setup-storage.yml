@@ -20,6 +20,12 @@
   become: true
   vars:
     _use_btrfs: "{{ use_btrfs | default(true) | bool }}"
+    # Services that get storage on this host: everything in versions.yml,
+    # narrowed to the host's `enabled_services` allowlist when it sets one.
+    _storage_services: >-
+      {{ versions.keys()
+         | select('in', enabled_services | default(versions.keys() | list))
+         | list }}
     # All known services and their storage directory names.
     # stateful: true  → create a btrfs subvolume under volumes/
     # stateful: false → stateless; only a logs directory is created
@@ -139,7 +145,7 @@
         group: "{{ admin_user }}"
         mode: '0755'
       loop: "{{ _service_storage.keys() | list }}"
-      when: item in versions
+      when: item in _storage_services
 
     - name: Create parent directory for services with a nested subvolume
       ansible.builtin.file:
@@ -150,7 +156,7 @@
         mode: '0755'
       loop: "{{ _service_storage.keys() | list }}"
       when:
-        - item in versions
+        - item in _storage_services
         - _service_storage[item].stateful
         - _service_storage[item].subvol_path is defined
 
@@ -163,7 +169,7 @@
       loop: "{{ _service_storage.keys() | list }}"
       when:
         - _use_btrfs
-        - item in versions
+        - item in _storage_services
         - _service_storage[item].stateful
       changed_when: false
       failed_when: false
@@ -190,7 +196,7 @@
       loop: "{{ _service_storage.keys() | list }}"
       when:
         - not _use_btrfs
-        - item in versions
+        - item in _storage_services
         - _service_storage[item].stateful
 
     - name: Set ownership of subvolumes to admin user
@@ -200,7 +206,7 @@
         group: "{{ admin_user }}"
       loop: "{{ _service_storage.keys() | list }}"
       when:
-        - item in versions
+        - item in _storage_services
         - _service_storage[item].stateful
 
     - name: Create subdirectories within subvolumes

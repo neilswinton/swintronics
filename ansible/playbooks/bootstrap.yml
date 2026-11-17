@@ -20,6 +20,7 @@
       apt:
         name:
           - apt-transport-https
+          - bzip2
           - ca-certificates
           - curl
           - gnupg
@@ -54,21 +55,23 @@
 
     - name: Download and install upstream restic {{ restic_latest_version }}
       when: restic_latest_version not in (_local_restic.stdout | default(''))
+      vars:
+        _restic_arch: "{{ 'arm64' if ansible_facts['architecture'] == 'aarch64' else 'amd64' }}"
       block:
         - name: Download restic release
           ansible.builtin.get_url:
-            url: "https://github.com/restic/restic/releases/download/v{{ restic_latest_version }}/restic_{{ restic_latest_version }}_linux_amd64.bz2"
-            dest: "/tmp/restic_{{ restic_latest_version }}_linux_amd64.bz2"
+            url: "https://github.com/restic/restic/releases/download/v{{ restic_latest_version }}/restic_{{ restic_latest_version }}_linux_{{ _restic_arch }}.bz2"
+            dest: "/tmp/restic_{{ restic_latest_version }}_linux_{{ _restic_arch }}.bz2"
             mode: '0644'
 
         - name: Decompress restic binary
           ansible.builtin.command:
-            cmd: "bunzip2 -f /tmp/restic_{{ restic_latest_version }}_linux_amd64.bz2"
-            creates: "/tmp/restic_{{ restic_latest_version }}_linux_amd64"
+            cmd: "bunzip2 -f /tmp/restic_{{ restic_latest_version }}_linux_{{ _restic_arch }}.bz2"
+            creates: "/tmp/restic_{{ restic_latest_version }}_linux_{{ _restic_arch }}"
 
         - name: Install restic to /usr/local/bin
           ansible.builtin.copy:
-            src: "/tmp/restic_{{ restic_latest_version }}_linux_amd64"
+            src: "/tmp/restic_{{ restic_latest_version }}_linux_{{ _restic_arch }}"
             dest: /usr/local/bin/restic
             remote_src: true
             owner: root
@@ -77,7 +80,7 @@
 
         - name: Clean up restic tempfile
           ansible.builtin.file:
-            path: "/tmp/restic_{{ restic_latest_version }}_linux_amd64"
+            path: "/tmp/restic_{{ restic_latest_version }}_linux_{{ _restic_arch }}"
             state: absent
 
     - name: Set timezone
@@ -118,6 +121,29 @@
       changed_when: false
       when: inventory_hostname in groups.get('local', [])
 
+
+    # OCI's Ubuntu images ship a host firewall (/etc/iptables/rules.v4, loaded
+    # by netfilter-persistent) that rejects everything but SSH, on top of the
+    # VCN security list. Open the host's public ports in both the saved rules
+    # and the live table. The file is edited directly rather than running
+    # `netfilter-persistent save`, which would also capture Docker's and
+    # Tailscale's dynamic chains.
+    - name: Allow public TCP ports in the saved host firewall rules
+      ansible.builtin.lineinfile:
+        path: /etc/iptables/rules.v4
+        line: "-A INPUT -p tcp -m state --state NEW -m tcp --dport {{ item }} -j ACCEPT"
+        insertbefore: '^-A INPUT -j REJECT'
+      loop: "{{ public_tcp_ports | default([]) }}"
+
+    - name: Allow public TCP ports in the live host firewall
+      ansible.builtin.iptables:
+        chain: INPUT
+        action: insert
+        protocol: tcp
+        ctstate: NEW
+        destination_port: "{{ item }}"
+        jump: ACCEPT
+      loop: "{{ public_tcp_ports | default([]) }}"
 
     - name: Ensure the user has a NOPASSWD entry in sudoers.d
       ansible.builtin.copy:

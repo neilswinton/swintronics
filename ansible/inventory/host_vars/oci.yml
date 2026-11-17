@@ -1,0 +1,38 @@
+---
+# OCI public host (Terraform: cloud_provider = "oci"). Serves public services
+# through Traefik on 443 and joins the tailnet for management only.
+#
+# It is not in the `swintronics` group (see inventory/hosts), so the cluster
+# values it shares with the XPS13 are repeated here.
+cluster_name: swintronics
+server_domain: "swintronics.com"
+cert_resolver: "production"
+docker_services_path: "/home/{{ admin_user }}/{{ cluster_name }}/docker-services"
+
+admin_user: neil
+ansible_user: "{{ admin_user }}"
+ansible_ssh_private_key_file: "{{ inventory_dir }}/../../terraform/artifacts/swintronics_admin_ecdsa"
+use_btrfs: true
+docker_gid: "1000"
+
+# Tailnet identity: own tag, so the tailnet policy can keep this host away
+# from everything else. No subnet routes, no exit node.
+tailscale_tag: "public"
+tailscale_authkey_secret: "TS_PUBLIC_AUTH_KEY"
+
+# dns_hostname.<domain> is the tailnet address (dns.yml). Service CNAMEs point
+# at the public record that Terraform manages (server_hostname = "oci-pub").
+dns_hostname: "oci"
+dns_cname_target: "oci-pub.{{ server_domain }}"
+
+# Everything Traefik routes on this host is reachable from the internet:
+# the dashboard and API are switched off and no forwarded headers are trusted.
+public_host: true
+public_tcp_ports: [443]
+skip_dns_names: [traefik]
+
+# Allowlist — only these services are deployed here.
+enabled_services:
+  - traefik
+  - autoheal
+disabled_services: []
