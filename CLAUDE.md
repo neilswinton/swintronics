@@ -389,7 +389,11 @@ from everything else.
   environment. Its token comes from Dockhand (add an environment of the Hawser
   edge type) and is stored in Infisical as `HAWSER_TOKEN`.
 - **Tailnet policy:** `tag:public` may only reach `tag:server` on tcp:443.
-- **Not yet set up:** backups, Beszel agent, OS-update heartbeats.
+- **OS updates:** `configure-system-services.yml -e target=oci` applies only
+  the unattended-upgrades section — nightly security patches with an automatic
+  03:00 reboot. No Gatus update heartbeats or weekly full-upgrade yet.
+- **Not yet set up:** backups, Beszel agent, OS-update heartbeats, weekly
+  full-upgrade (tracked under the OCI hardening issue).
 
 **Ente** (photo sharing) runs there: `ente` (web app), `ente-api`,
 `ente-accounts`, `albums` (public links). Photos are stored end-to-end

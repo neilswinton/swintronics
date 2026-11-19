@@ -13,6 +13,12 @@
 #
 # Usage:
 #   ansible-playbook playbooks/configure-system-services.yml
+#   ansible-playbook playbooks/configure-system-services.yml -e target=oci
+#
+# On a public host (public_host: true) only the unattended-upgrades section
+# runs: nightly security patches with an automatic 03:00 reboot. Everything
+# after it is XPS13-specific (shared Gatus update endpoints, the healthchecks.io
+# heartbeat, Telegram reboot hooks) and is skipped there.
 
 - name: Configure host system services
   hosts: "{{ target | default('clusters') }}"
@@ -81,6 +87,15 @@
         name: unattended-upgrades
         enabled: yes
         state: started
+
+    # Public hosts get security patching + nightly reboot only; see header.
+    - name: Apply unattended-upgrades changes before stopping (public host)
+      ansible.builtin.meta: flush_handlers
+      when: public_host | default(false)
+
+    - name: Stop here on a public host
+      ansible.builtin.meta: end_host
+      when: public_host | default(false)
 
     # ── Store monitoring credentials for reboot scripts ───────────────────────
     # These tasks require HEALTHCHECKS_API_KEY in Infisical — skip for clusters
