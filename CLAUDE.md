@@ -74,7 +74,7 @@ ansible-playbook playbooks/deploy-versions.yml --check
 ### Prerequisites (external accounts/services)
 
 - **Cloudflare** — zone for your domain, API token with DNS edit permissions, zone ID
-- **Tailscale** — tailnet with an OAuth client (scopes: `auth_keys`, `devices:core`, `dns:read`, `oauth_keys`); a `container` tag must exist and be assigned to `devices:core`
+- **Tailscale** — tailnet with an OAuth client (scopes: `auth_keys`, `devices:core`, `dns:read`, `oauth_keys`); the client must carry `tag:server` (it creates the `tag:server` auth keys), and `tag:server` must be in the tailnet policy's `tagOwners`
 - **Infisical** — account + project; a Machine Identity with `admin` role for Terraform, and a separate Machine Identity (`docker_deploy`) created by Terraform for Ansible
 - **healthchecks.io** — account for backup monitoring (optional but referenced in `backup.env`)
 - **Telegram bot** — for Gatus alerts and reboot notifications (token + chat ID stored in Infisical under `/server`)
