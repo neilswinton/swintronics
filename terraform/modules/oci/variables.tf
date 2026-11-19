@@ -56,6 +56,6 @@ variable "my_ip" {
 
 variable "public_web_ports" {
   type        = list(number)
-  default     = [443]
-  description = "TCP ports opened to the internet for Traefik. Port 80 stays closed: certificates use the DNS challenge and every published link is https. Set to [] for a tailnet-only host."
+  default     = []
+  description = "TCP ports opened to the internet for Traefik, e.g. [443] for a public host (see docs/public-host.md). Port 80 isn't needed: certificates use the DNS challenge. Default: tailnet-only."
 }

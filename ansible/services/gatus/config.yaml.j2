@@ -110,32 +110,6 @@ endpoints:
     alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
 {% endif %}
 
-  # ── Public services (5m, 3 retries) ───────────────────────────────────────
-  # These run on the public host, not here, so the probes leave over the
-  # internet and exercise the same path family and friends use.
-{% if 'ente' not in _disabled %}
-  - name: Ente API
-    group: Public Services
-    url: https://ente-api.{{ server_domain }}/ping
-    interval: 5m
-    conditions: ["[STATUS] == 200"]
-    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
-
-  - name: Ente web
-    group: Public Services
-    url: https://ente.{{ server_domain }}/
-    interval: 5m
-    conditions: ["[STATUS] == 200"]
-    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
-
-  - name: Ente albums
-    group: Public Services
-    url: https://albums.{{ server_domain }}/
-    interval: 5m
-    conditions: ["[STATUS] == 200"]
-    alerts: [{type: telegram, failure-threshold: 3, success-threshold: 1, send-on-resolved: true}]
-{% endif %}
-
   # ── Healthchecks.io heartbeat (60s, 3 retries) ────────────────────────────
   - name: Healthchecks.io heartbeat
     enabled: true

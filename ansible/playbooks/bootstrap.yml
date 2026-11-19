@@ -122,29 +122,6 @@
       when: inventory_hostname in groups.get('local', [])
 
 
-    # OCI's Ubuntu images ship a host firewall (/etc/iptables/rules.v4, loaded
-    # by netfilter-persistent) that rejects everything but SSH, on top of the
-    # VCN security list. Open the host's public ports in both the saved rules
-    # and the live table. The file is edited directly rather than running
-    # `netfilter-persistent save`, which would also capture Docker's and
-    # Tailscale's dynamic chains.
-    - name: Allow public TCP ports in the saved host firewall rules
-      ansible.builtin.lineinfile:
-        path: /etc/iptables/rules.v4
-        line: "-A INPUT -p tcp -m state --state NEW -m tcp --dport {{ item }} -j ACCEPT"
-        insertbefore: '^-A INPUT -j REJECT'
-      loop: "{{ public_tcp_ports | default([]) }}"
-
-    - name: Allow public TCP ports in the live host firewall
-      ansible.builtin.iptables:
-        chain: INPUT
-        action: insert
-        protocol: tcp
-        ctstate: NEW
-        destination_port: "{{ item }}"
-        jump: ACCEPT
-      loop: "{{ public_tcp_ports | default([]) }}"
-
     - name: Ensure the user has a NOPASSWD entry in sudoers.d
       ansible.builtin.copy:
         content: |

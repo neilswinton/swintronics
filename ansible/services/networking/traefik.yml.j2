@@ -21,7 +21,6 @@ services:
       - ./traefik-data/configs:/configs:ro
       - ${CERT_RESOLVER}-certs:/certs:rw
       - {{ data_disk_mountpoint }}/logs/traefik:/logs:rw
-{% if not (public_host | default(false) | bool) %}
     labels:
         - "traefik.http.services.dummy.loadbalancer.server.port=8080"
         - "traefik.enable=true"
@@ -29,7 +28,6 @@ services:
         - "traefik.http.routers.traefik.entrypoints=websecure"
         - "traefik.http.routers.traefik.service=api@internal"
         - "traefik.http.routers.traefik.tls.certresolver=${CERT_RESOLVER}"
-{% endif %}
 
     healthcheck:
       test: traefik healthcheck || exit 1
