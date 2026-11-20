@@ -426,6 +426,23 @@ Order on a new cluster: `terraform apply` (creates `GATUS_PUSH_TOKEN`) →
 `deploy-versions.yml` (Gatus endpoints) → `configure-system-services.yml`.
 All update-monitoring pieces are skipped until `GATUS_PUSH_TOKEN` exists.
 
+### Hardware Watchdog
+
+Hosts with `hardware_watchdog_module` set get, from
+`configure-system-services.yml`: a `swintronics-watchdog.service` oneshot that
+`modprobe`s the driver, systemd `RuntimeWatchdogSec=30s` /
+`RebootWatchdogSec=2min`, and `kernel.{soft,hard}lockup_panic=1`,
+`kernel.panic=10`. A detected lockup panics, its log goes to efi-pstore
+(archived to `/var/lib/systemd/pstore` on the next boot), and the host reboots.
+A total freeze is reset by the chipset watchdog. The boot Telegram message
+reports the watchdog state and any archived crash log.
+
+Ubuntu's kernel package blacklists all watchdog drivers, and
+`systemd-modules-load` honours that blacklist, so a `modules-load.d` entry is
+silently skipped (`Module 'iTCO_wdt' is deny-listed (by kmod)`). That's why the
+loader unit runs `modprobe` directly. To check the watchdog, read
+`/sys/class/watchdog/watchdog0/state` (it should say `active`), not the config files.
+
 ### Marketplace (formerly HACS)
 
 HACS is now part of Home Assistant core as the built-in **Marketplace**
