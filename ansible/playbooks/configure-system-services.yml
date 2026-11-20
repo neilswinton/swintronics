@@ -9,7 +9,10 @@
 #     (Telegram alert on failure)
 #   - boot-notify hook: send a Telegram message on every boot including the
 #     recorded shutdown reason (catches crashes and watchdog-triggered reboots,
-#     not just planned shutdowns)
+#     not just planned shutdowns), hardware-watchdog state, and any pstore
+#     crash log archived this boot
+#   - hardware watchdog (hosts with hardware_watchdog_module): driver loader
+#     unit, systemd RuntimeWatchdogSec/RebootWatchdogSec, panic-on-lockup sysctls
 #
 # Usage:
 #   ansible-playbook playbooks/configure-system-services.yml
@@ -968,6 +971,94 @@
         enabled: yes
       when: _has_monitoring_secrets
 
+    # ── Hardware watchdog + lockup recovery ──────────────────────────────────
+    # A hard hang (no kernel log, keyboard dead) otherwise needs a manual
+    # power-cycle. systemd pings the hardware watchdog every RuntimeWatchdogSec/2;
+    # if PID 1 stops running, the chipset resets the machine.
+    #
+    # Ubuntu's kernel package blacklists every watchdog driver
+    # (/lib/modprobe.d/blacklist_linux-*.conf), and systemd-modules-load honours
+    # the blacklist — a modules-load.d entry is silently skipped ("deny-listed
+    # (by kmod)"). An explicit `modprobe` ignores the blacklist, so a oneshot
+    # unit loads the driver; PID 1 picks the device up on its next watchdog ping.
+    # Verify with: cat /sys/class/watchdog/watchdog0/state   (expect: active)
+
+    - name: Remove ineffective modules-load.d watchdog entry
+      file:
+        path: "/etc/modules-load.d/{{ hardware_watchdog_module }}.conf"
+        state: absent
+      when: hardware_watchdog_module is defined
+
+    - name: Deploy hardware watchdog loader unit
+      copy:
+        dest: /etc/systemd/system/swintronics-watchdog.service
+        content: |
+          [Unit]
+          Description=Load hardware watchdog driver ({{ hardware_watchdog_module }}; bypasses Ubuntu's kernel blacklist)
+          DefaultDependencies=no
+          After=systemd-modules-load.service
+          Before=sysinit.target
+
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStart=/usr/sbin/modprobe {{ hardware_watchdog_module }}
+
+          [Install]
+          WantedBy=sysinit.target
+        owner: root
+        group: root
+        mode: '0644'
+      when: hardware_watchdog_module is defined
+
+    - name: Enable and start hardware watchdog loader
+      systemd:
+        name: swintronics-watchdog
+        daemon_reload: yes
+        enabled: yes
+        state: started
+      when: hardware_watchdog_module is defined
+      # In --check the unit file hasn't been written, so systemd can't find it.
+      ignore_errors: "{{ ansible_check_mode }}"
+
+    - name: Ensure systemd system.conf.d directory exists
+      file:
+        path: /etc/systemd/system.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      when: hardware_watchdog_module is defined
+
+    - name: Configure systemd hardware watchdog
+      copy:
+        dest: /etc/systemd/system.conf.d/watchdog.conf
+        content: |
+          [Manager]
+          RuntimeWatchdogSec=30s
+          RebootWatchdogSec=2min
+        owner: root
+        group: root
+        mode: '0644'
+      when: hardware_watchdog_module is defined
+      notify: reexec systemd
+
+    # A soft/hard lockup the kernel can still detect panics instead of logging
+    # into the void; panic → kmsg dump to efi-pstore (archived by systemd-pstore
+    # to /var/lib/systemd/pstore on next boot) → reboot after 10s. Total freezes
+    # the NMI detector can't report are left to the hardware watchdog.
+    - name: Panic and reboot on kernel lockups
+      ansible.posix.sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        sysctl_file: /etc/sysctl.d/90-swintronics-lockup-panic.conf
+        reload: true
+      loop:
+        - { name: kernel.softlockup_panic, value: '1' }
+        - { name: kernel.hardlockup_panic, value: '1' }
+        - { name: kernel.panic, value: '10' }
+      when: hardware_watchdog_module is defined
+
     # ── Boot-notify hook (every boot, including crash/watchdog recovery) ─────
 
     - name: Deploy boot-notify script
@@ -1005,11 +1096,38 @@
               rm -f "${REASON_FILE}"
           fi
 
+          # Kernel panic log saved by efi-pstore and archived by systemd-pstore
+          # during this boot (lockup → panic; see the watchdog section).
+          PSTORE_NOTE=""
+          if [[ -n "$(find /var/lib/systemd/pstore -mindepth 1 -maxdepth 1 -newermt "${BOOT_TIME}" 2>/dev/null)" ]]; then
+              PSTORE_NOTE="
+          💥 crash log archived in /var/lib/systemd/pstore"
+          fi
+          {% if hardware_watchdog_module is defined %}
+
+          # systemd arms the watchdog lazily on its next ping after the driver
+          # loads; allow a little time before declaring it missing.
+          WATCHDOG_STATE=missing
+          for _ in $(seq 1 20); do
+              WATCHDOG_STATE=$(cat /sys/class/watchdog/watchdog0/state 2>/dev/null || echo missing)
+              [[ "${WATCHDOG_STATE}" == active ]] && break
+              sleep 1
+          done
+          if [[ "${WATCHDOG_STATE}" == active ]]; then
+              WATCHDOG_NOTE="🐕 hardware watchdog active"
+          else
+              WATCHDOG_NOTE="⚠️ hardware watchdog NOT active (${WATCHDOG_STATE}) — hangs won't auto-reboot"
+          fi
+          {% else %}
+          WATCHDOG_NOTE="(no hardware watchdog configured)"
+          {% endif %}
+
           MESSAGE="🟢 ${HOSTNAME} booted
           Kernel: ${KERNEL}
           Boot time: ${BOOT_TIME}
           ${SHUTDOWN_NOTE}
-          ${REASON_NOTE}"
+          ${REASON_NOTE}
+          ${WATCHDOG_NOTE}${PSTORE_NOTE}"
 
           curl -s -X POST \
               --max-time 10 \
@@ -1034,7 +1152,7 @@
           Type=oneshot
           ExecStart=/usr/local/sbin/swintronics-boot-notify.sh
           EnvironmentFile=/etc/swintronics/monitoring.env
-          TimeoutStartSec=30
+          TimeoutStartSec=60
 
           [Install]
           WantedBy=multi-user.target
@@ -1055,3 +1173,8 @@
     - name: reload systemd
       systemd:
         daemon_reload: yes
+
+    # system.conf(.d) [Manager] settings are only read by PID 1 at (re)exec.
+    - name: reexec systemd
+      systemd:
+        daemon_reexec: yes
